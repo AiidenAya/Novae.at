@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Better Auth required models ───────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  name          String?
+  avatar        String?
+  bio           String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+
+  characters    Character[]
+  artworks      Artwork[]
+  species       Species[]
+  favorites     Favorite[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+}
+
+// ─── App models ────────────────────────────────────────────────────────────
+
+model Character {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  speciesId String?
+  species   Species? @relation(fields: [speciesId], references: [id], onDelete: SetNull)
+
+  artworks      Artwork[]
+  galleries     Gallery[]
+  tags          CharacterTag[]
+  colorPalettes ColorPalette[]
+  relationshipsA Relationship[] @relation("CharacterA")
+  relationshipsB Relationship[] @relation("CharacterB")
+  favorites     Favorite[]
+}
+
+model Species {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  characters Character[]
+}
+
+model Artwork {
+  id        String   @id @default(cuid())
+  title     String?
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  characterId String?
+  character   Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+
+  galleryImages GalleryImage[]
+  favorites     Favorite[]
+}
+
+model Gallery {
+  id   String @id @default(cuid())
+  name String
+
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  images GalleryImage[]
+}
+
+model GalleryImage {
+  id    String @id @default(cuid())
+  order Int    @default(0)
+
+  galleryId String
+  gallery   Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+
+  artworkId String
+  artwork   Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([galleryId, artworkId])
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+
+  characters CharacterTag[]
+}
+
+model CharacterTag {
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([characterId, tagId])
+}
+
+model ColorPalette {
+  id   String @id @default(cuid())
+  name String @default("Palette")
+
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  swatches ColorSwatch[]
+}
+
+model ColorSwatch {
+  id    String  @id @default(cuid())
+  hex   String
+  label String?
+  order Int     @default(0)
+
+  paletteId String
+  palette   ColorPalette @relation(fields: [paletteId], references: [id], onDelete: Cascade)
+}
+
+model Relationship {
+  id          String  @id @default(cuid())
+  type        String
+  description String?
+
+  characterAId String
+  characterA   Character @relation("CharacterA", fields: [characterAId], references: [id], onDelete: Cascade)
+
+  characterBId String
+  characterB   Character @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+
+  @@unique([characterAId, characterBId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  characterId String?
+  character   Character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  artworkId String?
+  artwork   Artwork? @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, characterId])
+  @@unique([userId, artworkId])
+}
