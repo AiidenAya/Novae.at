@@ -2,14 +2,18 @@ import LoginForm from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="flex flex-1 items-center justify-center p-8">
+      <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Connexion</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Connecte-toi à ton compte Novae</p>
+          <h1 className="font-bold text-2xl" style={{ fontFamily: "var(--font-space-grotesk)", color: "var(--novae-text-primary)" }}>
+            Connexion
+          </h1>
+          <p className="mt-1 text-sm" style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-secondary)" }}>
+            Connecte-toi à ton compte Novae
+          </p>
         </div>
         <LoginForm />
       </div>
-    </main>
+    </div>
   );
 }

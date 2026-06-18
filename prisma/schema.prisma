@@ -11,7 +11,7 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  username      String    @unique
+  username      String?   @unique
   email         String    @unique
   emailVerified Boolean   @default(false)
   name          String?
@@ -76,11 +76,12 @@ model Verification {
 // ─── App models ────────────────────────────────────────────────────────────
 
 model Character {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  isPublic    Boolean  @default(true)
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
+  description        String?
+  backgroundImageUrl String?
+  isPublic           Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

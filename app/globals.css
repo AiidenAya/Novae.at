@@ -2,6 +2,53 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* ── Novae design tokens (from Figma Design System) ─────────────────────── */
+:root {
+  /* Colors */
+  --novae-text-primary:    #d1d1d1;
+  --novae-text-secondary:  #888888;
+  --novae-text-link:       #a484dc;
+  --novae-text-tag:        #a484dc;
+  --novae-text-btn:        #d1d1d1;
+
+  --novae-bg-main:         #0c0f16;
+  --novae-bg-card:         rgba(25, 32, 46, 0.3);
+  --novae-bg-tag:          rgba(25, 32, 46, 0.3);
+
+  --novae-outline-all:     rgba(136, 136, 136, 0.3);
+  --novae-outline-tag:     #693da9;
+  --novae-outline-selected:#a484dc;
+
+  --novae-btn-primary:     #693da9;
+  --novae-btn-secondary:   rgba(25, 32, 46, 0.3);
+
+  /* Radii */
+  --novae-radius-sm:  4px;
+  --novae-radius-md:  8px;
+  --novae-radius-lg:  16px;
+
+  /* Spacing */
+  --novae-space-xs:   4px;
+  --novae-space-sm:   8px;
+  --novae-space-md:   12px;
+  --novae-space-lg:   16px;
+  --novae-space-xl:   20px;
+  --novae-space-2xl:  24px;
+  --novae-space-3xl:  32px;
+
+  /* Font sizes */
+  --novae-text-xs:   12px;
+  --novae-text-sm:   14px;
+  --novae-text-base: 16px;
+  --novae-text-lg:   18px;
+  --novae-text-2xl:  24px;
+  --novae-text-3xl:  30px;
+  --novae-text-5xl:  48px;
+}
+
+/* ── Typography helpers ──────────────────────────────────────────────────── */
+.font-opsz { font-variation-settings: '"opsz" 14'; }
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
