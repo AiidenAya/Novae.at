@@ -262,7 +262,7 @@ export default function Navbar() {
   return (
     <header
       ref={ref}
-      className="sticky top-0 z-50 w-full h-[72px] flex items-center justify-between px-8 border-b"
+      className="relative z-50 w-full h-[72px] flex items-center justify-between px-8 border-b"
       style={{
         backgroundColor: "var(--novae-bg-card)",
         borderColor: "var(--novae-outline-all)",
