@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
+import { useTheme } from "@/lib/use-theme";
+import { useT } from "@/lib/locale-context";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,14 @@ function IconMoon() {
   );
 }
 
+function IconSettings() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  );
+}
+
 function IconLogout() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -124,14 +134,13 @@ const COMMUNITY_ITEMS = [
 
 // ── Reusable dropdown panel ───────────────────────────────────────────────────
 
-function DropdownPanel({ children }: { children: React.ReactNode }) {
+function DropdownPanel({ children, align = "left" }: { children: React.ReactNode; align?: "left" | "right" }) {
   return (
     <div
-      className="absolute top-full mt-0 min-w-[200px] rounded-[var(--novae-radius-md)] border flex flex-col gap-4 px-8 py-6 z-50"
+      className={`absolute top-full mt-2 min-w-[200px] rounded-[var(--novae-radius-md)] border flex flex-col gap-4 px-8 py-6 z-50${align === "right" ? " right-0" : " left-0"}`}
       style={{
         backgroundColor: "var(--novae-bg-main)",
         borderColor: "var(--novae-outline-all)",
-        background: "linear-gradient(90deg, rgba(25,32,46,0.3) 0%, rgba(25,32,46,0.3) 100%), linear-gradient(90deg, rgb(12,15,22) 0%, rgb(12,15,22) 100%)",
       }}
     >
       {children}
@@ -219,6 +228,8 @@ export default function Navbar() {
 
   const [open, setOpen] = useState<DropdownKey>(null);
   const ref = useRef<HTMLElement>(null);
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const { t, locale, toggle: toggleLocale } = useT();
 
   // Close on outside click
   useEffect(() => {
@@ -259,11 +270,11 @@ export default function Navbar() {
       }}
     >
       {/* Left — Logo + nav */}
-      <div className="flex items-center gap-8">
+      <div className="flex items-center self-stretch gap-8">
         <Logo />
         <div className="w-px h-10 shrink-0" style={{ backgroundColor: "var(--novae-outline-all)" }} />
 
-        <nav className="flex items-center gap-8">
+        <nav className="flex items-center self-stretch gap-8">
           {/* Home */}
           <Link
             href="/"
@@ -271,18 +282,18 @@ export default function Navbar() {
             style={navItemStyle(pathname === "/")}
           >
             <IconHome />
-            Home
+            {t.navHome}
           </Link>
 
           {/* My Library */}
-          <div className="relative">
+          <div className="relative self-stretch flex items-center">
             <button
               onClick={() => toggle("library")}
               className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
               style={navItemStyle(pathname.startsWith("/library"))}
             >
               <IconUser />
-              My Library
+              {t.navLibrary}
               <span style={{ color: "var(--novae-text-secondary)", transform: open === "library" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
                 <IconChevron />
               </span>
@@ -295,14 +306,14 @@ export default function Navbar() {
           </div>
 
           {/* Browse */}
-          <div className="relative">
+          <div className="relative self-stretch flex items-center">
             <button
               onClick={() => toggle("browse")}
               className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
               style={navItemStyle(pathname.startsWith("/browse"))}
             >
               <IconSearch />
-              Browse
+              {t.navBrowse}
               <span style={{ color: "var(--novae-text-secondary)", transform: open === "browse" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
                 <IconChevron />
               </span>
@@ -315,14 +326,14 @@ export default function Navbar() {
           </div>
 
           {/* Community */}
-          <div className="relative">
+          <div className="relative self-stretch flex items-center">
             <button
               onClick={() => toggle("community")}
               className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
               style={navItemStyle(pathname.startsWith("/community"))}
             >
               <IconGroup />
-              Community
+              {t.navCommunity}
               <span style={{ color: "var(--novae-text-secondary)", transform: open === "community" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
                 <IconChevron />
               </span>
@@ -353,11 +364,11 @@ export default function Navbar() {
               }}
             >
               <IconPlus />
-              New
+              {t.navNew}
             </Link>
 
             {/* User dropdown */}
-            <div className="relative">
+            <div className="relative self-stretch flex items-center">
               <button
                 onClick={() => toggle("profile")}
                 className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
@@ -384,7 +395,7 @@ export default function Navbar() {
               </button>
 
               {open === "profile" && (
-                <DropdownPanel>
+                <DropdownPanel align="right">
                   {/* Profile */}
                   <Link
                     href={`/${username}`}
@@ -392,7 +403,7 @@ export default function Navbar() {
                     style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}
                   >
                     <span className="w-[22px] flex justify-center" style={{ color: "var(--novae-text-secondary)" }}><IconUser /></span>
-                    Profile
+                    {t.navProfile}
                   </Link>
 
                   <Divider />
@@ -419,20 +430,47 @@ export default function Navbar() {
 
                   {/* Theme toggle */}
                   <div className="flex items-center gap-3">
-                    <span style={{ color: "var(--novae-text-secondary)" }}><IconSun /></span>
+                    <span style={{ color: isDark ? "var(--novae-text-secondary)" : "var(--novae-text-primary)" }}><IconSun /></span>
                     <div
                       className="w-10 h-5 rounded-full relative cursor-pointer"
                       style={{ backgroundColor: "var(--novae-outline-all)" }}
+                      onClick={toggleTheme}
                     >
                       <div
                         className="absolute top-0.5 left-0.5 size-4 rounded-full transition-transform"
-                        style={{ backgroundColor: "var(--novae-btn-primary)", transform: "translateX(18px)" }}
+                        style={{ backgroundColor: "var(--novae-btn-primary)", transform: isDark ? "translateX(18px)" : "translateX(0px)" }}
                       />
                     </div>
-                    <span style={{ color: "var(--novae-text-primary)" }}><IconMoon /></span>
+                    <span style={{ color: isDark ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}><IconMoon /></span>
                   </div>
 
                   <Divider />
+
+                  {/* Settings */}
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 w-full transition-opacity hover:opacity-70"
+                    style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}
+                  >
+                    <span className="w-[22px] flex justify-center" style={{ color: "var(--novae-text-secondary)" }}><IconSettings /></span>
+                    {t.navSettings}
+                  </Link>
+
+                  {/* Locale toggle */}
+                  <div className="flex items-center gap-3">
+                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: locale === "en" ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}>EN</span>
+                    <div
+                      className="w-10 h-5 rounded-full relative cursor-pointer"
+                      style={{ backgroundColor: "var(--novae-outline-all)" }}
+                      onClick={toggleLocale}
+                    >
+                      <div
+                        className="absolute top-0.5 left-0.5 size-4 rounded-full transition-transform"
+                        style={{ backgroundColor: "var(--novae-btn-primary)", transform: locale === "fr" ? "translateX(18px)" : "translateX(0px)" }}
+                      />
+                    </div>
+                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: locale === "fr" ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}>FR</span>
+                  </div>
 
                   {/* Logout */}
                   <button
@@ -444,7 +482,7 @@ export default function Navbar() {
                     style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}
                   >
                     <span className="w-[22px] flex justify-center" style={{ color: "var(--novae-text-secondary)" }}><IconLogout /></span>
-                    Logout
+                    {t.navLogout}
                   </button>
                 </DropdownPanel>
               )}
@@ -457,7 +495,7 @@ export default function Navbar() {
               className="font-medium transition-opacity hover:opacity-70"
               style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)" }}
             >
-              Login
+              {t.navLogin}
             </Link>
             <Link
               href="/register"
@@ -470,7 +508,7 @@ export default function Navbar() {
                 color: "var(--novae-text-btn)",
               }}
             >
-              Sign up
+              {t.navSignUp}
             </Link>
           </>
         )}

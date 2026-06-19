@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Space_Grotesk } from "next/font/google";
 import { Agentation } from "agentation";
 import Navbar from "@/components/Navbar";
+import { LocaleProvider } from "@/lib/locale-context";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -31,15 +32,21 @@ export default function RootLayout({
     <html
       lang="fr"
       className={`${dmSans.variable} ${spaceGrotesk.variable} antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('novae-theme');var dark=t!=='light';var h=document.documentElement;h.setAttribute('data-theme',dark?'dark':'light');if(dark)h.classList.add('dark');else h.classList.remove('dark');})()` }} />
+      </head>
       <body
         className="min-h-screen flex flex-col"
         style={{ backgroundColor: "var(--novae-bg-main)", color: "var(--novae-text-primary)" }}
       >
-        <Navbar />
-        <main className="flex-1 flex flex-col">
-          {children}
-        </main>
+        <LocaleProvider>
+          <Navbar />
+          <main className="flex-1 flex flex-col">
+            {children}
+          </main>
+        </LocaleProvider>
         {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>

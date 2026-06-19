@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signUp, signIn } from "@/lib/auth-client";
+import { useT } from "@/lib/locale-context";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -19,6 +20,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function RegisterForm() {
   const router = useRouter();
+  const { t } = useT();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,10 +32,16 @@ export default function RegisterForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const timeout = new Promise<{ error: { message: string } }>((resolve) =>
+      setTimeout(() => resolve({ error: { message: t.loginServerTimeout } }), 10000)
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (signUp.email as any)({ email, password, name: username, username });
+    const result = await Promise.race([
+      (signUp.email as any)({ email, password, name: username, username }),
+      timeout,
+    ]);
     if (result.error) {
-      setError(result.error.message ?? "Une erreur est survenue.");
+      setError(result.error.message ?? t.registerError);
       setLoading(false);
       return;
     }
@@ -51,17 +59,17 @@ export default function RegisterForm() {
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="username" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>Nom d&apos;utilisateur</label>
+        <label htmlFor="username" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.registerUsernameLabel}</label>
         <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>Email</label>
+        <label htmlFor="email" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.registerEmailLabel}</label>
         <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>Mot de passe</label>
+        <label htmlFor="password" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.registerPasswordLabel}</label>
         <div className="relative">
           <input id="password" type={showPassword ? "text" : "password"} required autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} style={{ ...inputStyle, paddingRight: "42px" }} />
           <button type="button" onClick={() => setShowPassword((v) => !v)} tabIndex={-1}
@@ -86,24 +94,24 @@ export default function RegisterForm() {
       <button type="submit" disabled={loading}
         className="w-full py-3 rounded-[var(--novae-radius-md)] font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
         style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)" }}>
-        {loading ? "Création…" : "Créer mon compte"}
+        {loading ? t.registerSubmitting : t.registerSubmit}
       </button>
 
       <div className="relative my-1 flex items-center gap-3">
         <div className="flex-1 h-px" style={{ backgroundColor: "var(--novae-outline-all)" }} />
-        <span className="text-xs uppercase" style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>ou</span>
+        <span className="text-xs uppercase" style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>{t.registerOr}</span>
         <div className="flex-1 h-px" style={{ backgroundColor: "var(--novae-outline-all)" }} />
       </div>
 
       <button type="button" onClick={() => signIn.social({ provider: "google", callbackURL: "/library/characters" })}
         className="w-full py-3 rounded-[var(--novae-radius-md)] font-medium border transition-opacity hover:opacity-80"
         style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", borderColor: "var(--novae-outline-all)", backgroundColor: "var(--novae-bg-card)", color: "var(--novae-text-primary)" }}>
-        Continuer avec Google
+        {t.registerGoogle}
       </button>
 
       <p className="text-center text-sm" style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-secondary)" }}>
-        Déjà un compte ?{" "}
-        <Link href="/login" className="underline font-medium" style={{ color: "var(--novae-text-link)" }}>Se connecter</Link>
+        {t.registerHasAccount}{" "}
+        <Link href="/login" className="underline font-medium" style={{ color: "var(--novae-text-link)" }}>{t.registerSignIn}</Link>
       </p>
     </form>
   );

@@ -46,6 +46,26 @@
   --novae-text-5xl:  48px;
 }
 
+/* ── Novae light mode tokens ─────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --novae-text-primary:    #1a1a2e;
+  --novae-text-secondary:  #666680;
+  --novae-text-link:       #693da9;
+  --novae-text-tag:        #693da9;
+  --novae-text-btn:        #ffffff;
+
+  --novae-bg-main:         #f0eff7;
+  --novae-bg-card:         rgba(255, 255, 255, 0.75);
+  --novae-bg-tag:          rgba(105, 61, 169, 0.1);
+
+  --novae-outline-all:     rgba(26, 26, 46, 0.15);
+  --novae-outline-tag:     #693da9;
+  --novae-outline-selected:#693da9;
+
+  --novae-btn-primary:     #693da9;
+  --novae-btn-secondary:   rgba(255, 255, 255, 0.75);
+}
+
 /* ── Typography helpers ──────────────────────────────────────────────────── */
 .font-opsz { font-variation-settings: '"opsz" 14'; }
 
