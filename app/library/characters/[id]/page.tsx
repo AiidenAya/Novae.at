@@ -130,7 +130,7 @@ export default async function CharacterPage({ params, searchParams }: CharacterP
             name={character.name}
             quote={character.description}
             imageUrl={character.artworks[2]?.imageUrl ?? null}
-            ownerUsername={character.user.username}
+            ownerUsername={character.user.username ?? ""}
             universe={character.species?.name ?? null}
             createdAt={character.createdAt}
             isOwner={isOwner}
