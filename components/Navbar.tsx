@@ -353,7 +353,7 @@ export default function Navbar() {
           <>
             {/* New button */}
             <Link
-              href="/library/characters/new"
+              href="/library/new"
               className="flex items-center gap-2 px-5 py-3 rounded-[var(--novae-radius-md)] font-medium transition-opacity hover:opacity-90"
               style={{
                 fontFamily: "var(--font-dm-sans)",

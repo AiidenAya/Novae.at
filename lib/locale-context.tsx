@@ -41,3 +41,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 export function useT() {
   return useContext(LocaleContext);
 }
+
+export function useLocaleContext() {
+  return useContext(LocaleContext);
+}
