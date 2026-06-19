@@ -60,17 +60,19 @@ export default function SocialTab({
     setAddingFriend(false);
   }
 
+  const VISIBLE_LIMIT = 7;
+  const [showAllFriends, setShowAllFriends] = useState(false);
+  const visibleFriends = !isEditing && !showAllFriends
+    ? featuredFriends.slice(0, VISIBLE_LIMIT)
+    : featuredFriends;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
       <Card>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          <SectionTitle>Featured Friends</SectionTitle>
-          {!isEditing && <button style={viewAllStyle}>View all</button>}
-        </div>
+        <SectionTitle>Featured Friends</SectionTitle>
 
-        {/* 8-per-row grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 12 }}>
-          {featuredFriends.map((friend, i) => (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+          {visibleFriends.map((friend, i) => (
             <div key={i} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", position: "relative" }}>
               <div style={{ width: FRIEND_SIZE, height: FRIEND_SIZE, borderRadius: "var(--novae-radius-md)", backgroundColor: "rgba(105,61,169,0.1)", backgroundImage: "repeating-conic-gradient(rgba(136,136,136,0.15) 0% 25%, transparent 0% 50%)", backgroundSize: "12px 12px", overflow: "hidden" }}>
                 {friend.avatar && <img src={friend.avatar} alt={friend.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
@@ -113,9 +115,12 @@ export default function SocialTab({
           </div>
         )}
 
-        {!isEditing && (
-          <button style={{ alignSelf: "center", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-            View more ›
+        {!isEditing && featuredFriends.length > VISIBLE_LIMIT && (
+          <button
+            onClick={() => setShowAllFriends((p) => !p)}
+            style={{ alignSelf: "center", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}
+          >
+            {showAllFriends ? "Show less ›" : `View more (${featuredFriends.length - VISIBLE_LIMIT}) ›`}
           </button>
         )}
       </Card>

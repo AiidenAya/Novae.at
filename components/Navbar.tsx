@@ -428,24 +428,6 @@ export default function Navbar() {
 
                   <Divider />
 
-                  {/* Theme toggle */}
-                  <div className="flex items-center gap-3">
-                    <span style={{ color: isDark ? "var(--novae-text-secondary)" : "var(--novae-text-primary)" }}><IconSun /></span>
-                    <div
-                      className="w-10 h-5 rounded-full relative cursor-pointer"
-                      style={{ backgroundColor: "var(--novae-outline-all)" }}
-                      onClick={toggleTheme}
-                    >
-                      <div
-                        className="absolute top-0.5 left-0.5 size-4 rounded-full transition-transform"
-                        style={{ backgroundColor: "var(--novae-btn-primary)", transform: isDark ? "translateX(18px)" : "translateX(0px)" }}
-                      />
-                    </div>
-                    <span style={{ color: isDark ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}><IconMoon /></span>
-                  </div>
-
-                  <Divider />
-
                   {/* Settings */}
                   <Link
                     href="/settings"
@@ -455,22 +437,6 @@ export default function Navbar() {
                     <span className="w-[22px] flex justify-center" style={{ color: "var(--novae-text-secondary)" }}><IconSettings /></span>
                     {t.navSettings}
                   </Link>
-
-                  {/* Locale toggle */}
-                  <div className="flex items-center gap-3">
-                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: locale === "en" ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}>EN</span>
-                    <div
-                      className="w-10 h-5 rounded-full relative cursor-pointer"
-                      style={{ backgroundColor: "var(--novae-outline-all)" }}
-                      onClick={toggleLocale}
-                    >
-                      <div
-                        className="absolute top-0.5 left-0.5 size-4 rounded-full transition-transform"
-                        style={{ backgroundColor: "var(--novae-btn-primary)", transform: locale === "fr" ? "translateX(18px)" : "translateX(0px)" }}
-                      />
-                    </div>
-                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: locale === "fr" ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}>FR</span>
-                  </div>
 
                   {/* Logout */}
                   <button

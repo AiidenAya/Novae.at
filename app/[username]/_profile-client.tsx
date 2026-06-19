@@ -15,7 +15,7 @@ import type { Profile } from "./_mock-data";
 
 type Tab = "creations" | "social" | "characters" | "worlds" | "artworks";
 
-export type EditState = {
+type EditState = {
   displayName: string;
   pronouns: string;
   bio: string;
@@ -54,7 +54,7 @@ const ArtworksTab   = dynamic(() => import("./_tabs/artworks"));
 
 // ── Inline input style ────────────────────────────────────────────────────────
 
-export const inlineInput: React.CSSProperties = {
+const inlineInput: React.CSSProperties = {
   background: "var(--novae-bg-input)",
   border: "1px solid var(--novae-outline-all)",
   borderRadius: "var(--novae-radius-md)",
@@ -96,13 +96,17 @@ function Sidebar({
   const socials = isEditing ? editState.socials : profile.socials;
 
   const DEFAULT_HANDLE = "@username";
-  function isSet(handle: string) { return handle && handle !== DEFAULT_HANDLE; }
+  function isSet(handle: string, name?: string) {
+    if (!handle || handle === DEFAULT_HANDLE) return false;
+    if (name === "Custom link" && handle === "custom link") return false;
+    return true;
+  }
 
   function updateHandle(name: string, handle: string) {
     setEditState((p) => ({ ...p, socials: p.socials.map((s) => s.name === name ? { ...s, handle } : s) }));
   }
 
-  const visibleSocials = isEditing ? socials : socials.filter((s) => isSet(s.handle));
+  const visibleSocials = isEditing ? socials : socials.filter((s) => isSet(s.handle, s.name));
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)", position: "sticky", top: 32, alignSelf: "flex-start" }}>
@@ -118,7 +122,7 @@ function Sidebar({
         </div>
       </Card>
 
-      <Card style={{ padding: "var(--novae-space-2xl)" }}>
+      {(isEditing || visibleSocials.length > 0) && <Card style={{ padding: "var(--novae-space-2xl)" }}>
         <SectionTitle>Socials</SectionTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-md)" }}>
           {visibleSocials.map((s) => (
@@ -129,9 +133,9 @@ function Sidebar({
               </div>
               {isEditing ? (
                 <input
-                  value={isSet(s.handle) ? s.handle : ""}
-                  placeholder={`Your ${s.name} handle`}
-                  onChange={(e) => updateHandle(s.name, e.target.value || DEFAULT_HANDLE)}
+                  value={isSet(s.handle, s.name) ? s.handle : ""}
+                  placeholder={s.name === "Custom link" ? "https://..." : `Your ${s.name} handle`}
+                  onChange={(e) => updateHandle(s.name, e.target.value || (s.name === "Custom link" ? "custom link" : DEFAULT_HANDLE))}
                   style={{ ...inlineInput, padding: "5px 10px" }}
                 />
               ) : (() => {
@@ -143,7 +147,7 @@ function Sidebar({
             </div>
           ))}
         </div>
-      </Card>
+      </Card>}
 
       <Card style={{ padding: "var(--novae-space-2xl)" }}>
         <SectionTitle>Latest Forum Post</SectionTitle>
@@ -204,7 +208,7 @@ function ProfileHeader({
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "white", fontWeight: 500 }}>Click to change cover</span>
             </div>
           )}
-          <input ref={coverRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("coverImage", e.target.files?.[0])} />
+          <input ref={coverRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("coverImage", e.target.files?.[0])} suppressHydrationWarning />
         </div>
 
         {/* Avatar row */}
@@ -219,10 +223,10 @@ function ProfileHeader({
                 <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "white", fontWeight: 500, textAlign: "center", padding: "0 8px" }}>Change avatar</span>
               </div>
             )}
-            <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("avatarImage", e.target.files?.[0])} />
+            <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("avatarImage", e.target.files?.[0])} suppressHydrationWarning />
           </div>
 
-          <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-end", minWidth: 0, paddingBottom: 4 }}>
+          <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-end", minWidth: 0, paddingTop: 16, paddingBottom: 16 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", flex: 1, minWidth: 0 }}>
               {isEditing ? (
                 <div style={{ display: "flex", gap: "var(--novae-space-md)", alignItems: "center", flexWrap: "wrap" }}>
@@ -239,11 +243,11 @@ function ProfileHeader({
                   />
                 </div>
               ) : (
-                <div style={{ display: "flex", gap: "var(--novae-space-2xl)", alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", padding: 8 }}>
                   <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-5xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0, whiteSpace: "nowrap" }}>
                     {profile.displayName}
                   </h1>
-                  <span style={{ backgroundColor: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", borderRadius: "var(--novae-radius-sm)", padding: "4px 12px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>
+                  <span style={{ backgroundColor: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", borderRadius: "var(--novae-radius-sm)", padding: "4px 12px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-tag)", whiteSpace: "nowrap", alignSelf: "flex-start" }}>
                     {profile.pronouns}
                   </span>
                 </div>
@@ -363,7 +367,6 @@ export function ProfileClient({ username }: { username: string }) {
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", backgroundColor: "var(--novae-bg-main)" }}>
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, opacity: 0.2, filter: "blur(6px)", backgroundImage: `url(${isEditing ? editState.coverImage : profile.coverImage})`, backgroundSize: "cover", backgroundPosition: "center", pointerEvents: "none" }} />
       <div style={{ position: "relative", zIndex: 1, width: "100%", padding: "32px", display: "flex", gap: "var(--novae-space-3xl)", alignItems: "flex-start", boxSizing: "border-box" }}>
         <div style={{ flex: 3, minWidth: 0, display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
           <ProfileHeader
