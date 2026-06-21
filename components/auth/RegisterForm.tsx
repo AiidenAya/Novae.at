@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signUp, signIn } from "@/lib/auth-client";
+import { signUp } from "@/lib/auth-client";
 import { useT } from "@/lib/locale-context";
 
 const inputStyle: React.CSSProperties = {
@@ -82,7 +82,7 @@ export default function RegisterForm() {
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="inviteCode" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>Code d'invitation</label>
+        <label htmlFor="inviteCode" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.registerInviteCodeLabel}</label>
         <input id="inviteCode" type="text" required autoComplete="off" placeholder="NOVA-XXXX-XXXX" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} style={{ ...inputStyle, textTransform: "uppercase", letterSpacing: "0.05em" }} />
       </div>
 
@@ -123,18 +123,6 @@ export default function RegisterForm() {
         className="w-full py-3 rounded-[var(--novae-radius-md)] font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
         style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)" }}>
         {loading ? t.registerSubmitting : t.registerSubmit}
-      </button>
-
-      <div className="relative my-1 flex items-center gap-3">
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--novae-outline-all)" }} />
-        <span className="text-xs uppercase" style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>{t.registerOr}</span>
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--novae-outline-all)" }} />
-      </div>
-
-      <button type="button" onClick={() => signIn.social({ provider: "google", callbackURL: "/library/characters" })}
-        className="w-full py-3 rounded-[var(--novae-radius-md)] font-medium border transition-opacity hover:opacity-80"
-        style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", borderColor: "var(--novae-outline-all)", backgroundColor: "var(--novae-bg-card)", color: "var(--novae-text-primary)" }}>
-        {t.registerGoogle}
       </button>
 
       <p className="text-center text-sm" style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-secondary)" }}>
