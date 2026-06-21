@@ -213,3 +213,50 @@
 div:hover > .artwork-actions {
   opacity: 1 !important;
 }
+
+/* ── Responsive utilities ─────────────────────────────────────────────────── */
+
+/* Navbar */
+.nav-links        { display: flex !important; }
+.nav-hamburger    { display: none !important; }
+.nav-mobile-menu  { display: none; flex-direction: column; position: fixed; left: 0; right: 0; top: 72px; bottom: 0;
+                    z-index: 49; background-color: #0c0f16 !important; opacity: 1 !important;
+                    border-top: 1px solid var(--novae-outline-all);
+                    padding: 24px; gap: 4px; overflow-y: auto; }
+.nav-mobile-menu.open { display: flex !important; }
+
+/* Profile page */
+.profile-layout   { display: flex; gap: var(--novae-space-3xl); align-items: flex-start; }
+.profile-main     { flex: 3; min-width: 0; display: flex; flex-direction: column; gap: var(--novae-space-lg); }
+.profile-sidebar  { flex: 1; display: flex; flex-direction: column; gap: var(--novae-space-lg);
+                    position: sticky; top: 32px; align-self: flex-start; }
+
+/* Character page */
+.char-header-grid { display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: end; }
+.char-body-grid   { display: flex; gap: 24px; }
+.char-body-main   { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.char-body-side   { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
+
+@media (max-width: 768px) {
+  /* Navbar — hamburger */
+  .nav-links      { display: none !important; }
+  .nav-hamburger  { display: flex !important; }
+
+  /* Profile — stack vertically */
+  .profile-layout  { flex-direction: column; padding: 16px !important; }
+  .profile-sidebar { position: static; width: 100%; }
+
+  /* Character page — stack vertically */
+  .char-header-row { flex-direction: column; align-items: flex-start !important; }
+  .char-header-row > *:first-child { width: 100% !important; height: auto !important; aspect-ratio: 1; }
+  .char-body-grid  { flex-direction: column; }
+  .char-body-side  { width: 100% !important; flex-direction: row; flex-wrap: wrap; gap: 12px; position: static !important; max-height: none !important; overflow-y: visible !important; }
+  .char-body-side > * { flex: 1 1 calc(50% - 6px); min-width: 200px; }
+
+  /* Reduce horizontal padding on mobile */
+  .char-body-grid { padding-left: 16px !important; padding-right: 16px !important; }
+
+  /* Library page */
+  .library-header  { flex-direction: column; align-items: flex-start !important; gap: 12px; }
+  .library-header > a { width: 100%; justify-content: center; }
+}
