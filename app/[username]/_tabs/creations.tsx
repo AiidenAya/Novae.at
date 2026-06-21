@@ -5,7 +5,7 @@ import { Card, SectionTitle, CharacterCard, viewAllStyle } from "../_shared";
 import type { Profile } from "../_mock-data";
 
 type Tab    = "creations" | "social" | "characters" | "worlds" | "artworks";
-type Entity = Profile["characters"][number];
+type Entity = { id?: string; name: string; hearts: number; images: number; coverImage: string | null };
 
 // ── Picker modal ──────────────────────────────────────────────────────────────
 

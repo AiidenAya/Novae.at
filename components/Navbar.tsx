@@ -251,6 +251,7 @@ export default function Navbar() {
 
   const username  = session?.user?.name ?? session?.user?.email ?? null;
   const avatarUrl = session?.user?.image ?? null;
+  const isAdmin   = (session?.user as Record<string, unknown> | undefined)?.role === "admin";
 
   const navItemStyle = (active: boolean): React.CSSProperties => ({
     fontFamily: "var(--font-dm-sans)",
@@ -427,6 +428,23 @@ export default function Navbar() {
                   </div>
 
                   <Divider />
+
+                  {/* Admin dashboard */}
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-2 w-full transition-opacity hover:opacity-70"
+                      style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-tag)" }}
+                    >
+                      <span className="w-[22px] flex justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M2 4l3 12h14l3-12-6 5-4-5-4 5-6-5z"/>
+                          <path d="M5 20h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                        </svg>
+                      </span>
+                      Admin
+                    </Link>
+                  )}
 
                   {/* Settings */}
                   <Link

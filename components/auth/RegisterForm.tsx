@@ -24,6 +24,7 @@ export default function RegisterForm() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -32,6 +33,20 @@ export default function RegisterForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    // Validate invite code first
+    const codeRes = await fetch("/api/admin/invite-codes/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: inviteCode.trim().toUpperCase() }),
+    });
+    const codeData = await codeRes.json();
+    if (!codeData.valid) {
+      setError(codeData.error ?? "Code d'invitation invalide");
+      setLoading(false);
+      return;
+    }
+
     const timeout = new Promise<{ error: { message: string } }>((resolve) =>
       setTimeout(() => resolve({ error: { message: t.loginServerTimeout } }), 10000)
     );
@@ -45,6 +60,14 @@ export default function RegisterForm() {
       setLoading(false);
       return;
     }
+
+    // Mark code as used
+    await fetch("/api/admin/invite-codes/use", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: inviteCode.trim().toUpperCase() }),
+    }).catch(() => {});
+
     router.push("/library/characters");
     router.refresh();
   }
@@ -57,6 +80,11 @@ export default function RegisterForm() {
           {error}
         </p>
       )}
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="inviteCode" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>Code d'invitation</label>
+        <input id="inviteCode" type="text" required autoComplete="off" placeholder="NOVA-XXXX-XXXX" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} style={{ ...inputStyle, textTransform: "uppercase", letterSpacing: "0.05em" }} />
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="username" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.registerUsernameLabel}</label>

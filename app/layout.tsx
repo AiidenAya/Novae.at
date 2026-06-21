@@ -1,21 +1,29 @@
 import type { Metadata } from "next";
-import { DM_Sans, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { Agentation } from "agentation";
 import Navbar from "@/components/Navbar";
+import { ThemeScript } from "@/components/ThemeScript";
 import { LocaleProvider } from "@/lib/locale-context";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+const dmSans = localFont({
+  src: [
+    { path: "../public/fonts/dm-sans-normal-latin-ext.woff2", style: "normal", weight: "300 800" },
+    { path: "../public/fonts/dm-sans-normal-latin.woff2",     style: "normal", weight: "300 800" },
+    { path: "../public/fonts/dm-sans-italic-latin-ext.woff2", style: "italic", weight: "300 800" },
+    { path: "../public/fonts/dm-sans-italic-latin.woff2",     style: "italic", weight: "300 800" },
+  ],
   variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "800"],
-  style: ["normal", "italic"],
+  display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
+  src: [
+    { path: "../public/fonts/space-grotesk-latin-ext.woff2", weight: "400 700" },
+    { path: "../public/fonts/space-grotesk-latin.woff2",     weight: "400 700" },
+  ],
   variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -34,13 +42,11 @@ export default function RootLayout({
       className={`${dmSans.variable} ${spaceGrotesk.variable} antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('novae-theme');var dark=t!=='light';var h=document.documentElement;h.setAttribute('data-theme',dark?'dark':'light');if(dark)h.classList.add('dark');else h.classList.remove('dark');})()` }} />
-      </head>
       <body
         className="min-h-screen flex flex-col"
         style={{ backgroundColor: "var(--novae-bg-main)", color: "var(--novae-text-primary)" }}
       >
+        <ThemeScript />
         <LocaleProvider>
           <Navbar />
           <main className="flex-1 flex flex-col">

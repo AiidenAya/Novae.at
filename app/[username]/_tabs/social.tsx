@@ -8,15 +8,28 @@ type Friend = Profile["featuredFriends"][number];
 
 const FRIEND_SIZE = 120;
 
-function Comment({ comment }: { comment: CommentData }) {
+function Comment({ comment, canDelete, onDelete }: { comment: CommentData; canDelete?: boolean; onDelete?: () => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)" }}>
       <div style={{ display: "flex", gap: "var(--novae-space-md)", alignItems: "flex-start" }}>
         <Avatar src={comment.avatar} size={40} name={comment.username} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--novae-space-xs)" }}>
-          <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center" }}>
-            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{comment.username}</span>
-            <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{comment.date}</span>
+          <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center" }}>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{comment.username}</span>
+              <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{comment.date}</span>
+            </div>
+            {canDelete && (
+              <button
+                onClick={onDelete}
+                title="Delete comment"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: "2px 6px", borderRadius: "var(--novae-radius-sm)", lineHeight: 1, fontSize: 16 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </button>
+            )}
           </div>
           <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-primary)", lineHeight: "18px", margin: 0 }}>
             {comment.text}
@@ -30,7 +43,7 @@ function Comment({ comment }: { comment: CommentData }) {
         <div style={{ marginLeft: 52, display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
           {comment.replies.map((reply) => (
             <div key={reply.id} style={{ backgroundColor: "rgba(105,61,169,0.08)", borderRadius: "var(--novae-radius-md)", padding: "var(--novae-space-lg)" }}>
-              <Comment comment={reply} />
+              <Comment comment={reply} canDelete={canDelete} />
             </div>
           ))}
         </div>
@@ -40,15 +53,21 @@ function Comment({ comment }: { comment: CommentData }) {
 }
 
 export default function SocialTab({
-  profile, featuredFriends, isEditing, onRemoveFriend, onAddFriend,
+  profile, featuredFriends, isOwner, isEditing, onRemoveFriend, onAddFriend,
 }: {
   profile: Profile;
   featuredFriends: Friend[];
+  isOwner: boolean;
   isEditing: boolean;
   onRemoveFriend: (i: number) => void;
   onAddFriend: (f: Friend) => void;
 }) {
+  const [comments, setComments] = useState(profile.comments);
   const [commentText, setCommentText] = useState("");
+
+  function deleteComment(id: number) {
+    setComments((cs) => cs.map((c) => ({ ...c, replies: c.replies?.filter((r) => r.id !== id) ?? [] })).filter((c) => c.id !== id));
+  }
   const [addingFriend, setAddingFriend] = useState(false);
   const [newFriendName, setNewFriendName] = useState("");
 
@@ -140,7 +159,14 @@ export default function SocialTab({
           <button style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Post</button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-3xl)" }}>
-          {profile.comments.map((comment) => <Comment key={comment.id} comment={comment} />)}
+          {comments.map((comment) => (
+            <Comment
+              key={comment.id}
+              comment={comment}
+              canDelete={isOwner}
+              onDelete={() => deleteComment(comment.id)}
+            />
+          ))}
         </div>
         <button style={{ alignSelf: "center", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
           View more ›
