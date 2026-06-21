@@ -12,6 +12,7 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   username      String?   @unique
+  role          String    @default("user")
   email         String    @unique
   emailVerified Boolean   @default(false)
   name          String?
@@ -27,6 +28,24 @@ model User {
   artworks      Artwork[]
   species       Species[]
   favorites     Favorite[]
+  followers     Follow[]        @relation("Following")
+  following     Follow[]        @relation("Follower")
+  invitesCreated   InviteCode[]      @relation("CreatedInvites")
+  invitesUsed      InviteCode[]      @relation("UsedInvites")
+  characterFolders CharacterFolder[]
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  followerId  String
+  follower    User     @relation("Follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+
+  followingId String
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
 }
 
 model Session {
@@ -75,6 +94,15 @@ model Verification {
 
 // ─── App models ────────────────────────────────────────────────────────────
 
+model CharacterFolder {
+  id         String      @id @default(cuid())
+  name       String
+  createdAt  DateTime    @default(now())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characters Character[]
+}
+
 model Character {
   id                 String   @id @default(cuid())
   name               String
@@ -83,6 +111,8 @@ model Character {
   avatarUrl          String?
   backgroundImageUrl String?
   isPublic           Boolean  @default(true)
+  isDesigner         Boolean  @default(true)
+  designerCredit     String?
   birthdate          String?
   age                String?
   height             String?
@@ -95,6 +125,9 @@ model Character {
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  folderId  String?
+  folder    CharacterFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   speciesId String?
   species   Species? @relation(fields: [speciesId], references: [id], onDelete: SetNull)
@@ -211,6 +244,21 @@ model Relationship {
   characterB   Character @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
 
   @@unique([characterAId, characterBId])
+}
+
+model InviteCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  note        String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  usedAt      DateTime?
+
+  createdById String
+  createdBy   User      @relation("CreatedInvites", fields: [createdById], references: [id], onDelete: Cascade)
+
+  usedById    String?
+  usedBy      User?     @relation("UsedInvites",    fields: [usedById],    references: [id], onDelete: SetNull)
 }
 
 model Favorite {

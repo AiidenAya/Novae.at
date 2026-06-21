@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { useSession } from "@/lib/auth-client";
 
 import {
   Card, SectionTitle, Avatar, SocialIcon,
@@ -78,16 +77,17 @@ const addBtn: React.CSSProperties = {
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
 function Sidebar({
-  profile, artworksCount, isEditing, editState, setEditState,
+  profile, artworksCount, followersCount, isEditing, editState, setEditState,
 }: {
   profile: Profile;
   artworksCount: number;
+  followersCount: number;
   isEditing: boolean;
   editState: EditState;
   setEditState: React.Dispatch<React.SetStateAction<EditState>>;
 }) {
   const stats = {
-    followers:  profile.stats.followers,
+    followers:  followersCount,
     artworks:   artworksCount,
     characters: (isEditing ? editState.characters : profile.characters).length,
     worlds:     (isEditing ? editState.worlds     : profile.worlds).length,
@@ -166,11 +166,21 @@ const COVER_HEIGHT  = 220;
 const AVATAR_SIZE   = 200;
 const COVER_OVERLAP = Math.round(AVATAR_SIZE * 0.25);
 
+function CrownIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--novae-text-tag)" stroke="none" aria-label="Admin">
+      <path d="M2 4l3 12h14l3-12-6 5-4-5-4 5-6-5z"/>
+      <path d="M5 20h14" stroke="var(--novae-text-tag)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+    </svg>
+  );
+}
+
 function ProfileHeader({
-  profile, isOwner, isEditing, editState, setEditState, onEdit, onSave, onCancel,
+  profile, isOwner, isAdmin, isEditing, editState, setEditState, onEdit, onSave, onCancel,
 }: {
   profile: Profile;
   isOwner: boolean;
+  isAdmin: boolean;
   isEditing: boolean;
   editState: EditState;
   setEditState: React.Dispatch<React.SetStateAction<EditState>>;
@@ -229,25 +239,28 @@ function ProfileHeader({
           <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-end", minWidth: 0, paddingTop: 16, paddingBottom: 16 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", flex: 1, minWidth: 0 }}>
               {isEditing ? (
-                <div style={{ display: "flex", gap: "var(--novae-space-md)", alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)" }}>
                   <input
                     value={editState.displayName}
                     onChange={(e) => setEditState((p) => ({ ...p, displayName: e.target.value }))}
-                    style={{ ...inlineInput, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, width: 240 }}
+                    style={{ ...inlineInput, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700 }}
                   />
                   <input
                     value={editState.pronouns}
                     onChange={(e) => setEditState((p) => ({ ...p, pronouns: e.target.value }))}
                     placeholder="Pronouns"
-                    style={{ ...inlineInput, width: 130 }}
+                    style={{ ...inlineInput }}
                   />
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", padding: 8 }}>
-                  <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-5xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0, whiteSpace: "nowrap" }}>
-                    {profile.displayName}
-                  </h1>
-                  <span style={{ backgroundColor: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", borderRadius: "var(--novae-radius-sm)", padding: "4px 12px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-tag)", whiteSpace: "nowrap", alignSelf: "flex-start" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-md)", padding: 8, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-5xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0, whiteSpace: "nowrap" }}>
+                      {profile.displayName}
+                    </h1>
+                    {isAdmin && <CrownIcon />}
+                  </div>
+                  <span style={{ backgroundColor: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", borderRadius: "var(--novae-radius-sm)", padding: "4px 12px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>
                     {profile.pronouns}
                   </span>
                 </div>
@@ -334,36 +347,70 @@ function makeEditState(p: Profile): EditState {
   };
 }
 
-export function ProfileClient({ username }: { username: string }) {
-  const { data: session } = useSession();
+type DbCharacter = { id?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
+type DbFolder = { id: string; name: string };
 
+export function ProfileClient({
+  username,
+  dbStats,
+  dbCharacters,
+  dbFolders = [],
+  isOwner: isOwnerProp,
+  isAdmin,
+}: {
+  username: string;
+  dbStats: { followers: number; artworks: number; characters: number } | null;
+  dbCharacters: DbCharacter[];
+  dbFolders?: DbFolder[];
+  isOwner: boolean;
+  isAdmin: boolean;
+}) {
   const [profile, setProfile] = useState(MOCK_PROFILE);
   const [activeTab, setActiveTab] = useState<Tab>("creations");
   const [isEditing, setIsEditing] = useState(false);
   const [editState, setEditState] = useState<EditState>(() => makeEditState(MOCK_PROFILE));
 
-  const isOwner = !!(session?.user) && (
-    session.user.name === username || session.user.email?.split("@")[0] === username
-  );
+  const isOwner = isOwnerProp;
 
   const onEdit   = useCallback(() => { setEditState(makeEditState(profile)); setIsEditing(true); }, [profile]);
   const onCancel = useCallback(() => { setEditState(makeEditState(profile)); setIsEditing(false); }, [profile]);
   const onSave   = useCallback(() => {
-    // TODO: replace with API call
     setProfile((p) => ({ ...p, ...editState }));
     setIsEditing(false);
   }, [editState]);
 
-  const removeCharacter = useCallback((i: number) => setEditState((p) => ({ ...p, characters: p.characters.filter((_, idx) => idx !== i) })), []);
-  const addCharacter    = useCallback((c: Profile["characters"][number]) => setEditState((p) => p.characters.length < 6 ? { ...p, characters: [...p.characters, c] } : p), []);
-  const removeWorld     = useCallback((i: number) => setEditState((p) => ({ ...p, worlds: p.worlds.filter((_, idx) => idx !== i) })), []);
-  const addWorld        = useCallback((w: Profile["worlds"][number]) => setEditState((p) => p.worlds.length < 6 ? { ...p, worlds: [...p.worlds, w] } : p), []);
-  const removeFriend    = useCallback((i: number) => setEditState((p) => ({ ...p, featuredFriends: p.featuredFriends.filter((_, idx) => idx !== i) })), []);
-  const addFriend       = useCallback((f: Profile["featuredFriends"][number]) => setEditState((p) => ({ ...p, featuredFriends: [...p.featuredFriends, f] })), []);
+  const removeWorld  = useCallback((i: number) => setEditState((p) => ({ ...p, worlds: p.worlds.filter((_, idx) => idx !== i) })), []);
+  const addWorld     = useCallback((w: Profile["worlds"][number]) => setEditState((p) => p.worlds.length < 6 ? { ...p, worlds: [...p.worlds, w] } : p), []);
+  const removeFriend = useCallback((i: number) => setEditState((p) => ({ ...p, featuredFriends: p.featuredFriends.filter((_, idx) => idx !== i) })), []);
+  const addFriend    = useCallback((f: Profile["featuredFriends"][number]) => setEditState((p) => ({ ...p, featuredFriends: [...p.featuredFriends, f] })), []);
 
-  const characters     = isEditing ? editState.characters     : profile.characters;
-  const worlds         = isEditing ? editState.worlds         : profile.worlds;
+  // Featured characters: subset of real DB characters chosen by the owner
+  const [featuredChars, setFeaturedChars] = useState<DbCharacter[]>([]);
+  const removeFeatured = useCallback((i: number) => setFeaturedChars((cs) => cs.filter((_, idx) => idx !== i)), []);
+  const addFeatured    = useCallback((c: DbCharacter) => setFeaturedChars((cs) => cs.length < 6 ? [...cs, c] : cs), []);
+
+  const worlds          = isEditing ? editState.worlds         : profile.worlds;
   const featuredFriends = isEditing ? editState.featuredFriends : profile.featuredFriends;
+
+  // Characters tab: group by real folders, ungrouped as fallback folder
+  const characterFolder = dbFolders.length > 0
+    ? [
+        ...dbFolders.map((f) => ({
+          id: f.id,
+          name: f.name,
+          items: dbCharacters.filter((c) => c.folderId === f.id).map((c) => ({ name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+        })),
+        ...(dbCharacters.some((c) => !c.folderId) ? [{
+          id: "ungrouped",
+          name: "Ungrouped",
+          items: dbCharacters.filter((c) => !c.folderId).map((c) => ({ name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+        }] : []),
+      ]
+    : [{
+        id: "all",
+        name: "All characters",
+        items: dbCharacters.map((c) => ({ name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+      }];
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", backgroundColor: "var(--novae-bg-main)" }}>
@@ -372,6 +419,7 @@ export function ProfileClient({ username }: { username: string }) {
           <ProfileHeader
             profile={profile}
             isOwner={isOwner}
+            isAdmin={isAdmin}
             isEditing={isEditing}
             editState={editState}
             setEditState={setEditState}
@@ -380,15 +428,16 @@ export function ProfileClient({ username }: { username: string }) {
             onCancel={onCancel}
           />
           <TabBar active={activeTab} onChange={setActiveTab} />
-          {activeTab === "creations"  && <CreationsTab  characters={characters} worlds={worlds} allCharacters={ALL_MOCK_CHARACTERS} allWorlds={ALL_MOCK_WORLDS} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeCharacter} onAddCharacter={addCharacter} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
-          {activeTab === "characters" && <CharactersTab folders={MOCK_CHARACTER_FOLDERS} isEditing={isEditing} />}
-          {activeTab === "worlds"     && <WorldsTab     folders={MOCK_WORLD_FOLDERS}     isEditing={isEditing} />}
-          {activeTab === "social"     && <SocialTab     profile={profile} featuredFriends={featuredFriends} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
+          {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={ALL_MOCK_WORLDS} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
+          {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
+          {activeTab === "worlds"     && <WorldsTab     folders={MOCK_WORLD_FOLDERS} isEditing={isEditing} />}
+          {activeTab === "social"     && <SocialTab     profile={profile} featuredFriends={featuredFriends} isOwner={isOwner} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
           {activeTab === "artworks"   && <ArtworksTab   artworks={MOCK_ARTWORKS} />}
         </div>
         <Sidebar
           profile={profile}
-          artworksCount={MOCK_ARTWORKS.length}
+          artworksCount={dbStats?.artworks ?? MOCK_ARTWORKS.length}
+          followersCount={dbStats?.followers ?? profile.stats.followers}
           isEditing={isEditing}
           editState={editState}
           setEditState={setEditState}
