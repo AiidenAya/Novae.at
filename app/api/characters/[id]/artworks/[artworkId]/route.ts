@@ -1,0 +1,20 @@
+import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string; artworkId: string }> },
+) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id, artworkId } = await params;
+  const artwork = await prisma.artwork.findUnique({ where: { id: artworkId } });
+  if (!artwork || artwork.characterId !== id) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (artwork.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  await prisma.artwork.delete({ where: { id: artworkId } });
+  return new NextResponse(null, { status: 204 });
+}

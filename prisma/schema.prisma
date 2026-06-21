@@ -80,8 +80,16 @@ model Character {
   name               String
   slug               String   @unique
   description        String?
+  avatarUrl          String?
   backgroundImageUrl String?
   isPublic           Boolean  @default(true)
+  birthdate          String?
+  age                String?
+  height             String?
+  weight             String?
+  mbti               String?
+  kingdom            String?
+  voiceClaimUrl      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

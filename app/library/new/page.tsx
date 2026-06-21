@@ -51,7 +51,6 @@ export default function NewPage() {
   const router = useRouter();
 
   function handleChoice(id: string) {
-    // TODO: route to individual creation forms
     router.push(`/library/new/${id}`);
   }
 
