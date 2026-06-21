@@ -208,7 +208,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [pendingCreatorLabel, setPendingCreatorLabel] = useState("");
 
   // Informations: which fields are visible
-  const ALL_INFO_FIELDS = [
+  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean }[] = [
     { key: "birthdate",  label: "Birthdate",  state: birthdate,  setter: setBirthdate,  dbVal: character.birthdate },
     { key: "age",        label: "Age",        state: age,        setter: setAge,        dbVal: character.age },
     { key: "height",     label: "Height",     state: height,     setter: setHeight,     dbVal: character.height },
