@@ -763,12 +763,12 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         </div>
       )}
 
-      <div className="relative flex gap-6 px-8 pt-8 w-full items-start">
+      <div className="char-body-grid relative px-8 pt-8 w-full items-start" style={{ gap: 24 }}>
         {/* ── Left column ──────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-8 min-w-0 pb-8" style={{ flex: "3 1 0" }}>
+        <div className="char-body-main gap-8 pb-8">
 
           {/* Header */}
-          <div className="flex items-center justify-between gap-4 w-full">
+          <div className="char-header-row flex items-center justify-between gap-4 w-full">
             {/* Avatar */}
             <div
               className="relative shrink-0 rounded-[var(--novae-radius-lg)] overflow-hidden"
@@ -1098,9 +1098,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
           {/* Tab: Profile */}
           {activeTab === "profile" && (
-            <div className="flex gap-8 items-start w-full">
+            <div className="char-body-grid items-start w-full">
               {/* Left sub-sidebar */}
-              <div className="flex flex-col gap-6 shrink-0" style={{ width: 260 }}>
+              <div className="char-body-side flex-col gap-6" style={{ display: "flex" }}>
 
                 {/* Informations */}
                 <SectionCard
@@ -1314,7 +1314,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
               </div>
 
               {/* Main content area */}
-              <div className="flex flex-col gap-6 flex-1 min-w-0">
+              <div className="char-body-main gap-6">
                 {/* Latest images */}
                 <SectionCard title="Latest Images">
                   <div style={{ display: "flex", gap: 8, maxHeight: 200, overflow: "hidden" }}>
@@ -1498,9 +1498,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
         {/* ── Right sidebar ─────────────────────────────────────────────── */}
         <aside
+          className="char-body-side"
           style={{
-            flex: "1 1 0",
-            display: "flex",
             flexDirection: "column",
             gap: 24,
             position: "sticky",

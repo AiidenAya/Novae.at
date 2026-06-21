@@ -27,8 +27,8 @@ export default async function CharactersLibraryPage() {
   ]);
 
   return (
-    <main style={{ width: "100%", padding: "40px 32px", fontFamily: "var(--font-dm-sans)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+    <main style={{ width: "100%", padding: "40px 24px", fontFamily: "var(--font-dm-sans)" }}>
+      <div className="library-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
         <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
           My Characters
         </h1>

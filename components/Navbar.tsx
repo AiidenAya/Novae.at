@@ -260,22 +260,47 @@ export default function Navbar() {
     color: active ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
   });
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
-    <header
-      ref={ref}
-      className="relative z-50 w-full h-[72px] flex items-center justify-between px-8 border-b"
-      style={{
-        backgroundColor: "var(--novae-bg-card)",
-        borderColor: "var(--novae-outline-all)",
-        backdropFilter: "blur(8px)",
-      }}
-    >
+    <>
+      {/* Mobile menu — sibling of header so backdrop-filter doesn't trap it */}
+      <div className={`nav-mobile-menu${mobileOpen ? " open" : ""}`} onClick={() => setMobileOpen(false)}>
+        <Link href="/" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconHome />{t.navHome}</Link>
+        <Link href="/library/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navLibrary}</Link>
+        <Link href="/browse" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconSearch />{t.navBrowse}</Link>
+        <Link href="/community" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconGroup />{t.navCommunity}</Link>
+        <div style={{ height: 1, background: "var(--novae-outline-all)", margin: "8px 0" }} />
+        {session ? (
+          <>
+            <Link href="/library/new" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-btn-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 600 }}><IconPlus />{t.navNew}</Link>
+            <Link href={`/${username}`} className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navProfile}</Link>
+            <button onClick={() => { signOut(); setMobileOpen(false); }} className="flex items-center gap-3 py-3 w-full" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}>{t.navLogout}</button>
+          </>
+        ) : (
+          <>
+            <Link href="/login" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}>{t.navLogin}</Link>
+            <Link href="/register" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-btn-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 600 }}>{t.navSignUp}</Link>
+          </>
+        )}
+      </div>
+
+      <header
+        ref={ref}
+        className="relative z-50 w-full h-[72px] flex items-center justify-between px-8 border-b"
+        style={{
+          backgroundColor: "var(--novae-bg-card)",
+          borderColor: "var(--novae-outline-all)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+
       {/* Left — Logo + nav */}
       <div className="flex items-center self-stretch gap-8">
         <Logo />
-        <div className="w-px h-10 shrink-0" style={{ backgroundColor: "var(--novae-outline-all)" }} />
+        <div className="nav-links w-px h-10 shrink-0" style={{ backgroundColor: "var(--novae-outline-all)" }} />
 
-        <nav className="flex items-center self-stretch gap-8">
+        <nav className="nav-links items-center self-stretch gap-8">
           {/* Home */}
           <Link
             href="/"
@@ -350,12 +375,26 @@ export default function Navbar() {
 
       {/* Right — authenticated or not */}
       <div className="flex items-center gap-6">
+        {/* Hamburger — mobile only */}
+        <button
+          className="nav-hamburger items-center justify-center p-2"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-label="Menu"
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-primary)" }}
+        >
+          {mobileOpen ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          )}
+        </button>
+
         {session ? (
           <>
             {/* New button */}
             <Link
               href="/library/new"
-              className="flex items-center gap-2 px-5 py-3 rounded-[var(--novae-radius-md)] font-medium transition-opacity hover:opacity-90"
+              className="nav-links items-center gap-2 px-5 py-3 rounded-[var(--novae-radius-md)] font-medium transition-opacity hover:opacity-90"
               style={{
                 fontFamily: "var(--font-dm-sans)",
                 fontSize: "var(--novae-text-lg)",
@@ -368,8 +407,8 @@ export default function Navbar() {
               {t.navNew}
             </Link>
 
-            {/* User dropdown */}
-            <div className="relative self-stretch flex items-center">
+            {/* User dropdown — hidden on mobile (hamburger handles it) */}
+            <div className="nav-links relative self-stretch items-center">
               <button
                 onClick={() => toggle("profile")}
                 className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
@@ -476,14 +515,14 @@ export default function Navbar() {
           <>
             <Link
               href="/login"
-              className="font-medium transition-opacity hover:opacity-70"
+              className="nav-links font-medium transition-opacity hover:opacity-70"
               style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)" }}
             >
               {t.navLogin}
             </Link>
             <Link
               href="/register"
-              className="flex items-center justify-center px-5 py-3 rounded-[var(--novae-radius-md)] font-medium transition-opacity hover:opacity-90"
+              className="nav-links items-center justify-center px-5 py-3 rounded-[var(--novae-radius-md)] font-medium transition-opacity hover:opacity-90"
               style={{
                 fontFamily: "var(--font-dm-sans)",
                 fontSize: "var(--novae-text-lg)",
@@ -497,6 +536,7 @@ export default function Navbar() {
           </>
         )}
       </div>
-    </header>
+      </header>
+    </>
   );
 }

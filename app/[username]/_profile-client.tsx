@@ -109,7 +109,7 @@ function Sidebar({
   const visibleSocials = isEditing ? socials : socials.filter((s) => isSet(s.handle, s.name));
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)", position: "sticky", top: 32, alignSelf: "flex-start" }}>
+    <div className="profile-sidebar">
       <Card style={{ padding: "var(--novae-space-2xl)" }}>
         <SectionTitle>Statistics</SectionTitle>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -414,8 +414,8 @@ export function ProfileClient({
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", backgroundColor: "var(--novae-bg-main)" }}>
-      <div style={{ position: "relative", zIndex: 1, width: "100%", padding: "32px", display: "flex", gap: "var(--novae-space-3xl)", alignItems: "flex-start", boxSizing: "border-box" }}>
-        <div style={{ flex: 3, minWidth: 0, display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
+      <div className="profile-layout" style={{ position: "relative", zIndex: 1, width: "100%", padding: "32px", boxSizing: "border-box" }}>
+        <div className="profile-main">
           <ProfileHeader
             profile={profile}
             isOwner={isOwner}
