@@ -197,3 +197,19 @@
     @apply font-sans;
   }
 }
+
+.character-card {
+  background-color: var(--novae-bg-card);
+  border: 1px solid var(--novae-outline-all);
+  border-radius: var(--novae-radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.character-card:hover {
+  border-color: var(--novae-outline-selected);
+}
+
+div:hover > .artwork-actions {
+  opacity: 1 !important;
+}

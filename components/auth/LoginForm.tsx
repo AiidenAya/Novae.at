@@ -88,18 +88,6 @@ export default function LoginForm() {
         {loading ? t.loginSubmitting : t.loginSubmit}
       </button>
 
-      <div className="relative my-1 flex items-center gap-3">
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--novae-outline-all)" }} />
-        <span className="text-xs uppercase" style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>{t.loginOr}</span>
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--novae-outline-all)" }} />
-      </div>
-
-      <button type="button" onClick={() => signIn.social({ provider: "google", callbackURL: "/library/characters" })}
-        className="w-full py-3 rounded-[var(--novae-radius-md)] font-medium border transition-opacity hover:opacity-80"
-        style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", borderColor: "var(--novae-outline-all)", backgroundColor: "var(--novae-bg-card)", color: "var(--novae-text-primary)" }}>
-        {t.loginGoogle}
-      </button>
-
       <p className="text-center text-sm" style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-secondary)" }}>
         {t.loginNoAccount}{" "}
         <Link href="/register" className="underline font-medium" style={{ color: "var(--novae-text-link)" }}>{t.loginSignUp}</Link>

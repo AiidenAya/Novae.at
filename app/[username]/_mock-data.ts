@@ -42,7 +42,7 @@ export const MOCK_PROFILE: Profile = {
   username: "aiidenaya",
   pronouns: "She/They",
   bio: "Aiiden ☆ Artist & Designer ☆ They/Them ☆ \n🎨 Based in France ☆ \n✨ Creating art inspired by many artists ☆ \n📸 Follow for creative projects, design tips & vibrant visuals\n💌 Commissions open: aiidentravels@example.com",
-  coverImage: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1400&q=80",
+  coverImage: "",
   avatarImage: null,
   stats: { followers: 8, artworks: 2, characters: 5, worlds: 5 },
   socials: [

@@ -5,15 +5,10 @@ import { prisma } from "./prisma";
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
+    transaction: true,
   }),
   emailAndPassword: {
     enabled: true,
-  },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    },
   },
   user: {
     additionalFields: {
@@ -22,6 +17,13 @@ export const auth = betterAuth({
         required: false,
         unique: true,
         input: true,
+        returned: true,
+      },
+      role: {
+        type: "string",
+        required: false,
+        defaultValue: "user",
+        input: false,
         returned: true,
       },
     },
