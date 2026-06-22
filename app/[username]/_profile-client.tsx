@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useUploadThing } from "@/lib/uploadthing-client";
 import dynamic from "next/dynamic";
 
 import {
@@ -188,14 +189,31 @@ function ProfileHeader({
 }) {
   const coverRef  = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover,  setUploadingCover]  = useState(false);
+
+  const { startUpload: uploadAvatar } = useUploadThing("profileAvatar");
+  const { startUpload: uploadCover  } = useUploadThing("profileCover");
 
   const coverImage  = isEditing ? editState.coverImage  : profile.coverImage;
   const avatarImage = isEditing ? editState.avatarImage : profile.avatarImage;
 
-  function handleFile(key: "coverImage" | "avatarImage", file: File | undefined) {
+  async function handleFile(key: "coverImage" | "avatarImage", file: File | undefined) {
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setEditState((p) => ({ ...p, [key]: url }));
+    const preview = URL.createObjectURL(file);
+    setEditState((p) => ({ ...p, [key]: preview }));
+
+    if (key === "avatarImage") {
+      setUploadingAvatar(true);
+      const res = await uploadAvatar([file]);
+      if (res?.[0]?.url) setEditState((p) => ({ ...p, avatarImage: res[0].url }));
+      setUploadingAvatar(false);
+    } else {
+      setUploadingCover(true);
+      const res = await uploadCover([file]);
+      if (res?.[0]?.url) setEditState((p) => ({ ...p, coverImage: res[0].url }));
+      setUploadingCover(false);
+    }
   }
 
   return (
@@ -213,7 +231,9 @@ function ProfileHeader({
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 35%, var(--novae-bg-main) 100%)", pointerEvents: "none" }} />
           {isEditing && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "white", fontWeight: 500 }}>Click to change cover</span>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "white", fontWeight: 500 }}>
+                {uploadingCover ? "Uploading…" : "Click to change cover"}
+              </span>
             </div>
           )}
           <input ref={coverRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("coverImage", e.target.files?.[0])} suppressHydrationWarning />
@@ -228,7 +248,9 @@ function ProfileHeader({
             <Avatar src={avatarImage} size={AVATAR_SIZE} name={isEditing ? editState.displayName : profile.displayName} />
             {isEditing && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}>
-                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "white", fontWeight: 500, textAlign: "center", padding: "0 8px" }}>Change avatar</span>
+                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "white", fontWeight: 500, textAlign: "center", padding: "0 8px" }}>
+                  {uploadingAvatar ? "Uploading…" : "Change avatar"}
+                </span>
               </div>
             )}
             <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("avatarImage", e.target.files?.[0])} suppressHydrationWarning />
@@ -413,11 +435,14 @@ export function ProfileClient({
         bio:        editState.bio,
         pronouns:   editState.pronouns,
         coverImage: editState.coverImage,
+        image:      editState.avatarImage,
         socials:    socialsMap,
       }),
     });
     setProfile((p) => ({ ...p, ...editState }));
     setIsEditing(false);
+    // Reload so the navbar picks up the updated avatar from the session
+    window.location.reload();
   }, [editState]);
 
   const removeWorld  = useCallback((i: number) => setEditState((p) => ({ ...p, worlds: p.worlds.filter((_, idx) => idx !== i) })), []);

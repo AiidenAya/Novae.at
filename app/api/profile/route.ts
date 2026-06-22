@@ -8,8 +8,8 @@ export async function PATCH(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, bio, pronouns, coverImage, socials } =
-    body as { name?: string; bio?: string; pronouns?: string; coverImage?: string; socials?: Record<string, string> };
+  const { name, bio, pronouns, coverImage, image, socials } =
+    body as { name?: string; bio?: string; pronouns?: string; coverImage?: string; image?: string; socials?: Record<string, string> };
 
   const updated = await prisma.user.update({
     where: { id: session.user.id },
@@ -18,9 +18,10 @@ export async function PATCH(req: NextRequest) {
       ...(bio        !== undefined ? { bio:        bio.trim()        || null } : {}),
       ...(pronouns   !== undefined ? { pronouns:   pronouns.trim()   || null } : {}),
       ...(coverImage !== undefined ? { coverImage: coverImage        || null } : {}),
+      ...(image      !== undefined ? { image:      image             || null } : {}),
       ...(socials    !== undefined ? { socials } : {}),
     },
-    select: { name: true, bio: true, pronouns: true, coverImage: true, socials: true },
+    select: { name: true, bio: true, pronouns: true, coverImage: true, image: true, socials: true },
   });
 
   return NextResponse.json(updated);
