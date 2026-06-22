@@ -309,13 +309,13 @@ export default function NewMultiImagePage() {
       const uploaded = await startUpload(entries.map((e) => e.file));
       if (!uploaded?.length) return;
 
-      // Link each uploaded image to its characters in parallel
+      // One POST per image — all characters connected at once
       const charactersSeen = new Map<string, CharacterOption>();
 
       await Promise.all(
-        entries.flatMap((entry, i) => {
+        entries.map((entry, i) => {
           const imageUrl = uploaded[i]?.ufsUrl;
-          if (!imageUrl || entry.characters.length === 0) return [];
+          if (!imageUrl) return Promise.resolve();
 
           const artistRaw = entry.artistType === "me"
             ? null
@@ -325,13 +325,16 @@ export default function NewMultiImagePage() {
                 ? `${entry.artistLabel}::${entry.artistValue}`
                 : entry.artistValue;
 
-          return entry.characters.map((c) => {
-            charactersSeen.set(c.id, c);
-            return fetch(`/api/characters/${c.id}/artworks`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ imageUrl, title: artistRaw }),
-            });
+          entry.characters.forEach((c) => charactersSeen.set(c.id, c));
+
+          return fetch("/api/artworks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageUrl,
+              title: artistRaw,
+              characterIds: entry.characters.map((c) => c.id),
+            }),
           });
         })
       );
