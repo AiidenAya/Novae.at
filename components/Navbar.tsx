@@ -113,9 +113,7 @@ function IconLogout() {
 
 const LIBRARY_ITEMS  = [
   { label: "Characters", href: "/library/characters" },
-  { label: "Worlds",     href: "/library/worlds" },
   { label: "Artworks",   href: "/library/artworks" },
-  { label: "Favorites",  href: "/library/favorites" },
 ];
 
 const BROWSE_ITEMS = [

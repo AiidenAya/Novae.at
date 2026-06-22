@@ -352,7 +352,6 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "creations",  label: "Creations",  icon: <IconBook /> },
   { id: "social",     label: "Social",     icon: <IconUsers /> },
   { id: "characters", label: "Characters", icon: <IconUser /> },
-  { id: "worlds",     label: "Worlds",     icon: <IconGlobe /> },
   { id: "artworks",   label: "Artworks",   icon: <IconPalette /> },
 ];
 
@@ -386,6 +385,7 @@ function makeEditState(p: Profile): EditState {
 
 type DbCharacter = { id?: string; numId?: number; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
 type DbFolder = { id: string; name: string };
+type DbArtwork = { id: string; imageUrl: string; title: string | null; character: { numId: number; slug: string; name: string } | null };
 type DbProfile = {
   name: string | null;
   bio: string | null;
@@ -401,6 +401,7 @@ export function ProfileClient({
   dbStats,
   dbCharacters,
   dbFolders = [],
+  dbArtworks = [],
   featuredCharacterIds = [],
   featuredFriends: dbFeaturedFriends = [],
   isOwner: isOwnerProp,
@@ -411,6 +412,7 @@ export function ProfileClient({
   dbStats: { followers: number; artworks: number; characters: number; worlds: number } | null;
   dbCharacters: DbCharacter[];
   dbFolders?: DbFolder[];
+  dbArtworks?: DbArtwork[];
   featuredCharacterIds?: string[];
   featuredFriends?: { username: string; avatar: string | null }[];
   isOwner: boolean;
@@ -524,8 +526,8 @@ export function ProfileClient({
           {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={[]} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
           {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
           {activeTab === "worlds"     && <WorldsTab     folders={[]} isEditing={isEditing} />}
-          {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
-          {activeTab === "artworks"   && <ArtworksTab   artworks={MOCK_ARTWORKS} />}
+          {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isAdmin={isAdmin} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
+          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, hearts: 0, character: a.character ?? null }))} />}
         </div>
         <Sidebar
           profile={profile}

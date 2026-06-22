@@ -26,11 +26,11 @@ export type CommentData = {
 };
 
 export type Artwork = {
-  id: number;
+  id: string | number;
   title: string;
   image: string | null;
   hearts: number;
-  character: { numId: number; slug: string; name: string; avatar: string | null; owner: string } | null;
+  character: { numId: number; slug: string; name: string; avatar?: string | null; owner?: string } | null;
   aspectRatio?: string;
   fill?: string;
 };

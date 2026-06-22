@@ -121,6 +121,8 @@ model Character {
   isPublic           Boolean  @default(true)
   isDesigner         Boolean  @default(true)
   designerCredit     String?
+  isWriter           Boolean  @default(true)
+  writerCredit       String?
   birthdate          String?
   age                String?
   height             String?
@@ -289,6 +291,13 @@ model Comment {
   parentId  String?
   parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[] @relation("Replies")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
 }
 
 model Favorite {

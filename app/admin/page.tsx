@@ -11,7 +11,7 @@ export default async function AdminPage() {
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { roles: true } });
   if (!user?.roles.includes("admin")) redirect("/");
 
-  const [totalUsers, totalCharacters, totalArtworks, recentUsers, inviteCodes] = await Promise.all([
+  const [totalUsers, totalCharacters, totalArtworks, recentUsers, roles, inviteCodes] = await Promise.all([
     prisma.user.count(),
     prisma.character.count(),
     prisma.artwork.count(),
@@ -20,6 +20,7 @@ export default async function AdminPage() {
       take: 10,
       select: { id: true, username: true, name: true, email: true, roles: true, createdAt: true, invitesUsed: { select: { code: true }, take: 1 } },
     }),
+    prisma.role.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, description: true, createdAt: true } }),
     prisma.inviteCode.findMany({
       orderBy: { createdAt: "desc" },
       select: {
@@ -33,6 +34,7 @@ export default async function AdminPage() {
   return (
     <AdminClient
       stats={{ totalUsers, totalCharacters, totalArtworks }}
+      initialRoles={roles.map(r => ({ ...r, createdAt: r.createdAt.toISOString() }))}
       recentUsers={recentUsers.map(u => ({ ...u, createdAt: u.createdAt.toISOString(), inviteCode: u.invitesUsed[0]?.code ?? null }))}
       initialCodes={inviteCodes.map(c => ({
         ...c,

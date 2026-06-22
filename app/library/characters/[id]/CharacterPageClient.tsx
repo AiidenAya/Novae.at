@@ -37,6 +37,8 @@ interface CharacterData {
   voiceClaimUrl: string | null;
   isDesigner: boolean;
   designerCredit: string | null;
+  isWriter: boolean;
+  writerCredit: string | null;
   createdAt: Date;
   isPublic: boolean;
   user: { username: string | null };
@@ -174,8 +176,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [customFieldName, setCustomFieldName] = useState(character.customFieldName ?? "");
   const [custom, setCustom] = useState(character.custom ?? "");
 
-  // Designer credit edit state
-  const [isDesigner, setIsDesigner] = useState(character.isDesigner);
+  // Designer / Writer credit edit state
   const parseCredit = (raw: string | null): { type: "onsite" | "offsite"; value: string; label: string } => {
     if (!raw) return { type: "onsite", value: "", label: "" };
     if (raw.startsWith("@")) return { type: "onsite", value: raw.slice(1), label: "" };
@@ -183,10 +184,16 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     if (m) return { type: "offsite", value: m[2], label: m[1] };
     return { type: "onsite", value: raw, label: "" };
   };
+  const [isDesigner, setIsDesigner] = useState(character.isDesigner);
   const parsed = parseCredit(character.designerCredit);
   const [creditType, setCreditType] = useState<"onsite" | "offsite">(parsed.type);
   const [creditValue, setCreditValue] = useState(parsed.value);
   const [creditLabel, setCreditLabel] = useState(parsed.label);
+  const [isWriter, setIsWriter] = useState(character.isWriter);
+  const parsedWriter = parseCredit(character.writerCredit);
+  const [writerType, setWriterType] = useState<"onsite" | "offsite">(parsedWriter.type);
+  const [writerValue, setWriterValue] = useState(parsedWriter.value);
+  const [writerLabel, setWriterLabel] = useState(parsedWriter.label);
   const [voiceClaimUrl, setVoiceClaimUrl] = useState(character.voiceClaimUrl ?? "");
   const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl ?? "");
 
@@ -269,6 +276,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
           designerCredit: isDesigner ? null : (creditValue.trim()
             ? creditType === "onsite" ? `@${creditValue.trim()}` : `[${creditLabel.trim()}](${creditValue.trim()})`
             : null),
+          isWriter,
+          writerCredit: isWriter ? null : (writerValue.trim()
+            ? writerType === "onsite" ? `@${writerValue.trim()}` : `[${writerLabel.trim()}](${writerValue.trim()})`
+            : null),
         }),
       });
       const charData = charRes.ok ? await charRes.json() : null;
@@ -289,7 +300,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFieldName, custom, voiceClaimUrl, avatarUrl, isDesigner, creditType, creditValue, creditLabel, swatches, router]);
+  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFieldName, custom, voiceClaimUrl, avatarUrl, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(character.name);
@@ -310,6 +321,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     setIsDesigner(character.isDesigner);
     const p = parseCredit(character.designerCredit);
     setCreditType(p.type); setCreditValue(p.value); setCreditLabel(p.label);
+    setIsWriter(character.isWriter);
+    const pw = parseCredit(character.writerCredit);
+    setWriterType(pw.type); setWriterValue(pw.value); setWriterLabel(pw.label);
     setAvatarUrl(character.avatarUrl ?? "");
     setSwatches(initialSwatches);
     setEditing(false);
@@ -1005,12 +1019,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                       <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         Designer
                       </span>
-                      {/* 3-way toggle: me / on novae / external */}
                       <div style={{ display: "flex", borderRadius: "var(--novae-radius-sm)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
                         {([
-                          { key: "me",      label: "I'm the designer" },
-                          { key: "onsite",  label: "On Novae" },
-                          { key: "offsite", label: "External" },
+                          { key: "me",      label: "Me" },
+                          { key: "onsite",  label: "Novae" },
+                          { key: "offsite", label: "Outside website" },
                         ] as const).map(({ key, label }) => {
                           const active = key === "me" ? isDesigner : (!isDesigner && creditType === key);
                           return (
@@ -1049,6 +1062,75 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                             value={creditValue}
                             onChange={(e) => setCreditValue(e.target.value)}
                             placeholder={creditType === "onsite" ? "username" : "https://..."}
+                            style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {/* Writer — view mode */}
+                  {!editing && (() => {
+                    if (character.isWriter) {
+                      return <MetaItem label="Writer" value={`@${character.user.username}`} href={`/${character.user.username}`} />;
+                    }
+                    if (!character.writerCredit) return null;
+                    if (character.writerCredit.startsWith("@")) {
+                      const u = character.writerCredit.slice(1);
+                      return <MetaItem label="Writer" value={`@${u}`} href={`/${u}`} />;
+                    }
+                    const m = character.writerCredit.match(/^\[(.+)\]\((.+)\)$/);
+                    if (m) return <MetaItem label="Writer" value={m[1]} href={m[2]} />;
+                    return <MetaItem label="Writer" value={character.writerCredit} />;
+                  })()}
+                  {/* Writer — edit mode */}
+                  {editing && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Writer
+                      </span>
+                      <div style={{ display: "flex", borderRadius: "var(--novae-radius-sm)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
+                        {([
+                          { key: "me",      label: "Me" },
+                          { key: "onsite",  label: "Novae" },
+                          { key: "offsite", label: "Outside website" },
+                        ] as const).map(({ key, label }) => {
+                          const active = key === "me" ? isWriter : (!isWriter && writerType === key);
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => {
+                                if (key === "me") { setIsWriter(true); }
+                                else { setIsWriter(false); setWriterType(key); setWriterValue(""); setWriterLabel(""); }
+                              }}
+                              style={{
+                                flex: 1, padding: "5px 0",
+                                background: active ? "var(--novae-btn-primary)" : "none",
+                                border: "none",
+                                color: active ? "#fff" : "var(--novae-text-secondary)",
+                                fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                                fontWeight: active ? 600 : 400, cursor: "pointer",
+                              }}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {!isWriter && (
+                        <>
+                          {writerType === "offsite" && (
+                            <input
+                              value={writerLabel}
+                              onChange={(e) => setWriterLabel(e.target.value)}
+                              placeholder="Nom de l'auteur"
+                              style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                            />
+                          )}
+                          <input
+                            value={writerValue}
+                            onChange={(e) => setWriterValue(e.target.value)}
+                            placeholder={writerType === "onsite" ? "username" : "https://..."}
                             style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
                           />
                         </>

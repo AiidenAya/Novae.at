@@ -84,11 +84,12 @@ function Comment({ comment, canDelete, onDelete, onReply }: { comment: DbComment
 
 
 export default function SocialTab({
-  username, featuredFriends, isOwner, isEditing, onRemoveFriend, onAddFriend,
+  username, featuredFriends, isOwner, isAdmin, isEditing, onRemoveFriend, onAddFriend,
 }: {
   username: string;
   featuredFriends: Friend[];
   isOwner: boolean;
+  isAdmin: boolean;
   isEditing: boolean;
   onRemoveFriend: (i: number) => void;
   onAddFriend: (f: Friend) => void;
@@ -238,7 +239,7 @@ export default function SocialTab({
             <Comment
               key={comment.id}
               comment={comment}
-              canDelete={isOwner}
+              canDelete={isOwner || isAdmin}
               onDelete={() => deleteComment(comment.id)}
               onReply={(html) => postReply(comment.id, html)}
             />

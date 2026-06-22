@@ -40,6 +40,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           orderBy: { createdAt: "asc" },
           select: { id: true, name: true },
         },
+        artworks: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            imageUrl: true,
+            title: true,
+            character: { select: { numId: true, slug: true, name: true } },
+          },
+        },
       },
     }),
   ]);
@@ -86,6 +95,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       }
     : null;
 
+  const dbArtworks = (user?.artworks ?? []).map((a) => ({
+    id: a.id,
+    imageUrl: a.imageUrl,
+    title: a.title ?? null,
+    character: a.character
+      ? { numId: a.character.numId, slug: a.character.slug, name: a.character.name }
+      : null,
+  }));
+
   return (
     <ProfileClient
       username={username}
@@ -93,6 +111,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       dbStats={dbStats}
       dbCharacters={dbCharacters}
       dbFolders={dbFolders}
+      dbArtworks={dbArtworks}
       featuredCharacterIds={user?.featuredCharacterIds ?? []}
       featuredFriends={featuredFriends}
       isOwner={isOwner}

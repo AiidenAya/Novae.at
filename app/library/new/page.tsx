@@ -30,7 +30,7 @@ const CHOICES = [
     id: "image",
     label: "Image",
     description: "Upload a single artwork or illustration to your gallery.",
-    disabled: false,
+    disabled: true,
     icon: (
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
@@ -41,7 +41,7 @@ const CHOICES = [
     id: "multi-image",
     label: "Multi Image",
     description: "Upload multiple artworks at once and organize them together.",
-    disabled: true,
+    disabled: false,
     icon: (
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="7" y="7" width="14" height="14" rx="2"/><rect x="3" y="3" width="14" height="14" rx="2" fill="var(--novae-bg-card)"/>

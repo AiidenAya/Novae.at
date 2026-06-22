@@ -1,0 +1,522 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useUploadThing } from "@/lib/uploadthing-client";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface CharacterOption {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  numId: number;
+  slug: string;
+}
+
+interface ImageEntry {
+  file: File;
+  preview: string;
+  artistType: "me" | "onsite" | "offsite";
+  artistValue: string;
+  artistLabel: string;
+  character: CharacterOption | null;
+}
+
+// ── Character Picker Modal ───────────────────────────────────────────────────
+
+function CharacterPickerModal({
+  characters,
+  current,
+  onPick,
+  onClear,
+  onClose,
+}: {
+  characters: CharacterOption[];
+  current: CharacterOption | null;
+  onPick: (c: CharacterOption) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = characters.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 28, width: 440, maxHeight: "70vh", display: "flex", flexDirection: "column", gap: 16 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
+            Choose a character
+          </span>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
+        </div>
+
+        <input
+          autoFocus
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search characters…"
+          style={{
+            background: "var(--novae-bg-input)",
+            border: "1px solid var(--novae-outline-all)",
+            borderRadius: "var(--novae-radius-md)",
+            outline: "none",
+            color: "var(--novae-text-primary)",
+            fontFamily: "var(--font-dm-sans)",
+            fontSize: "var(--novae-text-base)",
+            padding: "10px 14px",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-selected)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
+        />
+
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+          {current && (
+            <button
+              onClick={onClear}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", cursor: "pointer", textAlign: "left", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}
+            >
+              ✕ Remove character
+            </button>
+          )}
+          {filtered.length === 0 ? (
+            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", margin: 0, padding: "8px 0" }}>
+              No characters found.
+            </p>
+          ) : (
+            filtered.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => { onPick(c); onClose(); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 14px",
+                  background: current?.id === c.id ? "rgba(105,61,169,0.14)" : "rgba(105,61,169,0.06)",
+                  border: `1px solid ${current?.id === c.id ? "var(--novae-outline-selected)" : "var(--novae-outline-all)"}`,
+                  borderRadius: "var(--novae-radius-md)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", flexShrink: 0, overflow: "hidden", position: "relative" }}>
+                  {c.avatarUrl && <Image src={c.avatarUrl} alt={c.name} fill style={{ objectFit: "cover" }} />}
+                </div>
+                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "var(--novae-text-primary)" }}>
+                  {c.name}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Artist Modal ─────────────────────────────────────────────────────────────
+
+function ArtistModal({
+  entry,
+  onSave,
+  onClose,
+}: {
+  entry: ImageEntry;
+  onSave: (artistType: ImageEntry["artistType"], artistValue: string, artistLabel: string) => void;
+  onClose: () => void;
+}) {
+  const [artistType, setArtistType] = useState<ImageEntry["artistType"]>(entry.artistType);
+  const [artistValue, setArtistValue] = useState(entry.artistValue);
+  const [artistLabel, setArtistLabel] = useState(entry.artistLabel);
+
+  const inputStyle: React.CSSProperties = {
+    background: "var(--novae-bg-input)",
+    border: "1px solid var(--novae-outline-all)",
+    borderRadius: "var(--novae-radius-md)",
+    outline: "none",
+    color: "var(--novae-text-primary)",
+    fontFamily: "var(--font-dm-sans)",
+    fontSize: "var(--novae-text-base)",
+    padding: "10px 14px",
+    width: "100%",
+    boxSizing: "border-box" as const,
+  };
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
+            Who made this image?
+          </h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
+        </div>
+
+        <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
+          {([
+            { key: "me" as const, label: "Me" },
+            { key: "onsite" as const, label: "Novae" },
+            { key: "offsite" as const, label: "Outside website" },
+          ]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => { setArtistType(key); setArtistValue(""); setArtistLabel(""); }}
+              style={{
+                flex: 1, padding: "8px 0",
+                background: artistType === key ? "var(--novae-btn-primary)" : "none",
+                border: "none",
+                color: artistType === key ? "#fff" : "var(--novae-text-secondary)",
+                fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
+                fontWeight: artistType === key ? 600 : 400,
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {artistType !== "me" && (
+          <>
+            {artistType === "offsite" && (
+              <input
+                autoFocus
+                value={artistLabel}
+                onChange={(e) => setArtistLabel(e.target.value)}
+                placeholder="Display name (e.g. AiidenAya)"
+                style={inputStyle}
+              />
+            )}
+            <input
+              autoFocus={artistType === "onsite"}
+              value={artistValue}
+              onChange={(e) => setArtistValue(e.target.value)}
+              placeholder={artistType === "onsite" ? "username" : "https://twitter.com/..."}
+              style={inputStyle}
+              onKeyDown={(e) => { if (e.key === "Enter") { onSave(artistType, artistValue, artistLabel); onClose(); } }}
+            />
+          </>
+        )}
+
+        <div style={{ display: "flex", gap: 12 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "10px 0", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => { onSave(artistType, artistValue, artistLabel); onClose(); }}
+            style={{ flex: 2, padding: "10px 0", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+export default function NewMultiImagePage() {
+  const router = useRouter();
+  const [entries, setEntries] = useState<ImageEntry[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const [characters, setCharacters] = useState<CharacterOption[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [artistModal, setArtistModal] = useState<number | null>(null);
+  const [charModal, setCharModal] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { startUpload } = useUploadThing("characterImage");
+
+  useEffect(() => {
+    fetch("/api/characters").then((r) => r.json()).then(setCharacters).catch(() => {});
+  }, []);
+
+  const addFiles = useCallback((files: FileList | File[]) => {
+    const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const newEntries: ImageEntry[] = imgs.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      artistType: "me",
+      artistValue: "",
+      artistLabel: "",
+      character: null,
+    }));
+    setEntries((prev) => [...prev, ...newEntries]);
+  }, []);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    addFiles(e.dataTransfer.files);
+  }, [addFiles]);
+
+  const removeEntry = (i: number) => {
+    setEntries((prev) => {
+      URL.revokeObjectURL(prev[i].preview);
+      return prev.filter((_, idx) => idx !== i);
+    });
+  };
+
+  const updateArtist = (i: number, artistType: ImageEntry["artistType"], artistValue: string, artistLabel: string) => {
+    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, artistType, artistValue, artistLabel } : e));
+  };
+
+  const updateCharacter = (i: number, character: CharacterOption | null) => {
+    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, character } : e));
+  };
+
+  const artistLabel = (entry: ImageEntry) => {
+    if (entry.artistType === "me") return "Me";
+    if (entry.artistType === "onsite") return entry.artistValue ? `@${entry.artistValue}` : "On Novae";
+    return entry.artistLabel || entry.artistValue || "External";
+  };
+
+  const handleUpload = async () => {
+    if (entries.length === 0) return;
+    setUploading(true);
+    try {
+      // Upload all files at once
+      const uploaded = await startUpload(entries.map((e) => e.file));
+      if (!uploaded?.length) return;
+
+      // Link each uploaded image to its character in parallel
+      const charactersSeen = new Set<string>();
+      let lastCharacter: CharacterOption | null = null;
+
+      await Promise.all(
+        entries.map((entry, i) => {
+          const imageUrl = uploaded[i]?.ufsUrl;
+          if (!imageUrl || !entry.character) return Promise.resolve();
+
+          const artistRaw = entry.artistType === "me"
+            ? null
+            : entry.artistType === "onsite"
+              ? `@${entry.artistValue.replace(/^@/, "")}`
+              : entry.artistLabel
+                ? `${entry.artistLabel}::${entry.artistValue}`
+                : entry.artistValue;
+
+          charactersSeen.add(entry.character.id);
+          lastCharacter = entry.character;
+
+          return fetch(`/api/characters/${entry.character.id}/artworks`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl, title: artistRaw }),
+          });
+        })
+      );
+
+      if (charactersSeen.size === 1 && lastCharacter) {
+        router.push(`/library/characters/${(lastCharacter as CharacterOption).numId}-${(lastCharacter as CharacterOption).slug}`);
+      } else {
+        router.push("/library/artworks");
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: "100%", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "48px 32px" }}>
+      <div style={{ width: "100%", maxWidth: 860, display: "flex", flexDirection: "column", gap: 32 }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-5xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+            Upload images
+          </h1>
+          <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-secondary)", margin: 0 }}>
+            Select multiple artworks, then configure each one before uploading.
+          </p>
+        </div>
+
+        {/* Drop zone */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            border: `2px dashed ${dragging ? "var(--novae-outline-selected)" : "var(--novae-outline-all)"}`,
+            borderRadius: "var(--novae-radius-md)",
+            padding: "48px 32px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            cursor: "pointer",
+            background: dragging ? "rgba(105,61,169,0.06)" : "var(--novae-bg-card)",
+            transition: "border-color 0.15s, background 0.15s",
+          }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--novae-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", textAlign: "center" }}>
+            Drag & drop images here, or <span style={{ color: "var(--novae-text-link)", fontWeight: 600 }}>browse</span>
+          </span>
+          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+            PNG, JPG, GIF, WEBP — up to 8 MB each
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => e.target.files && addFiles(e.target.files)}
+          />
+        </div>
+
+        {/* Image list */}
+        {entries.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {entries.map((entry, i) => (
+              <div
+                key={entry.preview}
+                style={{
+                  display: "flex", alignItems: "center", gap: 16,
+                  background: "var(--novae-bg-card)",
+                  border: "1px solid var(--novae-outline-all)",
+                  borderRadius: "var(--novae-radius-md)",
+                  padding: "12px 16px",
+                }}
+              >
+                {/* Thumbnail */}
+                <div style={{ width: 64, height: 64, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0, position: "relative", background: "rgba(105,61,169,0.1)" }}>
+                  <Image src={entry.preview} alt={entry.file.name} fill style={{ objectFit: "cover" }} unoptimized />
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {entry.file.name}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+                    {(entry.file.size / 1024 / 1024).toFixed(1)} MB
+                  </span>
+                </div>
+
+                {/* Artist button */}
+                <button
+                  onClick={() => setArtistModal(i)}
+                  style={{
+                    padding: "6px 14px",
+                    background: entry.artistType !== "me" && !entry.artistValue ? "none" : "rgba(105,61,169,0.1)",
+                    border: "1px solid var(--novae-outline-all)",
+                    borderRadius: "var(--novae-radius-sm)",
+                    color: "var(--novae-text-primary)",
+                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                    fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
+                    display: "flex", alignItems: "center", gap: 6,
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  {artistLabel(entry)}
+                </button>
+
+                {/* Character button */}
+                <button
+                  onClick={() => setCharModal(i)}
+                  style={{
+                    padding: "6px 14px",
+                    background: entry.character ? "rgba(105,61,169,0.1)" : "none",
+                    border: "1px solid var(--novae-outline-all)",
+                    borderRadius: "var(--novae-radius-sm)",
+                    color: entry.character ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
+                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                    fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
+                    display: "flex", alignItems: "center", gap: 6,
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  {entry.character ? entry.character.name : "No character"}
+                </button>
+
+                {/* Remove */}
+                <button
+                  onClick={() => removeEntry(i)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontSize: 20, lineHeight: 1, padding: 4, flexShrink: 0 }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 12 }}>
+          <button
+            onClick={() => router.back()}
+            style={{ flex: 1, padding: "14px 24px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 600, cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpload}
+            disabled={entries.length === 0 || uploading}
+            style={{
+              flex: 2, padding: "14px 24px",
+              background: entries.length > 0 && !uploading ? "var(--novae-btn-primary)" : "var(--novae-bg-card)",
+              border: "none", borderRadius: "var(--novae-radius-md)",
+              color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)",
+              fontSize: "var(--novae-text-lg)", fontWeight: 600,
+              cursor: entries.length > 0 && !uploading ? "pointer" : "not-allowed",
+              opacity: entries.length > 0 && !uploading ? 1 : 0.5,
+              transition: "opacity 0.15s, background 0.15s",
+            }}
+          >
+            {uploading ? "Uploading…" : `Upload ${entries.length > 0 ? `${entries.length} image${entries.length > 1 ? "s" : ""}` : "images"} →`}
+          </button>
+        </div>
+      </div>
+
+      {/* Artist modal */}
+      {artistModal !== null && entries[artistModal] && (
+        <ArtistModal
+          entry={entries[artistModal]}
+          onSave={(t, v, l) => updateArtist(artistModal, t, v, l)}
+          onClose={() => setArtistModal(null)}
+        />
+      )}
+
+      {/* Character picker modal */}
+      {charModal !== null && entries[charModal] && (
+        <CharacterPickerModal
+          characters={characters}
+          current={entries[charModal].character}
+          onPick={(c) => updateCharacter(charModal, c)}
+          onClear={() => updateCharacter(charModal, null)}
+          onClose={() => setCharModal(null)}
+        />
+      )}
+    </div>
+  );
+}

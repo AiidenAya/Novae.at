@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-const ALL_ROLES = ["user", "admin", "moderator", "artist"] as const;
+type RoleRecord = { id: string; name: string; description: string | null; createdAt: string };
 
 type RecentUser = {
   id: string; username: string | null; name: string | null;
@@ -91,10 +91,79 @@ function CodeStatusBadge({ code }: { code: InviteCode }) {
 
 type CodeFilter = "all" | "available" | "used" | "expired";
 
+// ── Create role modal ─────────────────────────────────────────────────────────
+
+function CreateRoleModal({ onClose, onCreated }: {
+  onClose: () => void;
+  onCreated: (role: RoleRecord) => void;
+}) {
+  const [name, setName]               = useState("");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving]           = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "8px 12px", borderRadius: "var(--novae-radius-md)",
+    border: "1px solid var(--novae-outline-all)", background: "var(--novae-bg-card)",
+    color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)",
+    fontSize: "var(--novae-text-sm)", outline: "none", boxSizing: "border-box",
+  };
+
+  async function create() {
+    if (!name.trim()) { setError("Le nom est requis"); return; }
+    setSaving(true); setError(null);
+    const res = await fetch("/api/admin/roles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description }),
+    });
+    if (res.ok) {
+      onCreated(await res.json());
+      onClose();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Erreur");
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+      <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+          Créer un rôle
+        </h2>
+        {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nom</span>
+            <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="ex: beta_tester" style={inputStyle}
+              onKeyDown={e => { if (e.key === "Enter") create(); }} />
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+              Sera converti en minuscules sans espaces
+            </span>
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optionnelle)</span>
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="À quoi sert ce rôle ?" style={inputStyle} />
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
+          <button onClick={create} disabled={saving || !name.trim()} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: saving || !name.trim() ? 0.5 : 1 }}>
+            {saving ? "…" : "Créer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Edit user modal ───────────────────────────────────────────────────────────
 
-function EditUserModal({ user, onClose, onSaved }: {
+function EditUserModal({ user, availableRoles, onClose, onSaved }: {
   user: RecentUser;
+  availableRoles: RoleRecord[];
   onClose: () => void;
   onSaved: (updated: RecentUser) => void;
 }) {
@@ -153,10 +222,11 @@ function EditUserModal({ user, onClose, onSaved }: {
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Rôles</span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {ALL_ROLES.map(r => (
-                <label key={r} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
-                  <input type="checkbox" checked={roles.includes(r)} onChange={() => toggleRole(r)} />
-                  {r}
+              {availableRoles.map(r => (
+                <label key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
+                  <input type="checkbox" checked={roles.includes(r.name)} onChange={() => toggleRole(r.name)} />
+                  {r.name}
+                  {r.description && <span style={{ color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>— {r.description}</span>}
                 </label>
               ))}
             </div>
@@ -173,19 +243,23 @@ function EditUserModal({ user, onClose, onSaved }: {
   );
 }
 
-export function AdminClient({ stats, recentUsers: initialUsers, initialCodes }: {
+export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, initialRoles }: {
   stats: { totalUsers: number; totalCharacters: number; totalArtworks: number };
   recentUsers: RecentUser[];
   initialCodes: InviteCode[];
+  initialRoles: RoleRecord[];
 }) {
   const [codes, setCodes]       = useState<InviteCode[]>(initialCodes);
   const [users, setUsers]       = useState<RecentUser[]>(initialUsers);
+  const [roles, setRoles]       = useState<RoleRecord[]>(initialRoles);
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied]     = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState<CodeFilter>("all");
   const [editingUser, setEditingUser] = useState<RecentUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const [showCreateRole, setShowCreateRole] = useState(false);
+  const [deletingRole, setDeletingRole] = useState<string | null>(null);
 
   function generate() {
     startTransition(async () => {
@@ -211,6 +285,17 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes }: 
     });
     setCodes((prev) => prev.filter((c) => c.id !== id));
     setDeleting(null);
+  }
+
+  async function deleteRole(id: string) {
+    setDeletingRole(id);
+    await fetch("/api/admin/roles", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setRoles(prev => prev.filter(r => r.id !== id));
+    setDeletingRole(null);
   }
 
   async function deleteUser(id: string) {
@@ -250,8 +335,15 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes }: 
       {editingUser && (
         <EditUserModal
           user={editingUser}
+          availableRoles={roles}
           onClose={() => setEditingUser(null)}
           onSaved={(updated) => setUsers(prev => prev.map(u => u.id === updated.id ? updated : u))}
+        />
+      )}
+      {showCreateRole && (
+        <CreateRoleModal
+          onClose={() => setShowCreateRole(false)}
+          onCreated={(role) => setRoles(prev => [...prev, role])}
         />
       )}
 
@@ -327,6 +419,54 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes }: 
           </table>
         </div>
 
+        {/* Right column: roles + invite codes */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+        {/* Roles */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, ...card, padding: "16px 20px" }}>
+            <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+              Rôles
+            </h2>
+            <button onClick={() => setShowCreateRole(true)}
+              style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", padding: "7px 14px", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Créer
+            </button>
+          </div>
+          <div style={card}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>{["Nom", "Description", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {roles.map(r => {
+                  const builtin = ["user", "admin"].includes(r.name);
+                  return (
+                    <tr key={r.id}>
+                      <td style={{ ...cell, whiteSpace: "nowrap" }}><RoleBadge role={r.name} /></td>
+                      <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{r.description ?? "—"}</td>
+                      <td style={{ ...cell, width: 48 }}>
+                        <button
+                          onClick={() => { if (!builtin && confirm(`Supprimer le rôle "${r.name}" ?`)) deleteRole(r.id); }}
+                          disabled={builtin || deletingRole === r.id}
+                          title={builtin ? "Rôle intégré" : "Supprimer"}
+                          style={{ background: "none", border: "none", cursor: builtin ? "not-allowed" : "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: builtin || deletingRole === r.id ? 0.3 : 1 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Invite codes */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, ...card, padding: "16px 20px" }}>
@@ -396,6 +536,8 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes }: 
             )}
           </div>
         </div>
+
+        </div>{/* end right column */}
       </div>
     </main>
   );
