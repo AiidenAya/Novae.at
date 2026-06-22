@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 
 type Char = {
   id: string;
+  numId: number;
+  slug: string;
   name: string;
   avatarUrl: string | null;
   folderId: string | null;
