@@ -402,6 +402,7 @@ export function ProfileClient({
   dbCharacters,
   dbFolders = [],
   featuredCharacterIds = [],
+  featuredFriends: dbFeaturedFriends = [],
   isOwner: isOwnerProp,
   isAdmin,
 }: {
@@ -411,6 +412,7 @@ export function ProfileClient({
   dbCharacters: DbCharacter[];
   dbFolders?: DbFolder[];
   featuredCharacterIds?: string[];
+  featuredFriends?: { username: string; avatar: string | null }[];
   isOwner: boolean;
   isAdmin: boolean;
 }) {
@@ -431,7 +433,7 @@ export function ProfileClient({
     coverImage:  dbProfile?.coverImage ?? MOCK_PROFILE.coverImage,
     socials:     dbSocials,
     worlds:          [] as Profile["worlds"],
-    featuredFriends: [] as Profile["featuredFriends"],
+    featuredFriends: dbFeaturedFriends as Profile["featuredFriends"],
   };
 
   const [profile, setProfile] = useState(baseProfile);
@@ -463,7 +465,8 @@ export function ProfileClient({
         coverImage:           editState.coverImage,
         avatar:               editState.avatarImage,
         socials:              socialsMap,
-        featuredCharacterIds: featuredChars.map((c) => c.id).filter(Boolean),
+        featuredCharacterIds:    featuredChars.map((c) => c.id).filter(Boolean),
+        featuredFriendUsernames: editState.featuredFriends.map((f) => f.username).filter(Boolean),
       }),
     });
     setProfile((p) => ({ ...p, ...editState }));

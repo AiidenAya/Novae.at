@@ -21,6 +21,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         pronouns: true,
         socials: true,
         featuredCharacterIds: true,
+        featuredFriendUsernames: true,
         _count: { select: { followers: true, artworks: true } },
         characters: {
           where: { isPublic: true },
@@ -62,6 +63,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const dbFolders = (user?.characterFolders ?? []).map((f) => ({ id: f.id, name: f.name }));
 
+  const featuredFriends = user?.featuredFriendUsernames?.length
+    ? await prisma.user.findMany({
+        where: { username: { in: user.featuredFriendUsernames } },
+        select: { username: true, name: true, avatar: true },
+      }).then((rows) =>
+        user.featuredFriendUsernames
+          .map((u) => rows.find((r) => r.username === u))
+          .filter(Boolean)
+          .map((r) => ({ username: r!.username!, avatar: r!.avatar ?? null }))
+      )
+    : [];
+
   const dbProfile = user
     ? {
         name:       user.name       ?? null,
@@ -81,6 +94,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       dbCharacters={dbCharacters}
       dbFolders={dbFolders}
       featuredCharacterIds={user?.featuredCharacterIds ?? []}
+      featuredFriends={featuredFriends}
       isOwner={isOwner}
       isAdmin={user?.roles.includes("admin") ?? false}
     />
