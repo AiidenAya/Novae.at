@@ -129,6 +129,7 @@ model Character {
   ethnicity          String?
   race               String?
   gender             String?
+  orientation        String?
   customFieldName    String?
   custom             String?
   voiceClaimUrl      String?

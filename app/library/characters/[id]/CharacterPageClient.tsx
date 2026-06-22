@@ -27,6 +27,7 @@ interface CharacterData {
   ethnicity: string | null;
   race: string | null;
   gender: string | null;
+  orientation: string | null;
   customFieldName: string | null;
   custom: string | null;
   voiceClaimUrl: string | null;
@@ -165,6 +166,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [ethnicity, setEthnicity] = useState(character.ethnicity ?? "");
   const [race, setRace] = useState(character.race ?? "");
   const [gender, setGender] = useState(character.gender ?? "");
+  const [orientation, setOrientation] = useState(character.orientation ?? "");
   const [customFieldName, setCustomFieldName] = useState(character.customFieldName ?? "");
   const [custom, setCustom] = useState(character.custom ?? "");
 
@@ -215,7 +217,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
   // Informations: which fields are visible
   const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean; fieldType?: "gender" | "custom" }[] = [
-    { key: "gender",     label: "Genre",      state: gender,     setter: setGender,     dbVal: character.gender, fieldType: "gender" },
+    { key: "gender",      label: "Genre",       state: gender,      setter: setGender,      dbVal: character.gender,      fieldType: "gender" },
+    { key: "orientation", label: "Orientation", state: orientation, setter: setOrientation, dbVal: character.orientation },
     { key: "birthdate",  label: "Birthdate",  state: birthdate,  setter: setBirthdate,  dbVal: character.birthdate },
     { key: "age",        label: "Age",        state: age,        setter: setAge,        dbVal: character.age },
     { key: "height",     label: "Height",     state: height,     setter: setHeight,     dbVal: character.height },
@@ -257,7 +260,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, customFieldName, custom, voiceClaimUrl, avatarUrl,
+          name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFieldName, custom, voiceClaimUrl, avatarUrl,
           isDesigner,
           designerCredit: isDesigner ? null : (creditValue.trim()
             ? creditType === "onsite" ? `@${creditValue.trim()}` : `[${creditLabel.trim()}](${creditValue.trim()})`
@@ -282,7 +285,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, customFieldName, custom, voiceClaimUrl, avatarUrl, isDesigner, creditType, creditValue, creditLabel, swatches, router]);
+  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFieldName, custom, voiceClaimUrl, avatarUrl, isDesigner, creditType, creditValue, creditLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(character.name);
@@ -296,6 +299,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     setEthnicity(character.ethnicity ?? "");
     setRace(character.race ?? "");
     setGender(character.gender ?? "");
+    setOrientation(character.orientation ?? "");
     setCustomFieldName(character.customFieldName ?? "");
     setCustom(character.custom ?? "");
     setVoiceClaimUrl(character.voiceClaimUrl ?? "");
