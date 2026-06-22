@@ -13,7 +13,7 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
         }
         {artwork.character && (
           <a
-            href={`/characters/${artwork.character.name.toLowerCase().replace(/\s+/g, "-")}`}
+            href={`/library/characters/${artwork.character.numId}-${artwork.character.slug}`}
             style={{ position: "absolute", bottom: 8, left: 8, backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap", maxWidth: "calc(100% - 16px)", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
           >
             {artwork.character.name}

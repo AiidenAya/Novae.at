@@ -25,6 +25,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           where: { isPublic: true },
           select: {
             id: true,
+            numId: true,
             slug: true,
             name: true,
             avatarUrl: true,
@@ -49,6 +50,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const dbCharacters = (user?.characters ?? []).map((c) => ({
     id: c.id,
+    numId: c.numId,
     slug: c.slug,
     name: c.name,
     hearts: c._count.favorites,
