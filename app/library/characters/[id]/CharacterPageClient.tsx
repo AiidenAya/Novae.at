@@ -3,6 +3,10 @@
 import React, { useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const EditorField    = dynamic(() => import("@/components/editor/EditorField"),    { ssr: false });
+const EditorRenderer = dynamic(() => import("@/components/editor/EditorRenderer"), { ssr: false });
 import { useUploadThing } from "@/lib/uploadthing-client";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -954,32 +958,18 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                 )}
 
                 {editing ? (
-                  <textarea
+                  <EditorField
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={2}
-                    placeholder="A short quote or description…"
-                    style={{
-                      ...inputStyle,
-                      fontFamily: "var(--font-dm-sans)",
-                      fontSize: "var(--novae-text-lg)",
-                      fontStyle: "italic",
-                      resize: "vertical",
-                    }}
+                    onChange={setDescription}
+                    placeholder="Description du personnage…"
+                    minHeight={80}
                   />
                 ) : (
                   description && (
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans)",
-                        fontSize: "var(--novae-text-lg)",
-                        fontStyle: "italic",
-                        color: "var(--novae-text-secondary)",
-                        margin: 0,
-                      }}
-                    >
-                      &ldquo;{description}&rdquo;
-                    </p>
+                    <EditorRenderer
+                      content={description}
+                      style={{ fontStyle: "italic", color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-lg)" }}
+                    />
                   )
                 )}
 

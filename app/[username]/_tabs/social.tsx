@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Card, SectionTitle, Avatar, viewAllStyle } from "../_shared";
 import type { Profile } from "../_mock-data";
+
+const EditorField    = dynamic(() => import("@/components/editor/EditorField"),    { ssr: false });
+const EditorRenderer = dynamic(() => import("@/components/editor/EditorRenderer"), { ssr: false });
 
 type Friend = Profile["featuredFriends"][number];
 
@@ -16,41 +20,15 @@ type DbComment = {
 
 const FRIEND_SIZE = 120;
 
-function ReplyEditor({ onPost, onCancel }: { onPost: (html: string) => void; onCancel: () => void }) {
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  function applyFormat(cmd: string) {
-    editorRef.current?.focus();
-    document.execCommand(cmd, false);
-  }
-
-  function submit() {
-    const html = editorRef.current?.innerHTML ?? "";
-    const text = editorRef.current?.innerText?.trim() ?? "";
-    if (!text) return;
-    onPost(html);
-    if (editorRef.current) editorRef.current.innerHTML = "";
-  }
+function ReplyEditor({ onPost, onCancel }: { onPost: (content: string) => void; onCancel: () => void }) {
+  const [value, setValue] = useState("");
 
   return (
     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
-        <div style={{ display: "flex", gap: 4, padding: "6px 10px", borderBottom: "1px solid var(--novae-outline-all)", backgroundColor: "rgba(25,32,46,0.5)" }}>
-          {FORMAT_BUTTONS.map(({ label, cmd, style }) => (
-            <button key={label} onMouseDown={(e) => { e.preventDefault(); applyFormat(cmd); }}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: 13, width: 28, height: 28, borderRadius: 4, ...style }}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div ref={editorRef} contentEditable suppressContentEditableWarning data-placeholder="Write a reply..."
-          onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); } }}
-          style={{ minHeight: 60, padding: "10px 14px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", outline: "none", lineHeight: "1.5" }}
-        />
-      </div>
+      <EditorField value={value} onChange={setValue} placeholder="Écris une réponse…" minHeight={60} />
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button onClick={onCancel} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "6px 16px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Cancel</button>
-        <button onClick={submit} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "6px 16px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500 }}>Post</button>
+        <button onClick={() => { if (value) { onPost(value); setValue(""); } }} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "6px 16px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500 }}>Post</button>
       </div>
     </div>
   );
@@ -79,8 +57,7 @@ function Comment({ comment, canDelete, onDelete, onReply }: { comment: DbComment
               </button>
             )}
           </div>
-          <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-primary)", lineHeight: "18px", margin: 0 }}
-            dangerouslySetInnerHTML={{ __html: comment.text }} />
+          <EditorRenderer content={comment.text} style={{ fontWeight: 500, lineHeight: "1.65" }} />
           {onReply && (
             <button onClick={() => setReplying((v) => !v)}
               style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", textAlign: "left", padding: 0 }}>
@@ -105,12 +82,6 @@ function Comment({ comment, canDelete, onDelete, onReply }: { comment: DbComment
   );
 }
 
-const FORMAT_BUTTONS = [
-  { label: "B", cmd: "bold",          style: { fontWeight: 700 } },
-  { label: "I", cmd: "italic",        style: { fontStyle: "italic" } },
-  { label: "U", cmd: "underline",     style: { textDecoration: "underline" } },
-  { label: "S", cmd: "strikeThrough", style: { textDecoration: "line-through" } },
-];
 
 export default function SocialTab({
   username, featuredFriends, isOwner, isEditing, onRemoveFriend, onAddFriend,
@@ -123,7 +94,7 @@ export default function SocialTab({
   onAddFriend: (f: Friend) => void;
 }) {
   const [comments, setComments] = useState<DbComment[]>([]);
-  const editorRef = useRef<HTMLDivElement>(null);
+  const [commentValue, setCommentValue] = useState("");
 
   const fetchComments = useCallback(async () => {
     const res = await fetch(`/api/profile/${username}/comments`);
@@ -138,29 +109,22 @@ export default function SocialTab({
     fetchComments();
   }
 
-  function applyFormat(cmd: string) {
-    editorRef.current?.focus();
-    document.execCommand(cmd, false);
-  }
-
   async function postComment() {
-    const html = editorRef.current?.innerHTML ?? "";
-    const text = editorRef.current?.innerText?.trim() ?? "";
-    if (!text) return;
+    if (!commentValue) return;
     await fetch(`/api/profile/${username}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: html }),
+      body: JSON.stringify({ text: commentValue }),
     });
-    if (editorRef.current) editorRef.current.innerHTML = "";
+    setCommentValue("");
     fetchComments();
   }
 
-  async function postReply(parentId: string, html: string) {
+  async function postReply(parentId: string, content: string) {
     await fetch(`/api/profile/${username}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: html, parentId }),
+      body: JSON.stringify({ text: content, parentId }),
     });
     fetchComments();
   }
@@ -251,25 +215,7 @@ export default function SocialTab({
 
       <Card>
         <SectionTitle>Comments</SectionTitle>
-        <div style={{ border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: "8px 12px", borderBottom: "1px solid var(--novae-outline-all)", backgroundColor: "rgba(25,32,46,0.5)" }}>
-            {FORMAT_BUTTONS.map(({ label, cmd, style }) => (
-              <button
-                key={label}
-                onMouseDown={(e) => { e.preventDefault(); applyFormat(cmd); }}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: 13, width: 28, height: 28, borderRadius: 4, ...style }}
-              >{label}</button>
-            ))}
-          </div>
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            data-placeholder="Write a comment..."
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); postComment(); } }}
-            style={{ minHeight: 80, padding: "12px 16px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", outline: "none", lineHeight: "1.5" }}
-          />
-        </div>
+        <EditorField value={commentValue} onChange={setCommentValue} placeholder="Laisse un commentaire…" minHeight={80} />
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={postComment} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Post</button>
         </div>

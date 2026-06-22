@@ -47,10 +47,12 @@ function socialUrl(name: string, handle: string): string | null {
 
 import CreationsTab from "./_tabs/creations";
 
-const CharactersTab = dynamic(() => import("./_tabs/characters"));
-const WorldsTab     = dynamic(() => import("./_tabs/worlds"));
-const SocialTab     = dynamic(() => import("./_tabs/social"));
-const ArtworksTab   = dynamic(() => import("./_tabs/artworks"));
+const CharactersTab   = dynamic(() => import("./_tabs/characters"));
+const WorldsTab       = dynamic(() => import("./_tabs/worlds"));
+const SocialTab       = dynamic(() => import("./_tabs/social"));
+const ArtworksTab     = dynamic(() => import("./_tabs/artworks"));
+const EditorField     = dynamic(() => import("@/components/editor/EditorField"),    { ssr: false });
+const EditorRenderer  = dynamic(() => import("@/components/editor/EditorRenderer"), { ssr: false });
 
 // ── Inline input style ────────────────────────────────────────────────────────
 
@@ -330,16 +332,14 @@ function ProfileHeader({
       <Card>
         <SectionTitle>Biography</SectionTitle>
         {isEditing ? (
-          <textarea
-            value={editState.bio}
-            onChange={(e) => setEditState((p) => ({ ...p, bio: e.target.value }))}
-            rows={5}
-            style={{ ...inlineInput, resize: "vertical", fontFamily: "var(--font-dm-sans)", lineHeight: "1.6" }}
+          <EditorField
+            value={editState.bio ?? ""}
+            onChange={(val) => setEditState((p) => ({ ...p, bio: val }))}
+            placeholder="Parle de toi…"
+            minHeight={120}
           />
         ) : (
-          <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-primary)", lineHeight: "18px", whiteSpace: "pre-line", margin: 0 }}>
-            {profile.bio}
-          </p>
+          <EditorRenderer content={profile.bio} />
         )}
       </Card>
     </div>
