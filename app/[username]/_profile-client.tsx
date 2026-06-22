@@ -175,7 +175,7 @@ function CrownIcon() {
 }
 
 function ProfileHeader({
-  profile, isOwner, isAdmin, isEditing, editState, setEditState, onEdit, onSave, onCancel,
+  profile, isOwner, isAdmin, isEditing, editState, setEditState, onEdit, onSave, onCancel, onUploadingChange, isUploading,
 }: {
   profile: Profile;
   isOwner: boolean;
@@ -186,6 +186,8 @@ function ProfileHeader({
   onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
+  onUploadingChange: (v: boolean) => void;
+  isUploading: boolean;
 }) {
   const coverRef  = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
@@ -200,20 +202,33 @@ function ProfileHeader({
 
   async function handleFile(key: "coverImage" | "avatarImage", file: File | undefined) {
     if (!file) return;
+    onUploadingChange(true);
     const preview = URL.createObjectURL(file);
-    setEditState((p) => ({ ...p, [key]: preview }));
 
     if (key === "avatarImage") {
+      const prev = editState.avatarImage;
+      setEditState((p) => ({ ...p, avatarImage: preview }));
       setUploadingAvatar(true);
-      const res = await uploadAvatar([file]);
-      if (res?.[0]?.url) setEditState((p) => ({ ...p, avatarImage: res[0].url }));
+      try {
+        const res = await uploadAvatar([file]);
+        setEditState((p) => ({ ...p, avatarImage: res?.[0]?.url ?? prev }));
+      } catch {
+        setEditState((p) => ({ ...p, avatarImage: prev }));
+      }
       setUploadingAvatar(false);
     } else {
+      const prev = editState.coverImage;
+      setEditState((p) => ({ ...p, coverImage: preview }));
       setUploadingCover(true);
-      const res = await uploadCover([file]);
-      if (res?.[0]?.url) setEditState((p) => ({ ...p, coverImage: res[0].url }));
+      try {
+        const res = await uploadCover([file]);
+        setEditState((p) => ({ ...p, coverImage: res?.[0]?.url ?? prev }));
+      } catch {
+        setEditState((p) => ({ ...p, coverImage: prev }));
+      }
       setUploadingCover(false);
     }
+    onUploadingChange(false);
   }
 
   return (
@@ -302,8 +317,8 @@ function ProfileHeader({
                 <button onClick={onCancel} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>
                   Cancel
                 </button>
-                <button onClick={onSave} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>
-                  Save
+                <button onClick={onSave} disabled={isUploading} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 20px", cursor: isUploading ? "not-allowed" : "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, opacity: isUploading ? 0.6 : 1 }}>
+                  {isUploading ? "Uploading…" : "Save"}
                 </button>
               </div>
             )}
@@ -420,6 +435,7 @@ export function ProfileClient({
   const [activeTab, setActiveTab] = useState<Tab>("creations");
   const [isEditing, setIsEditing] = useState(false);
   const [editState, setEditState] = useState<EditState>(() => makeEditState(baseProfile));
+  const [isUploading, setIsUploading] = useState(false);
 
   const isOwner = isOwnerProp;
 
@@ -492,6 +508,8 @@ export function ProfileClient({
             onEdit={onEdit}
             onSave={onSave}
             onCancel={onCancel}
+            onUploadingChange={setIsUploading}
+            isUploading={isUploading}
           />
           <TabBar active={activeTab} onChange={setActiveTab} />
           {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={[]} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}

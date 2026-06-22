@@ -26,6 +26,12 @@ export const auth = betterAuth({
         input: false,
         returned: true,
       },
+      avatar: {
+        type: "string",
+        required: false,
+        input: false,
+        returned: true,
+      },
     },
   },
   databaseHooks: {
