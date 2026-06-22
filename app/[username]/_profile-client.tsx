@@ -435,7 +435,7 @@ export function ProfileClient({
         bio:        editState.bio,
         pronouns:   editState.pronouns,
         coverImage: editState.coverImage,
-        image:      editState.avatarImage,
+        avatar:     editState.avatarImage,
         socials:    socialsMap,
       }),
     });
