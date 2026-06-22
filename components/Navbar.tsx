@@ -250,7 +250,7 @@ export default function Navbar() {
   }
 
   const username  = session?.user?.name ?? session?.user?.email ?? null;
-  const avatarUrl = session?.user?.image ?? null;
+  const avatarUrl = (session?.user as Record<string, unknown> | undefined)?.avatar as string | null ?? session?.user?.image ?? null;
   const isAdmin   = (session?.user as Record<string, unknown> | undefined)?.role === "admin";
 
   const navItemStyle = (active: boolean): React.CSSProperties => ({
