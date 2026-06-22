@@ -77,20 +77,19 @@ const addBtn: React.CSSProperties = {
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
 function Sidebar({
-  profile, artworksCount, followersCount, isEditing, editState, setEditState,
+  profile, dbStats, isEditing, editState, setEditState,
 }: {
   profile: Profile;
-  artworksCount: number;
-  followersCount: number;
+  dbStats: { followers: number; artworks: number; characters: number; worlds: number } | null;
   isEditing: boolean;
   editState: EditState;
   setEditState: React.Dispatch<React.SetStateAction<EditState>>;
 }) {
   const stats = {
-    followers:  followersCount,
-    artworks:   artworksCount,
-    characters: (isEditing ? editState.characters : profile.characters).length,
-    worlds:     (isEditing ? editState.worlds     : profile.worlds).length,
+    followers:  dbStats?.followers  ?? 0,
+    artworks:   dbStats?.artworks   ?? 0,
+    characters: dbStats?.characters ?? 0,
+    worlds:     dbStats?.worlds     ?? 0,
   };
 
   const socials = isEditing ? editState.socials : profile.socials;
@@ -151,10 +150,9 @@ function Sidebar({
 
       <Card style={{ padding: "var(--novae-space-2xl)" }}>
         <SectionTitle>Latest Forum Post</SectionTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)" }}>
-          <p style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-link)", margin: 0 }}>{profile.latestForumPost.title}</p>
-          <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-secondary)", lineHeight: "18px", margin: 0 }}>{profile.latestForumPost.body}</p>
-        </div>
+        <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-secondary)", margin: 0, fontStyle: "italic" }}>
+          No posts yet.
+        </p>
       </Card>
     </div>
   );
@@ -260,9 +258,11 @@ function ProfileHeader({
                     </h1>
                     {isAdmin && <CrownIcon />}
                   </div>
-                  <span style={{ backgroundColor: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", borderRadius: "var(--novae-radius-sm)", padding: "4px 12px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>
-                    {profile.pronouns}
-                  </span>
+                  {profile.pronouns && (
+                    <span style={{ backgroundColor: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", borderRadius: "var(--novae-radius-sm)", padding: "4px 12px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>
+                      {profile.pronouns}
+                    </span>
+                  )}
                 </div>
               )}
               <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500, color: "var(--novae-text-primary)", margin: 0 }}>
@@ -342,16 +342,25 @@ function makeEditState(p: Profile): EditState {
     avatarImage:    p.avatarImage,
     socials:        p.socials,
     characters:     p.characters,
-    worlds:         p.worlds,
+    worlds:         [],
     featuredFriends: p.featuredFriends,
   };
 }
 
-type DbCharacter = { id?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
+type DbCharacter = { id?: string; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
 type DbFolder = { id: string; name: string };
+type DbProfile = {
+  name: string | null;
+  bio: string | null;
+  avatar: string | null;
+  coverImage: string | null;
+  pronouns: string | null;
+  socials: Record<string, string> | null;
+} | null;
 
 export function ProfileClient({
   username,
+  dbProfile,
   dbStats,
   dbCharacters,
   dbFolders = [],
@@ -359,22 +368,54 @@ export function ProfileClient({
   isAdmin,
 }: {
   username: string;
-  dbStats: { followers: number; artworks: number; characters: number } | null;
+  dbProfile: DbProfile;
+  dbStats: { followers: number; artworks: number; characters: number; worlds: number } | null;
   dbCharacters: DbCharacter[];
   dbFolders?: DbFolder[];
   isOwner: boolean;
   isAdmin: boolean;
 }) {
-  const [profile, setProfile] = useState(MOCK_PROFILE);
+  const dbSocials = dbProfile?.socials
+    ? MOCK_PROFILE.socials.map((s) => ({
+        ...s,
+        handle: (dbProfile.socials as Record<string, string>)[s.name] ?? s.handle,
+      }))
+    : MOCK_PROFILE.socials;
+
+  const baseProfile = {
+    ...MOCK_PROFILE,
+    username:    username,
+    displayName: dbProfile?.name       ?? MOCK_PROFILE.displayName,
+    bio:         dbProfile?.bio        ?? "",
+    pronouns:    dbProfile?.pronouns   ?? "",
+    avatarImage: dbProfile?.avatar     ?? MOCK_PROFILE.avatarImage,
+    coverImage:  dbProfile?.coverImage ?? MOCK_PROFILE.coverImage,
+    socials:     dbSocials,
+    worlds:      [] as Profile["worlds"],
+  };
+
+  const [profile, setProfile] = useState(baseProfile);
   const [activeTab, setActiveTab] = useState<Tab>("creations");
   const [isEditing, setIsEditing] = useState(false);
-  const [editState, setEditState] = useState<EditState>(() => makeEditState(MOCK_PROFILE));
+  const [editState, setEditState] = useState<EditState>(() => makeEditState(baseProfile));
 
   const isOwner = isOwnerProp;
 
   const onEdit   = useCallback(() => { setEditState(makeEditState(profile)); setIsEditing(true); }, [profile]);
   const onCancel = useCallback(() => { setEditState(makeEditState(profile)); setIsEditing(false); }, [profile]);
-  const onSave   = useCallback(() => {
+  const onSave   = useCallback(async () => {
+    const socialsMap = Object.fromEntries(editState.socials.map((s) => [s.name, s.handle]));
+    await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name:       editState.displayName,
+        bio:        editState.bio,
+        pronouns:   editState.pronouns,
+        coverImage: editState.coverImage,
+        socials:    socialsMap,
+      }),
+    });
     setProfile((p) => ({ ...p, ...editState }));
     setIsEditing(false);
   }, [editState]);
@@ -398,18 +439,18 @@ export function ProfileClient({
         ...dbFolders.map((f) => ({
           id: f.id,
           name: f.name,
-          items: dbCharacters.filter((c) => c.folderId === f.id).map((c) => ({ name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+          items: dbCharacters.filter((c) => c.folderId === f.id).map((c) => ({ slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
         })),
         ...(dbCharacters.some((c) => !c.folderId) ? [{
           id: "ungrouped",
           name: "Ungrouped",
-          items: dbCharacters.filter((c) => !c.folderId).map((c) => ({ name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+          items: dbCharacters.filter((c) => !c.folderId).map((c) => ({ slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
         }] : []),
       ]
     : [{
         id: "all",
         name: "All characters",
-        items: dbCharacters.map((c) => ({ name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+        items: dbCharacters.map((c) => ({ slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
       }];
 
   return (
@@ -428,16 +469,15 @@ export function ProfileClient({
             onCancel={onCancel}
           />
           <TabBar active={activeTab} onChange={setActiveTab} />
-          {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={ALL_MOCK_WORLDS} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
+          {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={[]} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
           {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
           {activeTab === "worlds"     && <WorldsTab     folders={MOCK_WORLD_FOLDERS} isEditing={isEditing} />}
-          {activeTab === "social"     && <SocialTab     profile={profile} featuredFriends={featuredFriends} isOwner={isOwner} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
+          {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
           {activeTab === "artworks"   && <ArtworksTab   artworks={MOCK_ARTWORKS} />}
         </div>
         <Sidebar
           profile={profile}
-          artworksCount={dbStats?.artworks ?? MOCK_ARTWORKS.length}
-          followersCount={dbStats?.followers ?? profile.stats.followers}
+          dbStats={dbStats}
           isEditing={isEditing}
           editState={editState}
           setEditState={setEditState}

@@ -33,7 +33,8 @@ export const auth = betterAuth({
       create: {
         before: async (user) => {
           // OAuth flows don't provide a username — generate one from name or email
-          if (!(user as Record<string, unknown>).username) {
+          const rawUsername = (user as Record<string, unknown>).username as string | undefined;
+          if (!rawUsername) {
             const base = (user.name ?? user.email.split("@")[0])
               .toLowerCase()
               .replace(/[^a-z0-9_]/g, "_")
@@ -41,7 +42,7 @@ export const auth = betterAuth({
             const suffix = Math.random().toString(36).slice(2, 6);
             return { data: { ...user, username: `${base}_${suffix}` } };
           }
-          return { data: user };
+          return { data: { ...user, username: rawUsername.toLowerCase() } };
         },
       },
     },

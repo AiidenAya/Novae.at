@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { ProfileClient } from "./_profile-client";
 
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
-  const { username } = await params;
+  const { username: rawUsername } = await params;
+  const username = rawUsername.toLowerCase();
 
   const [sessionResult, user] = await Promise.all([
     auth.api.getSession({ headers: await headers() }).catch(() => null),
@@ -13,11 +14,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       select: {
         id: true,
         role: true,
+        name: true,
+        bio: true,
+        avatar: true,
+        coverImage: true,
+        pronouns: true,
+        socials: true,
         _count: { select: { followers: true, artworks: true } },
         characters: {
           where: { isPublic: true },
           select: {
             id: true,
+            slug: true,
             name: true,
             avatarUrl: true,
             folderId: true,
@@ -36,11 +44,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const isOwner = !!(sessionResult?.user) && sessionResult.user.id === user?.id;
 
   const dbStats = user
-    ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length }
+    ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
     : null;
 
   const dbCharacters = (user?.characters ?? []).map((c) => ({
     id: c.id,
+    slug: c.slug,
     name: c.name,
     hearts: c._count.favorites,
     images: c._count.artworks,
@@ -50,9 +59,21 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   const dbFolders = (user?.characterFolders ?? []).map((f) => ({ id: f.id, name: f.name }));
 
+  const dbProfile = user
+    ? {
+        name:       user.name       ?? null,
+        bio:        user.bio        ?? null,
+        avatar:     user.avatar     ?? null,
+        coverImage: user.coverImage ?? null,
+        pronouns:   user.pronouns   ?? null,
+        socials:    (user.socials as Record<string, string> | null) ?? null,
+      }
+    : null;
+
   return (
     <ProfileClient
       username={username}
+      dbProfile={dbProfile}
       dbStats={dbStats}
       dbCharacters={dbCharacters}
       dbFolders={dbFolders}

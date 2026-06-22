@@ -1,0 +1,1 @@
+(function(){var t=localStorage.getItem('novae-theme');var dark=t!=='light';var h=document.documentElement;h.setAttribute('data-theme',dark?'dark':'light');if(dark)h.classList.add('dark');else h.classList.remove('dark');})()

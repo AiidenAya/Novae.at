@@ -89,6 +89,7 @@ export type LibraryItem = {
   hearts: number;
   images: number;
   coverImage: string | null;
+  slug?: string;
 };
 
 export type LibraryFolder = {

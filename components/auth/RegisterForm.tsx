@@ -88,7 +88,7 @@ export default function RegisterForm() {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="username" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.registerUsernameLabel}</label>
-        <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
+        <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} style={inputStyle} />
       </div>
 
       <div className="flex flex-col gap-1.5">
