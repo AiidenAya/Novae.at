@@ -222,7 +222,11 @@ function ProfileHeader({
         setUploadingCover(false);
       }
     } catch {
-      setEditState((p) => ({ ...p, [key]: previous }));
+      if (key === "avatarImage") {
+        setEditState((p) => ({ ...p, avatarImage: previous as string | null }));
+      } else {
+        setEditState((p) => ({ ...p, coverImage: previous as string }));
+      }
       setUploadingAvatar(false);
       setUploadingCover(false);
     }
