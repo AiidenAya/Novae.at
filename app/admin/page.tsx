@@ -8,8 +8,8 @@ export default async function AdminPage() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
   if (!session?.user) redirect("/login");
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-  if (user?.role !== "admin") redirect("/");
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { roles: true } });
+  if (!user?.roles.includes("admin")) redirect("/");
 
   const [totalUsers, totalCharacters, totalArtworks, recentUsers, inviteCodes] = await Promise.all([
     prisma.user.count(),
@@ -18,7 +18,7 @@ export default async function AdminPage() {
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
-      select: { id: true, username: true, name: true, email: true, role: true, createdAt: true, invitesUsed: { select: { code: true }, take: 1 } },
+      select: { id: true, username: true, name: true, email: true, roles: true, createdAt: true, invitesUsed: { select: { code: true }, take: 1 } },
     }),
     prisma.inviteCode.findMany({
       orderBy: { createdAt: "desc" },

@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from "react";
 
+const ALL_ROLES = ["user", "admin", "moderator", "artist"] as const;
+
 type RecentUser = {
   id: string; username: string | null; name: string | null;
-  email: string; role: string; createdAt: string; inviteCode: string | null;
+  email: string; roles: string[]; createdAt: string; inviteCode: string | null;
 };
 
 type InviteCode = {
@@ -54,6 +56,14 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
+function RolesBadges({ roles }: { roles: string[] }) {
+  return (
+    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      {roles.map(r => <RoleBadge key={r} role={r} />)}
+    </div>
+  );
+}
+
 function codeStatus(code: InviteCode): "used" | "expired" | "available" {
   if (code.usedAt) return "used";
   if (code.expiresAt && new Date(code.expiresAt) < new Date()) return "expired";
@@ -90,9 +100,13 @@ function EditUserModal({ user, onClose, onSaved }: {
 }) {
   const [username, setUsername] = useState(user.username ?? "");
   const [name, setName]         = useState(user.name ?? "");
-  const [role, setRole]         = useState(user.role);
+  const [roles, setRoles]       = useState<string[]>(user.roles);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState<string | null>(null);
+
+  function toggleRole(r: string) {
+    setRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
+  }
 
   async function save() {
     setSaving(true);
@@ -100,7 +114,7 @@ function EditUserModal({ user, onClose, onSaved }: {
     const res = await fetch(`/api/admin/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, name, role }),
+      body: JSON.stringify({ username, name, roles }),
     });
     if (res.ok) {
       const updated = await res.json();
@@ -136,13 +150,17 @@ function EditUserModal({ user, onClose, onSaved }: {
             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nom d'affichage</span>
             <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Rôle</span>
-            <select value={role} onChange={e => setRole(e.target.value)} style={{ ...inputStyle }}>
-              <option value="user">user</option>
-              <option value="admin">admin</option>
-            </select>
-          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Rôles</span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {ALL_ROLES.map(r => (
+                <label key={r} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
+                  <input type="checkbox" checked={roles.includes(r)} onChange={() => toggleRole(r)} />
+                  {r}
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
@@ -279,7 +297,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes }: 
                 <tr key={u.id}>
                   <td style={{ ...cell, whiteSpace: "nowrap", fontWeight: 600 }}>{u.username ? `@${u.username}` : "—"}</td>
                   <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{u.email}</td>
-                  <td style={cell}><RoleBadge role={u.role} /></td>
+                  <td style={cell}><RolesBadges roles={u.roles} /></td>
                   <td style={{ ...cell, fontFamily: "monospace", fontSize: "var(--novae-text-xs)", color: u.inviteCode ? "var(--novae-text-tag)" : "var(--novae-text-secondary)", whiteSpace: "nowrap" }}>
                     {u.inviteCode ?? "—"}
                   </td>

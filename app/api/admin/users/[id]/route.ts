@@ -6,23 +6,23 @@ import { prisma } from "@/lib/prisma";
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
   if (!session?.user) return null;
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-  return user?.role === "admin" ? session.user : null;
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { roles: true } });
+  return user?.roles.includes("admin") ? session.user : null;
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
-  const { username, name, role } = await req.json() as { username?: string; name?: string; role?: string };
+  const { username, name, roles } = await req.json() as { username?: string; name?: string; roles?: string[] };
 
   const updated = await prisma.user.update({
     where: { id },
     data: {
       ...(username !== undefined ? { username: username.toLowerCase().trim() || null } : {}),
       ...(name     !== undefined ? { name:     name.trim()                  || null } : {}),
-      ...(role     !== undefined ? { role } : {}),
+      ...(roles    !== undefined ? { roles } : {}),
     },
-    select: { id: true, username: true, name: true, email: true, role: true, createdAt: true },
+    select: { id: true, username: true, name: true, email: true, roles: true, createdAt: true },
   });
 
   return NextResponse.json(updated);

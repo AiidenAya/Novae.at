@@ -12,7 +12,7 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   username      String?   @unique
-  role          String    @default("user")
+  roles         String[]  @default(["user"])
   email         String    @unique
   emailVerified Boolean   @default(false)
   name          String?

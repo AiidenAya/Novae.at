@@ -13,7 +13,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       where: { username },
       select: {
         id: true,
-        role: true,
+        roles: true,
         name: true,
         bio: true,
         avatar: true,
@@ -78,7 +78,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       dbCharacters={dbCharacters}
       dbFolders={dbFolders}
       isOwner={isOwner}
-      isAdmin={user?.role === "admin"}
+      isAdmin={user?.roles.includes("admin") ?? false}
     />
   );
 }
