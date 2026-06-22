@@ -202,19 +202,28 @@ function ProfileHeader({
 
   async function handleFile(key: "coverImage" | "avatarImage", file: File | undefined) {
     if (!file) return;
+    const previous = editState[key];
     const preview = URL.createObjectURL(file);
     setEditState((p) => ({ ...p, [key]: preview }));
     onUploadingChange(true);
 
-    if (key === "avatarImage") {
-      setUploadingAvatar(true);
-      const res = await uploadAvatar([file]);
-      if (res?.[0]?.url) setEditState((p) => ({ ...p, avatarImage: res[0].url }));
+    try {
+      if (key === "avatarImage") {
+        setUploadingAvatar(true);
+        const res = await uploadAvatar([file]);
+        const url = res?.[0]?.url;
+        setEditState((p) => ({ ...p, avatarImage: url ?? previous }));
+        setUploadingAvatar(false);
+      } else {
+        setUploadingCover(true);
+        const res = await uploadCover([file]);
+        const url = res?.[0]?.url;
+        setEditState((p) => ({ ...p, coverImage: url ?? previous }));
+        setUploadingCover(false);
+      }
+    } catch {
+      setEditState((p) => ({ ...p, [key]: previous }));
       setUploadingAvatar(false);
-    } else {
-      setUploadingCover(true);
-      const res = await uploadCover([file]);
-      if (res?.[0]?.url) setEditState((p) => ({ ...p, coverImage: res[0].url }));
       setUploadingCover(false);
     }
     onUploadingChange(false);
