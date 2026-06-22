@@ -958,18 +958,18 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                 )}
 
                 {editing ? (
-                  <EditorField
+                  <textarea
                     value={description}
-                    onChange={setDescription}
+                    onChange={(e) => setDescription(e.target.value)}
                     placeholder="Description du personnage…"
-                    minHeight={80}
+                    rows={3}
+                    style={{ width: "100%", background: "rgba(25,32,46,0.6)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 12px", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontStyle: "italic", outline: "none", resize: "vertical", boxSizing: "border-box" }}
                   />
                 ) : (
                   description && (
-                    <EditorRenderer
-                      content={description}
-                      style={{ fontStyle: "italic", color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-lg)" }}
-                    />
+                    <p style={{ margin: 0, fontStyle: "italic", color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-lg)", lineHeight: "1.65" }}>
+                      {description}
+                    </p>
                   )
                 )}
 

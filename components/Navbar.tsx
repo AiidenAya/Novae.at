@@ -529,21 +529,19 @@ export default function Navbar() {
                   <Divider />
 
                   {/* Messages */}
-                  <div className="flex items-center justify-between w-full gap-2">
+                  <div className="flex items-center w-full gap-2" style={{ opacity: 0.4, pointerEvents: "none" }}>
                     <div className="flex items-center gap-2" style={{ color: "var(--novae-text-secondary)" }}>
                       <span className="w-[22px] flex justify-center"><IconMail /></span>
-                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}>Messages</span>
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-secondary)" }}>Messages</span>
                     </div>
-                    <Badge count={1} />
                   </div>
 
                   {/* Notifications */}
-                  <div className="flex items-center justify-between w-full gap-2">
+                  <div className="flex items-center w-full gap-2" style={{ opacity: 0.4, pointerEvents: "none" }}>
                     <div className="flex items-center gap-2" style={{ color: "var(--novae-text-secondary)" }}>
                       <span className="w-[22px] flex justify-center"><IconBell /></span>
-                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}>Notifications</span>
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-secondary)" }}>Notifications</span>
                     </div>
-                    <Badge count={30} />
                   </div>
 
                   <Divider />
