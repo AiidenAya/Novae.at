@@ -219,6 +219,99 @@ function Logo() {
   );
 }
 
+// ── Ticket / Bug report ───────────────────────────────────────────────────────
+
+function TicketButton() {
+  const [open, setOpen]   = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody]   = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent]   = useState<{ url: string; number: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() { setTitle(""); setBody(""); setSent(null); setError(null); }
+
+  async function send() {
+    if (!title.trim()) return;
+    setSending(true);
+    setError(null);
+    const res = await fetch("/api/bug-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, body }),
+    });
+    const data = await res.json();
+    if (res.ok) setSent(data);
+    else setError(data.error ?? "Erreur");
+    setSending(false);
+  }
+
+  const inp: React.CSSProperties = {
+    width: "100%", padding: "8px 12px", borderRadius: "var(--novae-radius-md)",
+    border: "1px solid var(--novae-outline-all)", background: "var(--novae-bg-main)",
+    color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)",
+    fontSize: "var(--novae-text-sm)", outline: "none", boxSizing: "border-box",
+    resize: "vertical" as const,
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => { setOpen(true); reset(); }}
+        className="nav-links items-center justify-center"
+        title="Signaler un bug"
+        style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 12px", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center" }}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+          <path d="M12 8v4"/><path d="M12 16h.01"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={() => setOpen(false)}>
+          <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 460, display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Signaler un bug</h2>
+              <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {sent ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", padding: "16px 0" }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#48c78e" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <p style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-primary)", margin: 0, textAlign: "center" }}>
+                  Issue <a href={sent.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)" }}>#{sent.number}</a> créée avec succès.
+                </p>
+                <button onClick={() => setOpen(false)} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>Fermer</button>
+              </div>
+            ) : (
+              <>
+                {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Titre</label>
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Résumé du problème" style={inp} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
+                  <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="Décris le problème, les étapes pour le reproduire..." style={inp} />
+                </div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
+                  <button onClick={send} disabled={sending || !title.trim()} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: (sending || !title.trim()) ? 0.6 : 1 }}>
+                    {sending ? "Envoi…" : "Envoyer"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Navbar ────────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
@@ -258,7 +351,8 @@ export default function Navbar() {
 
   const username  = session?.user?.name ?? session?.user?.email ?? null;
   const avatarUrl = dbAvatar ?? session?.user?.image ?? null;
-  const isAdmin   = (session?.user as Record<string, unknown> | undefined)?.role === "admin";
+  const roles   = (session?.user as Record<string, unknown> | undefined)?.roles as string[] | undefined ?? [];
+  const isAdmin = roles.includes("admin");
 
   const navItemStyle = (active: boolean): React.CSSProperties => ({
     fontFamily: "var(--font-dm-sans)",
@@ -374,6 +468,9 @@ export default function Navbar() {
 
         {session ? (
           <>
+            {/* Ticket button */}
+            <TicketButton />
+
             {/* New button */}
             <Link
               href="/library/new"

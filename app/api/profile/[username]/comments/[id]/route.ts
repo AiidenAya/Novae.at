@@ -14,8 +14,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const isAuthor  = comment.authorId === session.user.id;
   const isOwner   = comment.profile.id === session.user.id;
-  const sessionUser = await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-  const isAdmin   = sessionUser?.role === "admin";
+  const sessionUser = await prisma.user.findUnique({ where: { id: session.user.id }, select: { roles: true } });
+  const isAdmin   = sessionUser?.roles.includes("admin");
 
   if (!isAuthor && !isOwner && !isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
