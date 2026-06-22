@@ -442,6 +442,13 @@ export function ProfileClient({
 
   const isOwner = isOwnerProp;
 
+  // Featured characters: subset of real DB characters chosen by the owner
+  const [featuredChars, setFeaturedChars] = useState<DbCharacter[]>(
+    () => featuredCharacterIds.flatMap((fid) => dbCharacters.find((c) => c.id === fid) ?? [])
+  );
+  const removeFeatured = useCallback((i: number) => setFeaturedChars((cs) => cs.filter((_, idx) => idx !== i)), []);
+  const addFeatured    = useCallback((c: DbCharacter) => setFeaturedChars((cs) => cs.length < 6 ? [...cs, c] : cs), []);
+
   const onEdit   = useCallback(() => { setEditState(makeEditState(profile)); setIsEditing(true); }, [profile]);
   const onCancel = useCallback(() => { setEditState(makeEditState(profile)); setIsEditing(false); }, [profile]);
   const onSave   = useCallback(async () => {
@@ -469,13 +476,6 @@ export function ProfileClient({
   const addWorld     = useCallback((w: Profile["worlds"][number]) => setEditState((p) => p.worlds.length < 6 ? { ...p, worlds: [...p.worlds, w] } : p), []);
   const removeFriend = useCallback((i: number) => setEditState((p) => ({ ...p, featuredFriends: p.featuredFriends.filter((_, idx) => idx !== i) })), []);
   const addFriend    = useCallback((f: Profile["featuredFriends"][number]) => setEditState((p) => ({ ...p, featuredFriends: [...p.featuredFriends, f] })), []);
-
-  // Featured characters: subset of real DB characters chosen by the owner
-  const [featuredChars, setFeaturedChars] = useState<DbCharacter[]>(
-    () => featuredCharacterIds.flatMap((fid) => dbCharacters.find((c) => c.id === fid) ?? [])
-  );
-  const removeFeatured = useCallback((i: number) => setFeaturedChars((cs) => cs.filter((_, idx) => idx !== i)), []);
-  const addFeatured    = useCallback((c: DbCharacter) => setFeaturedChars((cs) => cs.length < 6 ? [...cs, c] : cs), []);
 
   const worlds          = isEditing ? editState.worlds         : profile.worlds;
   const featuredFriends = isEditing ? editState.featuredFriends : profile.featuredFriends;
