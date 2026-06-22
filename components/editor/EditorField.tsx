@@ -49,9 +49,10 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
         holder: holderRef.current,
         placeholder: placeholder ?? "Écris quelque chose…",
         data: parsed as any,
+        inlineToolbar: false,
         tools: {
           header: { class: Header as any, config: { levels: [2, 3, 4], defaultLevel: 2 } },
-          list:   { class: List   as any, inlineToolbar: true },
+          list:   { class: List   as any, config: { defaultStyle: "unordered", availableStyles: { unordered: { label: "Unordered", normalizeData: false }, ordered: { label: "Ordered", normalizeData: false } } } },
           quote:  { class: Quote  as any },
         },
         onChange: async () => {
@@ -131,6 +132,13 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
           )
         )}
       </div>
+
+      {/* Override Editor.js default max-width so content fills the container */}
+      <style>{`
+        .ce-block__content, .ce-toolbar__content { max-width: 100% !important; }
+        .cdx-block { padding: 0 !important; }
+        .ce-toolbar { display: none !important; }
+      `}</style>
 
       {/* Editor.js canvas */}
       <div
