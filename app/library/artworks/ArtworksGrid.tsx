@@ -12,15 +12,17 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
           : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
         }
         {artwork.characters.length > 0 && (
-          <div style={{ position: "absolute", bottom: 8, left: 8, display: "flex", flexWrap: "wrap", gap: 4, maxWidth: "calc(100% - 16px)" }}>
-            {artwork.characters.map((c) => (
-              <a
-                key={c.numId}
-                href={`/library/characters/${c.numId}-${c.slug}`}
-                style={{ backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-              >
-                {c.name}
-              </a>
+          <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}>
+            {artwork.characters.map((c, idx) => (
+              <span key={c.numId} style={{ display: "contents" }}>
+                {idx > 0 && <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", flexShrink: 0 }}>&amp;</span>}
+                <a
+                  href={`/library/characters/${c.numId}-${c.slug}`}
+                  style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}
+                >
+                  {c.name}
+                </a>
+              </span>
             ))}
           </div>
         )}
