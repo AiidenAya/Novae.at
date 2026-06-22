@@ -202,32 +202,30 @@ function ProfileHeader({
 
   async function handleFile(key: "coverImage" | "avatarImage", file: File | undefined) {
     if (!file) return;
-    const previous = editState[key];
-    const preview = URL.createObjectURL(file);
-    setEditState((p) => ({ ...p, [key]: preview }));
     onUploadingChange(true);
+    const preview = URL.createObjectURL(file);
 
-    try {
-      if (key === "avatarImage") {
-        setUploadingAvatar(true);
+    if (key === "avatarImage") {
+      const prev = editState.avatarImage;
+      setEditState((p) => ({ ...p, avatarImage: preview }));
+      setUploadingAvatar(true);
+      try {
         const res = await uploadAvatar([file]);
-        const url = res?.[0]?.url;
-        setEditState((p) => ({ ...p, avatarImage: url ?? previous }));
-        setUploadingAvatar(false);
-      } else {
-        setUploadingCover(true);
-        const res = await uploadCover([file]);
-        const url = res?.[0]?.url;
-        setEditState((p) => ({ ...p, coverImage: url ?? previous }));
-        setUploadingCover(false);
-      }
-    } catch {
-      if (key === "avatarImage") {
-        setEditState((p) => ({ ...p, avatarImage: previous as string | null }));
-      } else {
-        setEditState((p) => ({ ...p, coverImage: previous as string }));
+        setEditState((p) => ({ ...p, avatarImage: res?.[0]?.url ?? prev }));
+      } catch {
+        setEditState((p) => ({ ...p, avatarImage: prev }));
       }
       setUploadingAvatar(false);
+    } else {
+      const prev = editState.coverImage;
+      setEditState((p) => ({ ...p, coverImage: preview }));
+      setUploadingCover(true);
+      try {
+        const res = await uploadCover([file]);
+        setEditState((p) => ({ ...p, coverImage: res?.[0]?.url ?? prev }));
+      } catch {
+        setEditState((p) => ({ ...p, coverImage: prev }));
+      }
       setUploadingCover(false);
     }
     onUploadingChange(false);
