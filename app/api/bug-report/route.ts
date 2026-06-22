@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { body } = await req.json() as { body?: string };
+  const { title, body } = await req.json() as { title?: string; body?: string };
+  if (!title?.trim()) return NextResponse.json({ error: "Title required" }, { status: 400 });
 
   const token = process.env.GITHUB_TOKEN;
   if (!token) return NextResponse.json({ error: "GitHub token not configured" }, { status: 500 });
 
-  const dbUser = await prisma.user.findUnique({ where: { id: session.user.id }, select: { username: true } });
-  const username = dbUser?.username ?? session.user.email;
+  const username = (session.user as Record<string, unknown>).username as string | undefined ?? session.user.email;
 
   const res = await fetch("https://api.github.com/repos/AiidenAya/Novae.at/issues", {
     method: "POST",
@@ -24,8 +23,8 @@ export async function POST(req: NextRequest) {
       "X-GitHub-Api-Version": "2022-11-28",
     },
     body: JSON.stringify({
-      title: `[Bug] signalé par @${username}`,
-      body: `**Signalé par :** @${username}\n\n${body?.trim() ?? ""}`,
+      title: title.trim(),
+      body: `**Reported by:** @${username}\n\n${body?.trim() ?? ""}`,
       labels: ["bug", "user-report"],
     }),
   });

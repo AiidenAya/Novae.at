@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -223,24 +222,23 @@ function Logo() {
 // ── Ticket / Bug report ───────────────────────────────────────────────────────
 
 function TicketButton() {
-  const { data: session } = useSession();
-  const username = (session?.user as Record<string, unknown> | undefined)?.username as string | undefined ?? session?.user?.email ?? "inconnu";
-
   const [open, setOpen]   = useState(false);
+  const [title, setTitle] = useState("");
   const [body, setBody]   = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent]   = useState<{ url: string; number: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function reset() { setBody(""); setSent(null); setError(null); }
+  function reset() { setTitle(""); setBody(""); setSent(null); setError(null); }
 
   async function send() {
+    if (!title.trim()) return;
     setSending(true);
     setError(null);
     const res = await fetch("/api/bug-report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `[${username}] Bug report`, body }),
+      body: JSON.stringify({ title, body }),
     });
     const data = await res.json();
     if (res.ok) setSent(data);
@@ -270,9 +268,9 @@ function TicketButton() {
         </svg>
       </button>
 
-      {open && typeof document !== "undefined" && createPortal(
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(0,0,0,0.6)", paddingTop: 72 }} onClick={() => setOpen(false)}>
-          <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 460, maxWidth: "calc(100vw - 32px)", display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
+      {open && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={() => setOpen(false)}>
+          <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 460, display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Signaler un bug</h2>
               <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex" }}>
@@ -292,20 +290,23 @@ function TicketButton() {
               <>
                 {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Titre</label>
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Résumé du problème" style={inp} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
-                  <textarea value={body} onChange={e => setBody(e.target.value)} rows={6} placeholder="Décris le problème, les étapes pour le reproduire..." style={inp} />
+                  <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="Décris le problème, les étapes pour le reproduire..." style={inp} />
                 </div>
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                   <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
-                  <button onClick={send} disabled={sending} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: sending ? 0.6 : 1 }}>
+                  <button onClick={send} disabled={sending || !title.trim()} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: (sending || !title.trim()) ? 0.6 : 1 }}>
                     {sending ? "Envoi…" : "Envoyer"}
                   </button>
                 </div>
               </>
             )}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </>
   );
@@ -528,7 +529,7 @@ export default function Navbar() {
                   <Divider />
 
                   {/* Messages */}
-                  <div className="flex items-center justify-between w-full gap-2" style={{ opacity: 0.35, cursor: "not-allowed", pointerEvents: "none" }}>
+                  <div className="flex items-center justify-between w-full gap-2">
                     <div className="flex items-center gap-2" style={{ color: "var(--novae-text-secondary)" }}>
                       <span className="w-[22px] flex justify-center"><IconMail /></span>
                       <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}>Messages</span>
@@ -537,7 +538,7 @@ export default function Navbar() {
                   </div>
 
                   {/* Notifications */}
-                  <div className="flex items-center justify-between w-full gap-2" style={{ opacity: 0.35, cursor: "not-allowed", pointerEvents: "none" }}>
+                  <div className="flex items-center justify-between w-full gap-2">
                     <div className="flex items-center gap-2" style={{ color: "var(--novae-text-secondary)" }}>
                       <span className="w-[22px] flex justify-center"><IconBell /></span>
                       <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}>Notifications</span>
