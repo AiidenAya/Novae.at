@@ -227,9 +227,16 @@ export default function Navbar() {
   const { data: session } = useSession();
 
   const [open, setOpen] = useState<DropdownKey>(null);
+  const [dbAvatar, setDbAvatar] = useState<string | null>(null);
   const ref = useRef<HTMLElement>(null);
   const { isDark, toggle: toggleTheme } = useTheme();
   const { t, locale, toggle: toggleLocale } = useT();
+
+  // Fetch avatar from DB whenever session changes (bypasses session cache)
+  useEffect(() => {
+    if (!session?.user) { setDbAvatar(null); return; }
+    fetch("/api/me").then(r => r.json()).then(d => setDbAvatar(d.avatar ?? null)).catch(() => {});
+  }, [session?.user?.id]);
 
   // Close on outside click
   useEffect(() => {
@@ -250,7 +257,7 @@ export default function Navbar() {
   }
 
   const username  = session?.user?.name ?? session?.user?.email ?? null;
-  const avatarUrl = (session?.user as Record<string, unknown> | undefined)?.avatar as string | null ?? session?.user?.image ?? null;
+  const avatarUrl = dbAvatar ?? session?.user?.image ?? null;
   const isAdmin   = (session?.user as Record<string, unknown> | undefined)?.role === "admin";
 
   const navItemStyle = (active: boolean): React.CSSProperties => ({
