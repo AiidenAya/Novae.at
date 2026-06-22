@@ -78,7 +78,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       dbCharacters={dbCharacters}
       dbFolders={dbFolders}
       isOwner={isOwner}
-      isAdmin={user?.roles.includes("admin")}
+      isAdmin={user?.roles.includes("admin") ?? false}
     />
   );
 }
