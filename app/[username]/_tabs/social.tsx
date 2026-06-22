@@ -130,12 +130,21 @@ export default function SocialTab({
   }
   const [addingFriend, setAddingFriend] = useState(false);
   const [newFriendName, setNewFriendName] = useState("");
+  const [friendSearching, setFriendSearching] = useState(false);
+  const [friendError, setFriendError] = useState<string | null>(null);
 
-  function submitFriend() {
-    const name = newFriendName.trim();
+  async function submitFriend() {
+    const name = newFriendName.trim().toLowerCase();
     if (!name) return;
-    onAddFriend({ username: name, avatar: null });
+    setFriendSearching(true);
+    setFriendError(null);
+    const res = await fetch(`/api/users/search?q=${encodeURIComponent(name)}`);
+    const data = await res.json();
+    setFriendSearching(false);
+    if (!data.user) { setFriendError("Utilisateur introuvable"); return; }
+    onAddFriend({ username: data.user.username, avatar: data.user.avatar });
     setNewFriendName("");
+    setFriendError(null);
     setAddingFriend(false);
   }
 
@@ -189,17 +198,22 @@ export default function SocialTab({
 
         {/* Inline add-friend form */}
         {isEditing && addingFriend && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              autoFocus
-              value={newFriendName}
-              onChange={(e) => setNewFriendName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") submitFriend(); if (e.key === "Escape") setAddingFriend(false); }}
-              placeholder="Username"
-              style={{ flex: 1, background: "rgba(25,32,46,0.6)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", padding: "8px 12px", fontSize: "var(--novae-text-base)" }}
-            />
-            <button onClick={submitFriend} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Add</button>
-            <button onClick={() => setAddingFriend(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)" }}>Cancel</button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                autoFocus
+                value={newFriendName}
+                onChange={(e) => { setNewFriendName(e.target.value); setFriendError(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") submitFriend(); if (e.key === "Escape") { setAddingFriend(false); setFriendError(null); } }}
+                placeholder="@username"
+                style={{ flex: 1, background: "rgba(25,32,46,0.6)", border: `1px solid ${friendError ? "#ff6b7a" : "var(--novae-outline-all)"}`, borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", padding: "8px 12px", fontSize: "var(--novae-text-base)" }}
+              />
+              <button onClick={submitFriend} disabled={friendSearching} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, opacity: friendSearching ? 0.6 : 1 }}>
+                {friendSearching ? "…" : "Add"}
+              </button>
+              <button onClick={() => { setAddingFriend(false); setFriendError(null); }} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)" }}>Cancel</button>
+            </div>
+            {friendError && <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "#ff6b7a" }}>{friendError}</span>}
           </div>
         )}
 
@@ -215,7 +229,7 @@ export default function SocialTab({
 
       <Card>
         <SectionTitle>Comments</SectionTitle>
-        <EditorField value={commentValue} onChange={setCommentValue} placeholder="Laisse un commentaire…" minHeight={80} />
+        <EditorField value={commentValue} onChange={setCommentValue} placeholder="Laisse un commentaire…" minHeight={200} />
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={postComment} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Post</button>
         </div>
