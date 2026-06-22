@@ -20,7 +20,8 @@ model User {
   coverImage    String?
   bio           String?
   pronouns      String?
-  socials       Json?
+  socials               Json?
+  featuredCharacterIds  String[]  @default([])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

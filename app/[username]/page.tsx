@@ -20,6 +20,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         coverImage: true,
         pronouns: true,
         socials: true,
+        featuredCharacterIds: true,
         _count: { select: { followers: true, artworks: true } },
         characters: {
           where: { isPublic: true },
@@ -79,6 +80,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       dbStats={dbStats}
       dbCharacters={dbCharacters}
       dbFolders={dbFolders}
+      featuredCharacterIds={user?.featuredCharacterIds ?? []}
       isOwner={isOwner}
       isAdmin={user?.roles.includes("admin") ?? false}
     />

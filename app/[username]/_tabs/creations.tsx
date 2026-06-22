@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Card, SectionTitle, CharacterCard, viewAllStyle } from "../_shared";
 import type { Profile } from "../_mock-data";
 
@@ -44,7 +45,9 @@ function PickerModal({ all, current, onPick, onClose, title }: {
                 onClick={() => { onPick(e); onClose(); }}
                 style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "rgba(105,61,169,0.08)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", cursor: "pointer", textAlign: "left" }}
               >
-                <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", flexShrink: 0 }} />
+                <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", flexShrink: 0, overflow: "hidden", position: "relative" }}>
+                  {e.coverImage && <Image src={e.coverImage} alt={e.name} fill className="object-cover" />}
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{e.name}</span>
                   <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{e.hearts} hearts · {e.images} images</span>

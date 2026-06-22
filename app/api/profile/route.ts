@@ -8,20 +8,21 @@ export async function PATCH(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, bio, pronouns, coverImage, avatar, socials } =
-    body as { name?: string; bio?: string; pronouns?: string; coverImage?: string; avatar?: string; socials?: Record<string, string> };
+  const { name, bio, pronouns, coverImage, avatar, socials, featuredCharacterIds } =
+    body as { name?: string; bio?: string; pronouns?: string; coverImage?: string; avatar?: string; socials?: Record<string, string>; featuredCharacterIds?: string[] };
 
   const updated = await prisma.user.update({
     where: { id: session.user.id },
     data: {
-      ...(name       !== undefined ? { name:       name.trim()       || null } : {}),
-      ...(bio        !== undefined ? { bio:        bio.trim()        || null } : {}),
-      ...(pronouns   !== undefined ? { pronouns:   pronouns.trim()   || null } : {}),
-      ...(coverImage !== undefined ? { coverImage: coverImage        || null } : {}),
-      ...(avatar     !== undefined ? { avatar:     avatar            || null } : {}),
-      ...(socials    !== undefined ? { socials } : {}),
+      ...(name                 !== undefined ? { name:                 name.trim()       || null } : {}),
+      ...(bio                  !== undefined ? { bio:                  bio.trim()        || null } : {}),
+      ...(pronouns             !== undefined ? { pronouns:             pronouns.trim()   || null } : {}),
+      ...(coverImage           !== undefined ? { coverImage:           coverImage        || null } : {}),
+      ...(avatar               !== undefined ? { avatar:               avatar            || null } : {}),
+      ...(socials              !== undefined ? { socials } : {}),
+      ...(featuredCharacterIds !== undefined ? { featuredCharacterIds } : {}),
     },
-    select: { name: true, bio: true, pronouns: true, coverImage: true, avatar: true, socials: true },
+    select: { name: true, bio: true, pronouns: true, coverImage: true, avatar: true, socials: true, featuredCharacterIds: true },
   });
 
   return NextResponse.json(updated);

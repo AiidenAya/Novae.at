@@ -401,6 +401,7 @@ export function ProfileClient({
   dbStats,
   dbCharacters,
   dbFolders = [],
+  featuredCharacterIds = [],
   isOwner: isOwnerProp,
   isAdmin,
 }: {
@@ -409,6 +410,7 @@ export function ProfileClient({
   dbStats: { followers: number; artworks: number; characters: number; worlds: number } | null;
   dbCharacters: DbCharacter[];
   dbFolders?: DbFolder[];
+  featuredCharacterIds?: string[];
   isOwner: boolean;
   isAdmin: boolean;
 }) {
@@ -447,12 +449,13 @@ export function ProfileClient({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name:       editState.displayName,
-        bio:        editState.bio,
-        pronouns:   editState.pronouns,
-        coverImage: editState.coverImage,
-        avatar:     editState.avatarImage,
-        socials:    socialsMap,
+        name:                 editState.displayName,
+        bio:                  editState.bio,
+        pronouns:             editState.pronouns,
+        coverImage:           editState.coverImage,
+        avatar:               editState.avatarImage,
+        socials:              socialsMap,
+        featuredCharacterIds: featuredChars.map((c) => c.id).filter(Boolean),
       }),
     });
     setProfile((p) => ({ ...p, ...editState }));
@@ -467,7 +470,9 @@ export function ProfileClient({
   const addFriend    = useCallback((f: Profile["featuredFriends"][number]) => setEditState((p) => ({ ...p, featuredFriends: [...p.featuredFriends, f] })), []);
 
   // Featured characters: subset of real DB characters chosen by the owner
-  const [featuredChars, setFeaturedChars] = useState<DbCharacter[]>([]);
+  const [featuredChars, setFeaturedChars] = useState<DbCharacter[]>(
+    () => featuredCharacterIds.flatMap((fid) => dbCharacters.find((c) => c.id === fid) ?? [])
+  );
   const removeFeatured = useCallback((i: number) => setFeaturedChars((cs) => cs.filter((_, idx) => idx !== i)), []);
   const addFeatured    = useCallback((c: DbCharacter) => setFeaturedChars((cs) => cs.length < 6 ? [...cs, c] : cs), []);
 

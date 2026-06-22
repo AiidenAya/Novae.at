@@ -1397,17 +1397,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                       >
                         <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill className="object-cover" />
                       </div>
-                    )) : Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          width: 160, height: 160, flexShrink: 0,
-                          borderRadius: "var(--novae-radius-md)",
-                          backgroundColor: "var(--novae-bg-main)",
-                          border: "1px solid var(--novae-outline-all)",
-                        }}
-                      />
-                    ))}
+                    )) : null}
                   </div>
                   <button
                     onClick={() => setActiveTab("gallery")}
