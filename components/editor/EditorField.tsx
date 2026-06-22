@@ -135,7 +135,7 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
 
       {/* Override Editor.js default max-width so content fills the container */}
       <style>{`
-        .ce-block__content, .ce-toolbar__content { max-width: 100% !important; }
+        .ce-block__content, .ce-toolbar__content { max-width: 100% !important; padding: 0 32px !important; }
         .cdx-block { padding: 0 !important; }
         .ce-toolbar { display: none !important; }
       `}</style>
