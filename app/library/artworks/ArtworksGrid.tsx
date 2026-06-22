@@ -1,10 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { IconHeart } from "@/app/[username]/_shared";
 import type { Artwork } from "@/app/[username]/_mock-data";
-
-const PAGE_SIZE = 15; // 5 columns × 3 rows
 
 function ArtworkCard({ artwork }: { artwork: Artwork }) {
   return (
@@ -37,10 +34,6 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
 }
 
 export default function ArtworksGrid({ artworks }: { artworks: Artwork[] }) {
-  const [page, setPage] = useState(1);
-  const visible = artworks.slice(0, page * PAGE_SIZE);
-  const hasMore = visible.length < artworks.length;
-
   if (artworks.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "80px 0", color: "var(--novae-text-secondary)" }}>
@@ -61,20 +54,8 @@ export default function ArtworksGrid({ artworks }: { artworks: Artwork[] }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
-        {visible.map((a) => <ArtworkCard key={a.id} artwork={a} />)}
-      </div>
-      {hasMore && (
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            style={{ padding: "10px 32px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer" }}
-          >
-            Voir plus
-          </button>
-        </div>
-      )}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+      {artworks.map((a) => <ArtworkCard key={a.id} artwork={a} />)}
     </div>
   );
 }
