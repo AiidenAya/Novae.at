@@ -13,7 +13,7 @@ import { useUploadThing } from "@/lib/uploadthing-client";
 
 type Swatch = { id?: string; hex: string; label: string | null };
 type Tag    = { tagId: string; tag: { id: string; name: string } };
-type Artwork = { id: string; imageUrl: string; title: string | null };
+type Artwork = { id: string; imageUrl: string; title: string | null; characters: { id: string; name: string; numId: number; slug: string }[] };
 
 interface CharacterData {
   id: string;

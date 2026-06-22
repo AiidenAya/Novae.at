@@ -20,7 +20,7 @@ export default async function CharacterPage({ params }: Props) {
       where: { numId },
       include: {
         user:    { select: { username: true } },
-        artworks: { orderBy: { createdAt: "desc" } },
+        artworks: { orderBy: { createdAt: "desc" }, include: { characters: { select: { id: true, name: true, numId: true, slug: true } } } },
         tags:          { include: { tag: true } },
         colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
         favorites: true,

@@ -21,28 +21,27 @@ interface ImageEntry {
   artistType: "me" | "onsite" | "offsite";
   artistValue: string;
   artistLabel: string;
-  character: CharacterOption | null;
+  characters: CharacterOption[];
 }
 
-// ── Character Picker Modal ───────────────────────────────────────────────────
+// ── Character Picker Modal (multi-select) ────────────────────────────────────
 
 function CharacterPickerModal({
   characters,
-  current,
-  onPick,
-  onClear,
+  selected,
+  onToggle,
   onClose,
 }: {
   characters: CharacterOption[];
-  current: CharacterOption | null;
-  onPick: (c: CharacterOption) => void;
-  onClear: () => void;
+  selected: CharacterOption[];
+  onToggle: (c: CharacterOption) => void;
   onClose: () => void;
 }) {
   const [search, setSearch] = useState("");
   const filtered = characters.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
+  const selectedIds = new Set(selected.map((s) => s.id));
 
   return (
     <div
@@ -55,7 +54,7 @@ function CharacterPickerModal({
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
-            Choose a character
+            Choose characters
           </span>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
         </div>
@@ -81,44 +80,51 @@ function CharacterPickerModal({
           onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
         />
 
-        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-          {current && (
-            <button
-              onClick={onClear}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", cursor: "pointer", textAlign: "left", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}
-            >
-              ✕ Remove character
-            </button>
-          )}
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
           {filtered.length === 0 ? (
             <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", margin: 0, padding: "8px 0" }}>
               No characters found.
             </p>
           ) : (
-            filtered.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => { onPick(c); onClose(); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 14px",
-                  background: current?.id === c.id ? "rgba(105,61,169,0.14)" : "rgba(105,61,169,0.06)",
-                  border: `1px solid ${current?.id === c.id ? "var(--novae-outline-selected)" : "var(--novae-outline-all)"}`,
-                  borderRadius: "var(--novae-radius-md)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", flexShrink: 0, overflow: "hidden", position: "relative" }}>
-                  {c.avatarUrl && <Image src={c.avatarUrl} alt={c.name} fill style={{ objectFit: "cover" }} />}
-                </div>
-                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "var(--novae-text-primary)" }}>
-                  {c.name}
-                </span>
-              </button>
-            ))
+            filtered.map((c) => {
+              const isSelected = selectedIds.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => onToggle(c)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "10px 14px",
+                    background: isSelected ? "rgba(105,61,169,0.14)" : "rgba(105,61,169,0.04)",
+                    border: `1px solid ${isSelected ? "var(--novae-outline-selected)" : "var(--novae-outline-all)"}`,
+                    borderRadius: "var(--novae-radius-md)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", flexShrink: 0, overflow: "hidden", position: "relative" }}>
+                    {c.avatarUrl && <Image src={c.avatarUrl} alt={c.name} fill style={{ objectFit: "cover" }} />}
+                  </div>
+                  <span style={{ flex: 1, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "var(--novae-text-primary)" }}>
+                    {c.name}
+                  </span>
+                  {isSelected && (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--novae-btn-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
+
+        <button
+          onClick={onClose}
+          style={{ padding: "10px 0", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}
+        >
+          Done{selected.length > 0 ? ` (${selected.length})` : ""}
+        </button>
       </div>
     </div>
   );
@@ -259,7 +265,7 @@ export default function NewMultiImagePage() {
       artistType: "me",
       artistValue: "",
       artistLabel: "",
-      character: null,
+      characters: [],
     }));
     setEntries((prev) => [...prev, ...newEntries]);
   }, []);
@@ -281,8 +287,12 @@ export default function NewMultiImagePage() {
     setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, artistType, artistValue, artistLabel } : e));
   };
 
-  const updateCharacter = (i: number, character: CharacterOption | null) => {
-    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, character } : e));
+  const toggleCharacter = (i: number, c: CharacterOption) => {
+    setEntries((prev) => prev.map((e, idx) => {
+      if (idx !== i) return e;
+      const already = e.characters.some((x) => x.id === c.id);
+      return { ...e, characters: already ? e.characters.filter((x) => x.id !== c.id) : [...e.characters, c] };
+    }));
   };
 
   const artistLabel = (entry: ImageEntry) => {
@@ -299,14 +309,13 @@ export default function NewMultiImagePage() {
       const uploaded = await startUpload(entries.map((e) => e.file));
       if (!uploaded?.length) return;
 
-      // Link each uploaded image to its character in parallel
-      const charactersSeen = new Set<string>();
-      let lastCharacter: CharacterOption | null = null;
+      // Link each uploaded image to its characters in parallel
+      const charactersSeen = new Map<string, CharacterOption>();
 
       await Promise.all(
-        entries.map((entry, i) => {
+        entries.flatMap((entry, i) => {
           const imageUrl = uploaded[i]?.ufsUrl;
-          if (!imageUrl || !entry.character) return Promise.resolve();
+          if (!imageUrl || entry.characters.length === 0) return [];
 
           const artistRaw = entry.artistType === "me"
             ? null
@@ -316,19 +325,20 @@ export default function NewMultiImagePage() {
                 ? `${entry.artistLabel}::${entry.artistValue}`
                 : entry.artistValue;
 
-          charactersSeen.add(entry.character.id);
-          lastCharacter = entry.character;
-
-          return fetch(`/api/characters/${entry.character.id}/artworks`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageUrl, title: artistRaw }),
+          return entry.characters.map((c) => {
+            charactersSeen.set(c.id, c);
+            return fetch(`/api/characters/${c.id}/artworks`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageUrl, title: artistRaw }),
+            });
           });
         })
       );
 
-      if (charactersSeen.size === 1 && lastCharacter) {
-        router.push(`/library/characters/${(lastCharacter as CharacterOption).numId}-${(lastCharacter as CharacterOption).slug}`);
+      const uniqueChars = [...charactersSeen.values()];
+      if (uniqueChars.length === 1) {
+        router.push(`/library/characters/${uniqueChars[0].numId}-${uniqueChars[0].slug}`);
       } else {
         router.push("/library/artworks");
       }
@@ -444,10 +454,10 @@ export default function NewMultiImagePage() {
                   onClick={() => setCharModal(i)}
                   style={{
                     padding: "6px 14px",
-                    background: entry.character ? "rgba(105,61,169,0.1)" : "none",
+                    background: entry.characters.length > 0 ? "rgba(105,61,169,0.1)" : "none",
                     border: "1px solid var(--novae-outline-all)",
                     borderRadius: "var(--novae-radius-sm)",
-                    color: entry.character ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
+                    color: entry.characters.length > 0 ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
                     fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
                     fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
                     display: "flex", alignItems: "center", gap: 6,
@@ -456,7 +466,11 @@ export default function NewMultiImagePage() {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                   </svg>
-                  {entry.character ? entry.character.name : "No character"}
+                  {entry.characters.length === 0
+                    ? "No character"
+                    : entry.characters.length === 1
+                      ? entry.characters[0].name
+                      : `${entry.characters.length} characters`}
                 </button>
 
                 {/* Remove */}
@@ -511,9 +525,8 @@ export default function NewMultiImagePage() {
       {charModal !== null && entries[charModal] && (
         <CharacterPickerModal
           characters={characters}
-          current={entries[charModal].character}
-          onPick={(c) => updateCharacter(charModal, c)}
-          onClear={() => updateCharacter(charModal, null)}
+          selected={entries[charModal].characters}
+          onToggle={(c) => toggleCharacter(charModal, c)}
           onClose={() => setCharModal(null)}
         />
       )}

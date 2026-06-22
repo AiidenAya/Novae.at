@@ -15,7 +15,7 @@ export default async function ArtworksLibraryPage() {
       id: true,
       imageUrl: true,
       title: true,
-      character: { select: { numId: true, slug: true, name: true } },
+      characters: { select: { numId: true, slug: true, name: true } },
     },
   });
 
@@ -36,7 +36,7 @@ export default async function ArtworksLibraryPage() {
           title: a.title ?? "",
           image: a.imageUrl,
           hearts: 0,
-          character: a.character ?? null,
+          characters: a.characters,
         }))} />
       </div>
     </div>

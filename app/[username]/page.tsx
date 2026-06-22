@@ -46,7 +46,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             id: true,
             imageUrl: true,
             title: true,
-            character: { select: { numId: true, slug: true, name: true } },
+            characters: { select: { numId: true, slug: true, name: true } },
           },
         },
       },
@@ -99,9 +99,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     id: a.id,
     imageUrl: a.imageUrl,
     title: a.title ?? null,
-    character: a.character
-      ? { numId: a.character.numId, slug: a.character.slug, name: a.character.name }
-      : null,
+    characters: a.characters.map((c) => ({ numId: c.numId, slug: c.slug, name: c.name })),
   }));
 
   return (

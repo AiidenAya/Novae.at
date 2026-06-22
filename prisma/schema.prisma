@@ -148,7 +148,7 @@ model Character {
   speciesId String?
   species   Species? @relation(fields: [speciesId], references: [id], onDelete: SetNull)
 
-  artworks      Artwork[]
+  artworks      Artwork[]    @relation("ArtworkCharacters")
   galleries     Gallery[]
   tags          CharacterTag[]
   colorPalettes ColorPalette[]
@@ -181,8 +181,7 @@ model Artwork {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  characterId String?
-  character   Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  characters Character[] @relation("ArtworkCharacters")
 
   galleryImages GalleryImage[]
   favorites     Favorite[]

@@ -16,7 +16,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!imageUrl) return NextResponse.json({ error: "imageUrl required" }, { status: 400 });
 
   const artwork = await prisma.artwork.create({
-    data: { imageUrl, title: title ?? null, userId: session.user.id, characterId: id },
+    data: {
+      imageUrl,
+      title: title ?? null,
+      userId: session.user.id,
+      characters: { connect: { id } },
+    },
   });
 
   return NextResponse.json(artwork, { status: 201 });

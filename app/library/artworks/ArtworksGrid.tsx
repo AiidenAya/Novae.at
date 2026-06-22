@@ -11,13 +11,18 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
           ? <img src={artwork.image} alt={artwork.title} style={{ width: "100%", display: "block" }} />
           : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
         }
-        {artwork.character && (
-          <a
-            href={`/library/characters/${artwork.character.numId}-${artwork.character.slug}`}
-            style={{ position: "absolute", bottom: 8, left: 8, backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap", maxWidth: "calc(100% - 16px)", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
-          >
-            {artwork.character.name}
-          </a>
+        {artwork.characters.length > 0 && (
+          <div style={{ position: "absolute", bottom: 8, left: 8, display: "flex", flexWrap: "wrap", gap: 4, maxWidth: "calc(100% - 16px)" }}>
+            {artwork.characters.map((c) => (
+              <a
+                key={c.numId}
+                href={`/library/characters/${c.numId}-${c.slug}`}
+                style={{ backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              >
+                {c.name}
+              </a>
+            ))}
+          </div>
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, paddingTop: 12, paddingBottom: 12, color: "var(--novae-text-secondary)" }}>

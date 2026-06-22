@@ -11,8 +11,8 @@ export async function PATCH(
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, artworkId } = await params;
-  const artwork = await prisma.artwork.findUnique({ where: { id: artworkId } });
-  if (!artwork || artwork.characterId !== id) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const artwork = await prisma.artwork.findUnique({ where: { id: artworkId }, include: { characters: { select: { id: true } } } });
+  if (!artwork || !artwork.characters.some((c) => c.id === id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (artwork.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { title } = await req.json();
@@ -28,8 +28,8 @@ export async function DELETE(
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, artworkId } = await params;
-  const artwork = await prisma.artwork.findUnique({ where: { id: artworkId } });
-  if (!artwork || artwork.characterId !== id) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const artwork = await prisma.artwork.findUnique({ where: { id: artworkId }, include: { characters: { select: { id: true } } } });
+  if (!artwork || !artwork.characters.some((c) => c.id === id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (artwork.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await prisma.artwork.delete({ where: { id: artworkId } });

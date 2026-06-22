@@ -30,7 +30,7 @@ export type Artwork = {
   title: string;
   image: string | null;
   hearts: number;
-  character: { numId: number; slug: string; name: string; avatar?: string | null; owner?: string } | null;
+  characters: { numId: number; slug: string; name: string; avatar?: string | null; owner?: string }[];
   aspectRatio?: string;
   fill?: string;
 };
@@ -175,10 +175,10 @@ export const ALL_MOCK_WORLDS = [
 // ── Mock artworks ─────────────────────────────────────────────────────────────
 
 export const MOCK_ARTWORKS: Artwork[] = [
-  { id: 1, title: "Saphira in the forest",  image: null, hearts: 12, character: { numId: 1, slug: "saphira-aishi",         name: "Saphira Aishi",         avatar: null, owner: "aiidenaya"    }, aspectRatio: "3/4",  fill: "linear-gradient(160deg, #2d1b4e 0%, #6b3fa0 45%, #a97fd4 80%, #e8c9ff 100%)" },
-  { id: 2, title: "Aiiden Mizune portrait", image: null, hearts: 8,  character: { numId: 2, slug: "aiiden-mizune",         name: "Aiiden Mizune",         avatar: null, owner: "aiidenaya"    }, aspectRatio: "1/1",  fill: "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)" },
-  { id: 3, title: "Commission — Kira",      image: null, hearts: 24, character: { numId: 3, slug: "kira",                  name: "Kira",                  avatar: null, owner: "someone_else" }, aspectRatio: "4/5",  fill: "linear-gradient(180deg, #1a0533 0%, #4a1a7a 40%, #c86dd7 75%, #ffd6f5 100%)" },
-  { id: 4, title: "Sketch dump",            image: null, hearts: 5,  character: null,                                                                                                             aspectRatio: "16/9", fill: "linear-gradient(120deg, #1c1c2e 0%, #16213e 40%, #0f3460 70%, #533483 100%)" },
-  { id: 5, title: "Commission — Lune",      image: null, hearts: 17, character: { numId: 4, slug: "lune",                  name: "Lune",                  avatar: null, owner: "someone_else" }, aspectRatio: "2/3",  fill: "linear-gradient(170deg, #0d0221 0%, #261447 35%, #7b2d8b 65%, #f5a7e8 100%)" },
-  { id: 6, title: "Summer vibes",           image: null, hearts: 9,  character: { numId: 5, slug: "name-of-the-character", name: "Name of the character", avatar: null, owner: "aiidenaya"    }, aspectRatio: "3/4",  fill: "linear-gradient(145deg, #1a1a2e 0%, #16213e 30%, #e94560 70%, #f5a623 100%)" },
+  { id: 1, title: "Saphira in the forest",  image: null, hearts: 12, characters: [{ numId: 1, slug: "saphira-aishi",         name: "Saphira Aishi",         avatar: null, owner: "aiidenaya"    }], aspectRatio: "3/4",  fill: "linear-gradient(160deg, #2d1b4e 0%, #6b3fa0 45%, #a97fd4 80%, #e8c9ff 100%)" },
+  { id: 2, title: "Aiiden Mizune portrait", image: null, hearts: 8,  characters: [{ numId: 2, slug: "aiiden-mizune",         name: "Aiiden Mizune",         avatar: null, owner: "aiidenaya"    }], aspectRatio: "1/1",  fill: "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)" },
+  { id: 3, title: "Commission — Kira",      image: null, hearts: 24, characters: [{ numId: 3, slug: "kira",                  name: "Kira",                  avatar: null, owner: "someone_else" }], aspectRatio: "4/5",  fill: "linear-gradient(180deg, #1a0533 0%, #4a1a7a 40%, #c86dd7 75%, #ffd6f5 100%)" },
+  { id: 4, title: "Sketch dump",            image: null, hearts: 5,  characters: [],                                                                                                                  aspectRatio: "16/9", fill: "linear-gradient(120deg, #1c1c2e 0%, #16213e 40%, #0f3460 70%, #533483 100%)" },
+  { id: 5, title: "Commission — Lune",      image: null, hearts: 17, characters: [{ numId: 4, slug: "lune",                  name: "Lune",                  avatar: null, owner: "someone_else" }], aspectRatio: "2/3",  fill: "linear-gradient(170deg, #0d0221 0%, #261447 35%, #7b2d8b 65%, #f5a7e8 100%)" },
+  { id: 6, title: "Summer vibes",           image: null, hearts: 9,  characters: [{ numId: 5, slug: "name-of-the-character", name: "Name of the character", avatar: null, owner: "aiidenaya"    }], aspectRatio: "3/4",  fill: "linear-gradient(145deg, #1a1a2e 0%, #16213e 30%, #e94560 70%, #f5a623 100%)" },
 ];
