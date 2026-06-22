@@ -463,7 +463,7 @@ export function ProfileClient({
     setIsEditing(false);
     // Reload so the navbar picks up the updated avatar from the session
     window.location.reload();
-  }, [editState]);
+  }, [editState, featuredChars]);
 
   const removeWorld  = useCallback((i: number) => setEditState((p) => ({ ...p, worlds: p.worlds.filter((_, idx) => idx !== i) })), []);
   const addWorld     = useCallback((w: Profile["worlds"][number]) => setEditState((p) => p.worlds.length < 6 ? { ...p, worlds: [...p.worlds, w] } : p), []);
