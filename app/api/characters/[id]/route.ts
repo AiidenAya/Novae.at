@@ -3,6 +3,22 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+function toSlug(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+}
+
+async function uniqueSlug(base: string, excludeId: string): Promise<string> {
+  let slug = base || "character";
+  let i = 0;
+  while (true) {
+    const existing = await prisma.character.findUnique({ where: { slug } });
+    if (!existing || existing.id === excludeId) break;
+    i++;
+    slug = `${base}-${i}`;
+  }
+  return slug;
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,7 +38,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (key in body) data[key] = body[key] ?? null;
   }
 
-  const updated = await prisma.character.update({ where: { id }, data });
+  if ("name" in body && body.name?.trim() && body.name.trim() !== character.name) {
+    data.slug = await uniqueSlug(toSlug(body.name.trim()), id);
+  }
+
+  const updated = await prisma.character.update({ where: { id }, data, select: { id: true, numId: true, slug: true, name: true } });
   return NextResponse.json(updated);
 }
 

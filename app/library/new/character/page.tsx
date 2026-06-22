@@ -140,50 +140,40 @@ export default function NewCharacterPage() {
             Design
           </span>
 
-          {/* Toggle */}
+          {/* 3-way toggle: me / on novae / external */}
           <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-            {([true, false] as const).map((val) => (
-              <button
-                key={String(val)}
-                type="button"
-                onClick={() => setIsDesigner(val)}
-                style={{
-                  flex: 1, padding: "10px 0",
-                  background: isDesigner === val ? "var(--novae-btn-primary)" : "none",
-                  border: "none",
-                  color: isDesigner === val ? "#fff" : "var(--novae-text-secondary)",
-                  fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                  fontWeight: isDesigner === val ? 600 : 400, cursor: "pointer",
-                }}
-              >
-                {val ? "I'm the designer" : "Someone else designed it"}
-              </button>
-            ))}
+            {([
+              { key: "me",      label: "I'm the designer" },
+              { key: "onsite",  label: "On Novae" },
+              { key: "offsite", label: "External" },
+            ] as const).map(({ key, label }) => {
+              const active = key === "me" ? isDesigner : (!isDesigner && creditType === key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    if (key === "me") { setIsDesigner(true); }
+                    else { setIsDesigner(false); setCreditType(key); setCreditValue(""); setCreditLabel(""); }
+                  }}
+                  style={{
+                    flex: 1, padding: "10px 0",
+                    background: active ? "var(--novae-btn-primary)" : "none",
+                    border: "none",
+                    color: active ? "#fff" : "var(--novae-text-secondary)",
+                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
+                    fontWeight: active ? 600 : 400, cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Credit fields — shown only when not designer */}
           {!isDesigner && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {/* Onsite / offsite sub-toggle */}
-              <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-                {(["onsite", "offsite"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => { setCreditType(t); setCreditValue(""); setCreditLabel(""); }}
-                    style={{
-                      flex: 1, padding: "7px 0",
-                      background: creditType === t ? "var(--novae-bg-input)" : "none",
-                      border: "none",
-                      color: creditType === t ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
-                      fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
-                      fontWeight: creditType === t ? 600 : 400, cursor: "pointer",
-                    }}
-                  >
-                    {t === "onsite" ? "On Novae" : "External"}
-                  </button>
-                ))}
-              </div>
 
               {creditType === "offsite" && (
                 <input
