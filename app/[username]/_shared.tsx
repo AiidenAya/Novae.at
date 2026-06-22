@@ -77,8 +77,8 @@ export function Avatar({ src, size, name }: { src: string | null; size: number; 
   );
 }
 
-export function CharacterCard({ name, hearts, images, coverImage }: { name: string; hearts: number; images: number; coverImage: string | null }) {
-  return (
+export function CharacterCard({ name, hearts, images, coverImage, slug }: { name: string; hearts: number; images: number; coverImage: string | null; slug?: string }) {
+  const inner = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start", width: 156, flexShrink: 0 }}>
       <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "rgba(105,61,169,0.1)" }}>
         {coverImage
@@ -101,6 +101,8 @@ export function CharacterCard({ name, hearts, images, coverImage }: { name: stri
       </div>
     </div>
   );
+  if (slug) return <a href={`/library/characters/${slug}`} style={{ textDecoration: "none" }}>{inner}</a>;
+  return inner;
 }
 
 export const viewAllStyle: React.CSSProperties = { fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, fontStyle: "italic", color: "var(--novae-text-link)", textDecoration: "underline", whiteSpace: "nowrap", flexShrink: 0, background: "none", border: "none", cursor: "pointer", padding: 0 };

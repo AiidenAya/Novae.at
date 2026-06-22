@@ -331,44 +331,20 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Browse */}
+          {/* Browse — disabled */}
           <div className="relative self-stretch flex items-center">
-            <button
-              onClick={() => toggle("browse")}
-              className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
-              style={navItemStyle(pathname.startsWith("/browse"))}
-            >
+            <span className="flex items-center gap-2 shrink-0 cursor-not-allowed" style={{ ...navItemStyle(false), opacity: 0.35 }}>
               <IconSearch />
               {t.navBrowse}
-              <span style={{ color: "var(--novae-text-secondary)", transform: open === "browse" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-                <IconChevron />
-              </span>
-            </button>
-            {open === "browse" && (
-              <DropdownPanel>
-                {BROWSE_ITEMS.map((item) => <DropdownLink key={item.href} {...item} />)}
-              </DropdownPanel>
-            )}
+            </span>
           </div>
 
-          {/* Community */}
+          {/* Community — disabled */}
           <div className="relative self-stretch flex items-center">
-            <button
-              onClick={() => toggle("community")}
-              className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
-              style={navItemStyle(pathname.startsWith("/community"))}
-            >
+            <span className="flex items-center gap-2 shrink-0 cursor-not-allowed" style={{ ...navItemStyle(false), opacity: 0.35 }}>
               <IconGroup />
               {t.navCommunity}
-              <span style={{ color: "var(--novae-text-secondary)", transform: open === "community" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-                <IconChevron />
-              </span>
-            </button>
-            {open === "community" && (
-              <DropdownPanel>
-                {COMMUNITY_ITEMS.map((item) => <DropdownLink key={item.href} {...item} />)}
-              </DropdownPanel>
-            )}
+            </span>
           </div>
         </nav>
       </div>

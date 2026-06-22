@@ -1,42 +1,95 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, SectionTitle, Avatar, viewAllStyle } from "../_shared";
-import type { Profile, CommentData } from "../_mock-data";
+import type { Profile } from "../_mock-data";
 
 type Friend = Profile["featuredFriends"][number];
 
+type DbComment = {
+  id: string;
+  text: string;
+  createdAt: string;
+  author: { username: string | null; avatar: string | null };
+  replies?: DbComment[];
+};
+
 const FRIEND_SIZE = 120;
 
-function Comment({ comment, canDelete, onDelete }: { comment: CommentData; canDelete?: boolean; onDelete?: () => void }) {
+function ReplyEditor({ onPost, onCancel }: { onPost: (html: string) => void; onCancel: () => void }) {
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  function applyFormat(cmd: string) {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false);
+  }
+
+  function submit() {
+    const html = editorRef.current?.innerHTML ?? "";
+    const text = editorRef.current?.innerText?.trim() ?? "";
+    if (!text) return;
+    onPost(html);
+    if (editorRef.current) editorRef.current.innerHTML = "";
+  }
+
+  return (
+    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
+        <div style={{ display: "flex", gap: 4, padding: "6px 10px", borderBottom: "1px solid var(--novae-outline-all)", backgroundColor: "rgba(25,32,46,0.5)" }}>
+          {FORMAT_BUTTONS.map(({ label, cmd, style }) => (
+            <button key={label} onMouseDown={(e) => { e.preventDefault(); applyFormat(cmd); }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: 13, width: 28, height: 28, borderRadius: 4, ...style }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div ref={editorRef} contentEditable suppressContentEditableWarning data-placeholder="Write a reply..."
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); } }}
+          style={{ minHeight: 60, padding: "10px 14px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", outline: "none", lineHeight: "1.5" }}
+        />
+      </div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button onClick={onCancel} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "6px 16px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Cancel</button>
+        <button onClick={submit} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "6px 16px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500 }}>Post</button>
+      </div>
+    </div>
+  );
+}
+
+function Comment({ comment, canDelete, onDelete, onReply }: { comment: DbComment; canDelete?: boolean; onDelete?: () => void; onReply?: (html: string) => void }) {
+  const [replying, setReplying] = useState(false);
+  const date = new Date(comment.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", " ·");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)" }}>
       <div style={{ display: "flex", gap: "var(--novae-space-md)", alignItems: "flex-start" }}>
-        <Avatar src={comment.avatar} size={40} name={comment.username} />
+        <Avatar src={comment.author.avatar} size={40} name={comment.author.username ?? "?"} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--novae-space-xs)" }}>
           <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center" }}>
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{comment.username}</span>
-              <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{comment.date}</span>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{comment.author.username ?? "?"}</span>
+              <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{date}</span>
             </div>
             {canDelete && (
-              <button
-                onClick={onDelete}
-                title="Delete comment"
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: "2px 6px", borderRadius: "var(--novae-radius-sm)", lineHeight: 1, fontSize: 16 }}
-              >
+              <button onClick={onDelete} title="Delete comment"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: "2px 6px", borderRadius: "var(--novae-radius-sm)", lineHeight: 1, fontSize: 16 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                 </svg>
               </button>
             )}
           </div>
-          <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-primary)", lineHeight: "18px", margin: 0 }}>
-            {comment.text}
-          </p>
-          <button style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", textAlign: "left", padding: 0 }}>
-            Reply
-          </button>
+          <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-primary)", lineHeight: "18px", margin: 0 }}
+            dangerouslySetInnerHTML={{ __html: comment.text }} />
+          {onReply && (
+            <button onClick={() => setReplying((v) => !v)}
+              style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", textAlign: "left", padding: 0 }}>
+              Reply
+            </button>
+          )}
+          {replying && onReply && (
+            <ReplyEditor onPost={(html) => { onReply(html); setReplying(false); }} onCancel={() => setReplying(false)} />
+          )}
         </div>
       </div>
       {comment.replies && comment.replies.length > 0 && (
@@ -52,21 +105,64 @@ function Comment({ comment, canDelete, onDelete }: { comment: CommentData; canDe
   );
 }
 
+const FORMAT_BUTTONS = [
+  { label: "B", cmd: "bold",          style: { fontWeight: 700 } },
+  { label: "I", cmd: "italic",        style: { fontStyle: "italic" } },
+  { label: "U", cmd: "underline",     style: { textDecoration: "underline" } },
+  { label: "S", cmd: "strikeThrough", style: { textDecoration: "line-through" } },
+];
+
 export default function SocialTab({
-  profile, featuredFriends, isOwner, isEditing, onRemoveFriend, onAddFriend,
+  username, featuredFriends, isOwner, isEditing, onRemoveFriend, onAddFriend,
 }: {
-  profile: Profile;
+  username: string;
   featuredFriends: Friend[];
   isOwner: boolean;
   isEditing: boolean;
   onRemoveFriend: (i: number) => void;
   onAddFriend: (f: Friend) => void;
 }) {
-  const [comments, setComments] = useState(profile.comments);
-  const [commentText, setCommentText] = useState("");
+  const [comments, setComments] = useState<DbComment[]>([]);
+  const editorRef = useRef<HTMLDivElement>(null);
 
-  function deleteComment(id: number) {
-    setComments((cs) => cs.map((c) => ({ ...c, replies: c.replies?.filter((r) => r.id !== id) ?? [] })).filter((c) => c.id !== id));
+  const fetchComments = useCallback(async () => {
+    const res = await fetch(`/api/profile/${username}/comments`);
+    const data = await res.json();
+    setComments(data.comments ?? []);
+  }, [username]);
+
+  useEffect(() => { fetchComments(); }, [fetchComments]);
+
+  async function deleteComment(id: string) {
+    await fetch(`/api/profile/${username}/comments/${id}`, { method: "DELETE" });
+    fetchComments();
+  }
+
+  function applyFormat(cmd: string) {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false);
+  }
+
+  async function postComment() {
+    const html = editorRef.current?.innerHTML ?? "";
+    const text = editorRef.current?.innerText?.trim() ?? "";
+    if (!text) return;
+    await fetch(`/api/profile/${username}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: html }),
+    });
+    if (editorRef.current) editorRef.current.innerHTML = "";
+    fetchComments();
+  }
+
+  async function postReply(parentId: string, html: string) {
+    await fetch(`/api/profile/${username}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: html, parentId }),
+    });
+    fetchComments();
   }
   const [addingFriend, setAddingFriend] = useState(false);
   const [newFriendName, setNewFriendName] = useState("");
@@ -148,15 +244,25 @@ export default function SocialTab({
         <SectionTitle>Comments</SectionTitle>
         <div style={{ border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: "8px 12px", borderBottom: "1px solid var(--novae-outline-all)", backgroundColor: "rgba(25,32,46,0.5)" }}>
-            {["B", "I", "U", "S"].map((f) => (
-              <button key={f} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: 13, width: 28, height: 28, borderRadius: 4 }}>{f}</button>
+            {FORMAT_BUTTONS.map(({ label, cmd, style }) => (
+              <button
+                key={label}
+                onMouseDown={(e) => { e.preventDefault(); applyFormat(cmd); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: 13, width: 28, height: 28, borderRadius: 4, ...style }}
+              >{label}</button>
             ))}
           </div>
-          <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Write a comment..." rows={3}
-            style={{ width: "100%", background: "transparent", border: "none", outline: "none", padding: "12px 16px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", resize: "vertical", boxSizing: "border-box" }} />
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            data-placeholder="Write a comment..."
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); postComment(); } }}
+            style={{ minHeight: 80, padding: "12px 16px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", outline: "none", lineHeight: "1.5" }}
+          />
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Post</button>
+          <button onClick={postComment} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Post</button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-3xl)" }}>
           {comments.map((comment) => (
@@ -165,12 +271,15 @@ export default function SocialTab({
               comment={comment}
               canDelete={isOwner}
               onDelete={() => deleteComment(comment.id)}
+              onReply={(html) => postReply(comment.id, html)}
             />
           ))}
         </div>
-        <button style={{ alignSelf: "center", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-          View more ›
-        </button>
+        {comments.length > 3 && (
+          <button style={{ alignSelf: "center", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+            View more ›
+          </button>
+        )}
       </Card>
     </div>
   );

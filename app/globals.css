@@ -260,3 +260,9 @@ div:hover > .artwork-actions {
   .library-header  { flex-direction: column; align-items: flex-start !important; gap: 12px; }
   .library-header > a { width: 100%; justify-content: center; }
 }
+
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--novae-text-secondary);
+  pointer-events: none;
+}

@@ -54,21 +54,24 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
+function codeStatus(code: InviteCode): "used" | "expired" | "available" {
+  if (code.usedAt) return "used";
+  if (code.expiresAt && new Date(code.expiresAt) < new Date()) return "expired";
+  return "available";
+}
+
 function CodeStatusBadge({ code }: { code: InviteCode }) {
-  if (code.usedAt) {
-    return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 10px", borderRadius: "var(--novae-radius-sm)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, background: "rgba(136,136,136,0.1)", color: "var(--novae-text-secondary)", border: "0.5px solid var(--novae-outline-all)" }}>
-        Utilisé{code.usedBy?.username ? ` par @${code.usedBy.username}` : ""}
-      </span>
-    );
-  }
-  if (code.expiresAt && new Date(code.expiresAt) < new Date()) {
-    return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 10px", borderRadius: "var(--novae-radius-sm)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, background: "rgba(220,53,69,0.1)", color: "#ff6b7a", border: "0.5px solid rgba(220,53,69,0.3)" }}>
-        Expiré
-      </span>
-    );
-  }
+  const s = codeStatus(code);
+  if (s === "used") return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 10px", borderRadius: "var(--novae-radius-sm)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, background: "rgba(136,136,136,0.1)", color: "var(--novae-text-secondary)", border: "0.5px solid var(--novae-outline-all)" }}>
+      Utilisé{code.usedBy?.username ? ` par @${code.usedBy.username}` : ""}
+    </span>
+  );
+  if (s === "expired") return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 10px", borderRadius: "var(--novae-radius-sm)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, background: "rgba(220,53,69,0.1)", color: "#ff6b7a", border: "0.5px solid rgba(220,53,69,0.3)" }}>
+      Expiré
+    </span>
+  );
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 10px", borderRadius: "var(--novae-radius-sm)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, background: "rgba(72,199,142,0.12)", color: "#48c78e", border: "0.5px solid rgba(72,199,142,0.3)" }}>
       Disponible
@@ -76,15 +79,95 @@ function CodeStatusBadge({ code }: { code: InviteCode }) {
   );
 }
 
-export function AdminClient({ stats, recentUsers, initialCodes }: {
+type CodeFilter = "all" | "available" | "used" | "expired";
+
+// ── Edit user modal ───────────────────────────────────────────────────────────
+
+function EditUserModal({ user, onClose, onSaved }: {
+  user: RecentUser;
+  onClose: () => void;
+  onSaved: (updated: RecentUser) => void;
+}) {
+  const [username, setUsername] = useState(user.username ?? "");
+  const [name, setName]         = useState(user.name ?? "");
+  const [role, setRole]         = useState(user.role);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/admin/users/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, name, role }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      onSaved({ ...user, ...updated });
+      onClose();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Erreur");
+    }
+    setSaving(false);
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "8px 12px", borderRadius: "var(--novae-radius-md)",
+    border: "1px solid var(--novae-outline-all)", background: "var(--novae-bg-card)",
+    color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)",
+    fontSize: "var(--novae-text-sm)", outline: "none", boxSizing: "border-box",
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+      <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+          Modifier l'utilisateur
+        </h2>
+        {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Username</span>
+            <input value={username} onChange={e => setUsername(e.target.value.toLowerCase())} style={inputStyle} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nom d'affichage</span>
+            <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Rôle</span>
+            <select value={role} onChange={e => setRole(e.target.value)} style={{ ...inputStyle }}>
+              <option value="user">user</option>
+              <option value="admin">admin</option>
+            </select>
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
+          <button onClick={save} disabled={saving} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
+            {saving ? "…" : "Enregistrer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AdminClient({ stats, recentUsers: initialUsers, initialCodes }: {
   stats: { totalUsers: number; totalCharacters: number; totalArtworks: number };
   recentUsers: RecentUser[];
   initialCodes: InviteCode[];
 }) {
-  const [codes, setCodes] = useState<InviteCode[]>(initialCodes);
+  const [codes, setCodes]       = useState<InviteCode[]>(initialCodes);
+  const [users, setUsers]       = useState<RecentUser[]>(initialUsers);
   const [isPending, startTransition] = useTransition();
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied]     = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [codeFilter, setCodeFilter] = useState<CodeFilter>("all");
+  const [editingUser, setEditingUser] = useState<RecentUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<string | null>(null);
 
   function generate() {
     startTransition(async () => {
@@ -100,7 +183,8 @@ export function AdminClient({ stats, recentUsers, initialCodes }: {
     });
   }
 
-  async function deleteCode(id: string) {
+  async function deleteCode(id: string, isUsed: boolean) {
+    if (isUsed) return;
     setDeleting(id);
     await fetch("/api/admin/invite-codes", {
       method: "DELETE",
@@ -111,11 +195,23 @@ export function AdminClient({ stats, recentUsers, initialCodes }: {
     setDeleting(null);
   }
 
+  async function deleteUser(id: string) {
+    setDeletingUser(id);
+    await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+    setDeletingUser(null);
+  }
+
   function copy(code: string) {
     navigator.clipboard.writeText(code);
     setCopied(code);
     setTimeout(() => setCopied(null), 1800);
   }
+
+  const filteredCodes = codes.filter(c => {
+    if (codeFilter === "all") return true;
+    return codeStatus(c) === codeFilter;
+  });
 
   const card: React.CSSProperties = {
     background: "var(--novae-bg-card)",
@@ -124,8 +220,23 @@ export function AdminClient({ stats, recentUsers, initialCodes }: {
     overflow: "hidden",
   };
 
+  const filterBtn = (f: CodeFilter): React.CSSProperties => ({
+    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600,
+    padding: "4px 12px", borderRadius: "var(--novae-radius-sm)", cursor: "pointer", border: "none",
+    background: codeFilter === f ? "var(--novae-btn-primary)" : "transparent",
+    color: codeFilter === f ? "var(--novae-text-btn)" : "var(--novae-text-secondary)",
+  });
+
   return (
     <main style={{ width: "100%", padding: "40px 48px", fontFamily: "var(--font-dm-sans)", boxSizing: "border-box" }}>
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSaved={(updated) => setUsers(prev => prev.map(u => u.id === updated.id ? updated : u))}
+        />
+      )}
+
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 36 }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="var(--novae-text-tag)" stroke="none">
@@ -152,7 +263,7 @@ export function AdminClient({ stats, recentUsers, initialCodes }: {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, alignItems: "start" }}>
-        {/* Recent users — 2/3 */}
+        {/* Users table */}
         <div style={{ ...card, overflowX: "auto" }}>
           <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--novae-outline-all)" }}>
             <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Utilisateurs récents</h2>
@@ -160,11 +271,11 @@ export function AdminClient({ stats, recentUsers, initialCodes }: {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
             <thead>
               <tr>
-                {["Username", "Email", "Rôle", "Code", "Rejoint"].map(h => <th key={h} style={th}>{h}</th>)}
+                {["Username", "Email", "Rôle", "Code", "Rejoint", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
-              {recentUsers.map(u => (
+              {users.map(u => (
                 <tr key={u.id}>
                   <td style={{ ...cell, whiteSpace: "nowrap", fontWeight: 600 }}>{u.username ? `@${u.username}` : "—"}</td>
                   <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{u.email}</td>
@@ -175,31 +286,37 @@ export function AdminClient({ stats, recentUsers, initialCodes }: {
                   <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)", whiteSpace: "nowrap" }}>
                     {new Date(u.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
                   </td>
+                  <td style={{ ...cell, whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => setEditingUser(u)} title="Modifier"
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button onClick={() => { if (confirm(`Supprimer @${u.username ?? u.email} ?`)) deleteUser(u.id); }} title="Supprimer"
+                        disabled={deletingUser === u.id}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#ff6b7a", padding: 4, display: "flex", alignItems: "center", opacity: deletingUser === u.id ? 0.4 : 1 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Sidebar codes — 1/3 */}
+        {/* Invite codes */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Generate — une ligne */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, ...card, padding: "16px 20px" }}>
             <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0, whiteSpace: "nowrap" }}>
               Codes d'invitation
             </h2>
-            <button
-              onClick={generate}
-              disabled={isPending}
-              style={{
-                display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
-                padding: "7px 14px", borderRadius: "var(--novae-radius-md)",
-                backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)",
-                border: "none", cursor: isPending ? "not-allowed" : "pointer",
-                fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600,
-                opacity: isPending ? 0.6 : 1,
-              }}
-            >
+            <button onClick={generate} disabled={isPending}
+              style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", padding: "7px 14px", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", cursor: isPending ? "not-allowed" : "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: isPending ? 0.6 : 1 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
@@ -207,53 +324,55 @@ export function AdminClient({ stats, recentUsers, initialCodes }: {
             </button>
           </div>
 
-          {/* Code list */}
+          {/* Filters */}
+          <div style={{ display: "flex", gap: 6, padding: "10px 16px", background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)" }}>
+            {(["all", "available", "used", "expired"] as CodeFilter[]).map(f => (
+              <button key={f} onClick={() => setCodeFilter(f)} style={filterBtn(f)}>
+                {f === "all" ? "Tous" : f === "available" ? "Disponible" : f === "used" ? "Utilisé" : "Expiré"}
+              </button>
+            ))}
+          </div>
+
           <div style={card}>
-            {codes.length === 0 ? (
-              <p style={{ padding: "20px", color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-sm)", margin: 0 }}>
-                Aucun code généré.
-              </p>
+            {filteredCodes.length === 0 ? (
+              <p style={{ padding: "20px", color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-sm)", margin: 0 }}>Aucun code.</p>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr>
-                    {["Code", "Statut", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
-                  </tr>
+                  <tr>{["Code", "Statut", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {codes.map(c => (
-                    <tr key={c.id}>
-                      <td style={{ ...cell, fontFamily: "monospace", fontWeight: 700, fontSize: "var(--novae-text-xs)", letterSpacing: "0.03em", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>{c.code}</td>
-                      <td style={cell}><CodeStatusBadge code={c} /></td>
-                      <td style={{ ...cell, width: 70 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          {!c.usedAt && (
+                  {filteredCodes.map(c => {
+                    const used = !!c.usedAt;
+                    return (
+                      <tr key={c.id}>
+                        <td style={{ ...cell, fontFamily: "monospace", fontWeight: 700, fontSize: "var(--novae-text-xs)", letterSpacing: "0.03em", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>{c.code}</td>
+                        <td style={cell}><CodeStatusBadge code={c} /></td>
+                        <td style={{ ...cell, width: 70 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            {!used && (
+                              <button onClick={() => copy(c.code)} title="Copier"
+                                style={{ background: "none", border: "none", cursor: "pointer", color: copied === c.code ? "#48c78e" : "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center" }}>
+                                {copied === c.code
+                                  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                }
+                              </button>
+                            )}
                             <button
-                              onClick={() => copy(c.code)}
-                              title="Copier"
-                              style={{ background: "none", border: "none", cursor: "pointer", color: copied === c.code ? "#48c78e" : "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center" }}
-                            >
-                              {copied === c.code ? (
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                              ) : (
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                              )}
+                              onClick={() => !used && deleteCode(c.id, used)}
+                              title={used ? "Code utilisé — non supprimable" : "Supprimer"}
+                              disabled={deleting === c.id || used}
+                              style={{ background: "none", border: "none", cursor: used ? "not-allowed" : "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: used || deleting === c.id ? 0.3 : 1 }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                              </svg>
                             </button>
-                          )}
-                          <button
-                            onClick={() => deleteCode(c.id)}
-                            title="Supprimer"
-                            disabled={deleting === c.id}
-                            style={{ background: "none", border: "none", cursor: deleting === c.id ? "not-allowed" : "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: deleting === c.id ? 0.4 : 1 }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

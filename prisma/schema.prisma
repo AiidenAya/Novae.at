@@ -17,7 +17,10 @@ model User {
   emailVerified Boolean   @default(false)
   name          String?
   avatar        String?
+  coverImage    String?
   bio           String?
+  pronouns      String?
+  socials       Json?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -26,6 +29,8 @@ model User {
 
   characters    Character[]
   artworks      Artwork[]
+  authoredComments Comment[] @relation("AuthoredComments")
+  profileComments  Comment[] @relation("ProfileComments")
   species       Species[]
   favorites     Favorite[]
   followers     Follow[]        @relation("Following")
@@ -262,6 +267,22 @@ model InviteCode {
 
   usedById    String?
   usedBy      User?     @relation("UsedInvites",    fields: [usedById],    references: [id], onDelete: SetNull)
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  authorId  String
+  author    User     @relation("AuthoredComments", fields: [authorId], references: [id], onDelete: Cascade)
+
+  profileId String
+  profile   User     @relation("ProfileComments", fields: [profileId], references: [id], onDelete: Cascade)
+
+  parentId  String?
+  parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("Replies")
 }
 
 model Favorite {
