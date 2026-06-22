@@ -13,6 +13,8 @@ type Artwork = { id: string; imageUrl: string; title: string | null };
 
 interface CharacterData {
   id: string;
+  numId: number;
+  slug: string;
   name: string;
   description: string | null;
   avatarUrl: string | null;
