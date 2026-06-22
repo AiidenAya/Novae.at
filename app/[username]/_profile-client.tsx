@@ -430,7 +430,8 @@ export function ProfileClient({
     avatarImage: dbProfile?.avatar     ?? MOCK_PROFILE.avatarImage,
     coverImage:  dbProfile?.coverImage ?? MOCK_PROFILE.coverImage,
     socials:     dbSocials,
-    worlds:      [] as Profile["worlds"],
+    worlds:          [] as Profile["worlds"],
+    featuredFriends: [] as Profile["featuredFriends"],
   };
 
   const [profile, setProfile] = useState(baseProfile);
