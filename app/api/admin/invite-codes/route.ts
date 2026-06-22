@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
   if (!session?.user) return null;
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
-  if (user?.roles.includes("admin")) return null;
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { roles: true } });
+  if (!user?.roles.includes("admin")) return null;
   return session.user;
 }
 
