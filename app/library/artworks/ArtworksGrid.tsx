@@ -1,23 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import { IconHeart } from "@/app/[username]/_shared";
 import type { Artwork } from "@/app/[username]/_mock-data";
 
+const PAGE_SIZE = 15; // 5 columns × 3 rows
+
 function ArtworkCard({ artwork }: { artwork: Artwork }) {
   return (
-    <div style={{ display: "inline-block", width: "100%", marginBottom: 16, breakInside: "avoid" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ width: "100%", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "rgba(105,61,169,0.1)", position: "relative" }}>
         {artwork.image
-          ? <img src={artwork.image} alt={artwork.title} style={{ width: "100%", display: "block" }} />
-          : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
+          ? <img src={artwork.image} alt={artwork.title} style={{ width: "100%", display: "block", aspectRatio: "1/1", objectFit: "cover" }} />
+          : <div style={{ width: "100%", aspectRatio: "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
         }
         {artwork.characters.length > 0 && (
-          <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, display: "flex", gap: 4, overflow: "hidden" }}>
+          <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
             {artwork.characters.map((c) => (
               <a
                 key={c.numId}
                 href={`/library/characters/${c.numId}-${c.slug}`}
-                style={{ flexShrink: 0, backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap" }}
+                style={{ backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap" }}
               >
                 {c.name}
               </a>
@@ -25,7 +28,7 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
           </div>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, paddingTop: 12, paddingBottom: 12, color: "var(--novae-text-secondary)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, color: "var(--novae-text-secondary)" }}>
         <IconHeart />
         <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{artwork.hearts}</span>
       </div>
@@ -34,6 +37,10 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
 }
 
 export default function ArtworksGrid({ artworks }: { artworks: Artwork[] }) {
+  const [page, setPage] = useState(1);
+  const visible = artworks.slice(0, page * PAGE_SIZE);
+  const hasMore = visible.length < artworks.length;
+
   if (artworks.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "80px 0", color: "var(--novae-text-secondary)" }}>
@@ -54,8 +61,20 @@ export default function ArtworksGrid({ artworks }: { artworks: Artwork[] }) {
   }
 
   return (
-    <div style={{ columnCount: 5, columnGap: 16 }}>
-      {artworks.map((a) => <ArtworkCard key={a.id} artwork={a} />)}
+    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+        {visible.map((a) => <ArtworkCard key={a.id} artwork={a} />)}
+      </div>
+      {hasMore && (
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            style={{ padding: "10px 32px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer" }}
+          >
+            Voir plus
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,12 +12,12 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
           : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
         }
         {artwork.characters.length > 0 && (
-          <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, display: "flex", gap: 4, overflow: "hidden" }}>
+          <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
             {artwork.characters.map((c) => (
               <a
                 key={c.numId}
                 href={`/library/characters/${c.numId}-${c.slug}`}
-                style={{ flexShrink: 0, backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap" }}
+                style={{ backgroundColor: "rgba(15,18,28,0.75)", backdropFilter: "blur(4px)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 8px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none", whiteSpace: "nowrap" }}
               >
                 {c.name}
               </a>
