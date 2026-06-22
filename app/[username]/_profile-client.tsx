@@ -384,7 +384,7 @@ function makeEditState(p: Profile): EditState {
   };
 }
 
-type DbCharacter = { id?: string; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
+type DbCharacter = { id?: string; numId?: number; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
 type DbFolder = { id: string; name: string };
 type DbProfile = {
   name: string | null;
@@ -485,18 +485,18 @@ export function ProfileClient({
         ...dbFolders.map((f) => ({
           id: f.id,
           name: f.name,
-          items: dbCharacters.filter((c) => c.folderId === f.id).map((c) => ({ slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+          items: dbCharacters.filter((c) => c.folderId === f.id).map((c) => ({ numId: c.numId, slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
         })),
         ...(dbCharacters.some((c) => !c.folderId) ? [{
           id: "ungrouped",
           name: "Ungrouped",
-          items: dbCharacters.filter((c) => !c.folderId).map((c) => ({ slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+          items: dbCharacters.filter((c) => !c.folderId).map((c) => ({ numId: c.numId, slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
         }] : []),
       ]
     : [{
         id: "all",
         name: "All characters",
-        items: dbCharacters.map((c) => ({ slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
+        items: dbCharacters.map((c) => ({ numId: c.numId, slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
       }];
 
   return (
@@ -519,7 +519,7 @@ export function ProfileClient({
           <TabBar active={activeTab} onChange={setActiveTab} />
           {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={[]} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
           {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
-          {activeTab === "worlds"     && <WorldsTab     folders={MOCK_WORLD_FOLDERS} isEditing={isEditing} />}
+          {activeTab === "worlds"     && <WorldsTab     folders={[]} isEditing={isEditing} />}
           {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
           {activeTab === "artworks"   && <ArtworksTab   artworks={MOCK_ARTWORKS} />}
         </div>

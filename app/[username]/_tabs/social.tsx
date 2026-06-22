@@ -175,7 +175,7 @@ export default function SocialTab({
     setAddingFriend(false);
   }
 
-  const VISIBLE_LIMIT = 7;
+  const VISIBLE_LIMIT = 8;
   const [showAllFriends, setShowAllFriends] = useState(false);
   const visibleFriends = !isEditing && !showAllFriends
     ? featuredFriends.slice(0, VISIBLE_LIMIT)
@@ -186,21 +186,30 @@ export default function SocialTab({
       <Card>
         <SectionTitle>Featured Friends</SectionTitle>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-          {visibleFriends.map((friend, i) => (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", position: "relative" }}>
-              <div style={{ width: FRIEND_SIZE, height: FRIEND_SIZE, borderRadius: "var(--novae-radius-md)", backgroundColor: "rgba(105,61,169,0.1)", backgroundImage: "repeating-conic-gradient(rgba(136,136,136,0.15) 0% 25%, transparent 0% 50%)", backgroundSize: "12px 12px", overflow: "hidden" }}>
-                {friend.avatar && <img src={friend.avatar} alt={friend.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 8 }}>
+          {visibleFriends.map((friend, i) => {
+            const inner = (
+              <>
+                <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "var(--novae-radius-md)", backgroundColor: "rgba(105,61,169,0.1)", backgroundImage: "repeating-conic-gradient(rgba(136,136,136,0.15) 0% 25%, transparent 0% 50%)", backgroundSize: "12px 12px", overflow: "hidden" }}>
+                  {friend.avatar && <img src={friend.avatar} alt={friend.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                </div>
+                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500, color: "var(--novae-text-primary)", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friend.username}</span>
+              </>
+            );
+            return (
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", position: "relative" }}>
+                {isEditing ? inner : (
+                  <a href={`/${friend.username}`} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", width: "100%", textDecoration: "none" }}>{inner}</a>
+                )}
+                {isEditing && (
+                  <button
+                    onClick={() => onRemoveFriend(i)}
+                    style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--novae-btn-primary)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, lineHeight: 1, zIndex: 2 }}
+                  >×</button>
+                )}
               </div>
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500, color: "var(--novae-text-primary)", textAlign: "center" }}>{friend.username}</span>
-              {isEditing && (
-                <button
-                  onClick={() => onRemoveFriend(i)}
-                  style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--novae-btn-primary)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, lineHeight: 1, zIndex: 2 }}
-                >×</button>
-              )}
-            </div>
-          ))}
+            );
+          })}
 
           {/* Add friend slot */}
           {isEditing && !addingFriend && (
