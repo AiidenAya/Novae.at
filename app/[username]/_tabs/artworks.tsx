@@ -63,7 +63,7 @@ function Lightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => voi
 
 function ArtworkCard({ artwork, onClick }: { artwork: Artwork; onClick: () => void }) {
   return (
-    <div style={{ display: "inline-block", width: "100%", marginBottom: 16, breakInside: "avoid" }}>
+    <div style={{ display: "block", marginBottom: 16, breakInside: "avoid" }}>
       <div
         onClick={onClick}
         style={{ width: "100%", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "rgba(105,61,169,0.1)", position: "relative", cursor: "zoom-in" }}
