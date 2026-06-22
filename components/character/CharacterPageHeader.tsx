@@ -92,6 +92,8 @@ interface CharacterPageHeaderProps {
   /** Whether the current user owns this character */
   isOwner?: boolean;
   characterId: string;
+  characterNumId: number;
+  characterSlug: string;
 }
 
 export default function CharacterPageHeader({
@@ -103,6 +105,8 @@ export default function CharacterPageHeader({
   createdAt,
   isOwner = false,
   characterId,
+  characterNumId,
+  characterSlug,
 }: CharacterPageHeaderProps) {
   const metaItems: MetaItem[] = [
     {
@@ -166,7 +170,7 @@ export default function CharacterPageHeader({
               Add image
             </button>
             <Link
-              href={`/library/characters/${characterId}/edit`}
+              href={`/library/characters/${characterNumId}-${characterSlug}/edit`}
               className="flex gap-2 items-center px-5 py-3 rounded-[var(--novae-radius-md)] text-sm font-medium"
               style={{
                 fontFamily: "var(--font-dm-sans)",

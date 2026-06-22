@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Character, Relationship } from "@/lib/generated/prisma";
 
 type RelationshipWithCharacters = Relationship & {
-  characterA: Pick<Character, "id" | "name" | "slug">;
-  characterB: Pick<Character, "id" | "name" | "slug">;
+  characterA: Pick<Character, "id" | "numId" | "name" | "slug">;
+  characterB: Pick<Character, "id" | "numId" | "name" | "slug">;
 };
 
 interface CharacterRelationshipsProps {
@@ -28,7 +28,7 @@ export default function CharacterRelationships({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <Link
-                  href={`/library/characters/${other.id}`}
+                  href={`/library/characters/${other.numId}-${other.slug}`}
                   className="font-medium hover:underline"
                 >
                   {other.name}

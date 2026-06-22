@@ -110,6 +110,7 @@ model CharacterFolder {
 
 model Character {
   id                 String   @id @default(cuid())
+  numId              Int      @unique @default(autoincrement())
   name               String
   slug               String   @unique
   description        String?

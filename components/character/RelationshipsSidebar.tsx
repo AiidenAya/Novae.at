@@ -4,8 +4,8 @@ import SectionCard from "./SectionCard";
 import type { Character, Relationship } from "@/lib/generated/prisma";
 
 type RelationshipWithCharacters = Relationship & {
-  characterA: Pick<Character, "id" | "name">;
-  characterB: Pick<Character, "id" | "name">;
+  characterA: Pick<Character, "id" | "numId" | "name" | "slug">;
+  characterB: Pick<Character, "id" | "numId" | "name" | "slug">;
 };
 
 interface RelationshipsSidebarProps {
@@ -58,7 +58,7 @@ export default function RelationshipsSidebar({ characterId, relationships }: Rel
               <div className="flex flex-col gap-2 flex-1 min-w-0">
                 <div className="flex gap-[10px] items-center w-full">
                   <Link
-                    href={`/library/characters/${other.id}`}
+                    href={`/library/characters/${other.numId}-${other.slug}`}
                     className="font-medium flex-1 min-w-0 truncate"
                     style={{
                       fontFamily: "var(--font-dm-sans)",
