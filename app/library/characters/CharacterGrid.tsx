@@ -92,7 +92,7 @@ export default function CharacterGrid({ characters }: { characters: Char[] }) {
           const cover = char.avatarUrl ?? char.artworks[0]?.imageUrl ?? null;
           return (
             <div key={char.id} style={{ position: "relative" }}>
-              <Link href={`/library/characters/${char.id}`} style={{ textDecoration: "none" }}>
+              <Link href={`/library/characters/${char.numId}-${char.slug}`} style={{ textDecoration: "none" }}>
                 <div className="character-card">
                   <div style={{ width: "100%", aspectRatio: "1", backgroundColor: "var(--novae-bg-main)", position: "relative" }}>
                     {cover ? (

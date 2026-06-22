@@ -35,7 +35,7 @@ export default function NewCharacterPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       const character = await res.json();
-      router.push(`/library/characters/${character.id}`);
+      router.push(`/library/characters/${character.numId}-${character.slug}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

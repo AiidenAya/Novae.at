@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { parseCharacterParam } from "@/lib/character-url";
 import CharacterPageClient from "./CharacterPageClient";
 
 interface Props {
@@ -9,12 +10,14 @@ interface Props {
 }
 
 export default async function CharacterPage({ params }: Props) {
-  const { id } = await params;
+  const { id: param } = await params;
+  const numId = parseCharacterParam(param);
+  if (isNaN(numId)) notFound();
 
   const [session, character] = await Promise.all([
     auth.api.getSession({ headers: await headers() }).catch(() => null),
     prisma.character.findUnique({
-      where: { id },
+      where: { numId },
       include: {
         user:    { select: { username: true } },
         artworks: { orderBy: { createdAt: "desc" } },
@@ -29,7 +32,6 @@ export default async function CharacterPage({ params }: Props) {
 
   const isOwner = session?.user?.id === character.userId;
 
-  // Only show public characters to non-owners
   if (!character.isPublic && !isOwner) notFound();
 
   return (

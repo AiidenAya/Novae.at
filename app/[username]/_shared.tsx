@@ -77,7 +77,7 @@ export function Avatar({ src, size, name }: { src: string | null; size: number; 
   );
 }
 
-export function CharacterCard({ name, hearts, images, coverImage, slug }: { name: string; hearts: number; images: number; coverImage: string | null; slug?: string }) {
+export function CharacterCard({ name, hearts, images, coverImage, slug, numId }: { name: string; hearts: number; images: number; coverImage: string | null; slug?: string; numId?: number }) {
   const inner = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start", width: 156, flexShrink: 0 }}>
       <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "rgba(105,61,169,0.1)" }}>
@@ -101,7 +101,7 @@ export function CharacterCard({ name, hearts, images, coverImage, slug }: { name
       </div>
     </div>
   );
-  if (slug) return <a href={`/library/characters/${slug}`} style={{ textDecoration: "none" }}>{inner}</a>;
+  if (numId != null && slug) return <a href={`/library/characters/${numId}-${slug}`} style={{ textDecoration: "none" }}>{inner}</a>;
   return inner;
 }
 
