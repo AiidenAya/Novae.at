@@ -349,7 +349,9 @@ export default function Navbar() {
     setOpen((prev) => (prev === key ? null : key));
   }
 
-  const username  = session?.user?.name ?? session?.user?.email ?? null;
+  const username  = (session?.user as Record<string, unknown> | undefined)?.username as string | undefined
+    ?? session?.user?.email
+    ?? null;
   const avatarUrl = dbAvatar ?? session?.user?.image ?? null;
   const roles   = (session?.user as Record<string, unknown> | undefined)?.roles as string[] | undefined ?? [];
   const isAdmin = roles.includes("admin");
