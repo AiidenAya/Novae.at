@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json();
   const allowed = ["name", "description", "avatarUrl", "backgroundImageUrl", "isPublic",
-    "birthdate", "age", "height", "weight", "mbti", "kingdom", "ethnicity", "race", "custom", "voiceClaimUrl",
+    "birthdate", "age", "height", "weight", "mbti", "kingdom", "ethnicity", "race", "gender", "customFieldName", "custom", "voiceClaimUrl",
     "isDesigner", "designerCredit"] as const;
 
   const data: Record<string, unknown> = {};

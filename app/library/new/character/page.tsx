@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export default function NewCharacterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [isDesigner, setIsDesigner] = useState(true);
+  const [isDesigner, setIsDesigner] = useState<boolean | null>(null);
   const [creditType, setCreditType] = useState<"onsite" | "offsite">("onsite");
   const [creditValue, setCreditValue] = useState("");
   const [creditLabel, setCreditLabel] = useState("");
@@ -16,6 +16,7 @@ export default function NewCharacterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (isDesigner === null) { setError("Please choose a designer option."); return; }
     setLoading(true);
     setError("");
 
@@ -25,8 +26,8 @@ export default function NewCharacterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          isDesigner,
-          designerCredit: !isDesigner && creditValue.trim()
+          isDesigner: isDesigner as boolean,
+          designerCredit: isDesigner === false && creditValue.trim()
             ? creditType === "onsite"
               ? `@${creditValue.trim()}`
               : `[${creditLabel.trim()}](${creditValue.trim()})`
@@ -147,7 +148,7 @@ export default function NewCharacterPage() {
               { key: "onsite",  label: "On Novae" },
               { key: "offsite", label: "External" },
             ] as const).map(({ key, label }) => {
-              const active = key === "me" ? isDesigner : (!isDesigner && creditType === key);
+              const active = key === "me" ? isDesigner === true : (isDesigner === false && creditType === key);
               return (
                 <button
                   key={key}
@@ -172,7 +173,7 @@ export default function NewCharacterPage() {
           </div>
 
           {/* Credit fields — shown only when not designer */}
-          {!isDesigner && (
+          {isDesigner === false && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
               {creditType === "offsite" && (

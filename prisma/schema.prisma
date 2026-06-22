@@ -127,6 +127,8 @@ model Character {
   kingdom            String?
   ethnicity          String?
   race               String?
+  gender             String?
+  customFieldName    String?
   custom             String?
   voiceClaimUrl      String?
   createdAt   DateTime @default(now())

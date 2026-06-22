@@ -26,6 +26,8 @@ interface CharacterData {
   kingdom: string | null;
   ethnicity: string | null;
   race: string | null;
+  gender: string | null;
+  customFieldName: string | null;
   custom: string | null;
   voiceClaimUrl: string | null;
   isDesigner: boolean;
@@ -162,6 +164,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [kingdom, setKingdom] = useState(character.kingdom ?? "");
   const [ethnicity, setEthnicity] = useState(character.ethnicity ?? "");
   const [race, setRace] = useState(character.race ?? "");
+  const [gender, setGender] = useState(character.gender ?? "");
+  const [customFieldName, setCustomFieldName] = useState(character.customFieldName ?? "");
   const [custom, setCustom] = useState(character.custom ?? "");
 
   // Designer credit edit state
@@ -210,7 +214,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [pendingCreatorLabel, setPendingCreatorLabel] = useState("");
 
   // Informations: which fields are visible
-  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean }[] = [
+  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean; fieldType?: "gender" | "custom" }[] = [
+    { key: "gender",     label: "Genre",      state: gender,     setter: setGender,     dbVal: character.gender, fieldType: "gender" },
     { key: "birthdate",  label: "Birthdate",  state: birthdate,  setter: setBirthdate,  dbVal: character.birthdate },
     { key: "age",        label: "Age",        state: age,        setter: setAge,        dbVal: character.age },
     { key: "height",     label: "Height",     state: height,     setter: setHeight,     dbVal: character.height },
@@ -219,8 +224,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     { key: "kingdom",    label: "Kingdom",    state: kingdom,    setter: setKingdom,    dbVal: character.kingdom },
     { key: "ethnicity",  label: "Ethnicity",  state: ethnicity,  setter: setEthnicity,  dbVal: character.ethnicity },
     { key: "race",       label: "Race",       state: race,       setter: setRace,       dbVal: character.race },
-    { key: "custom",     label: "Custom",     state: custom,     setter: setCustom,     dbVal: character.custom, multiline: true },
-  ] as const;
+    { key: "custom",     label: customFieldName || "Custom",  state: custom, setter: setCustom, dbVal: character.custom, multiline: true, fieldType: "custom" },
+  ];
   const [activeInfoKeys, setActiveInfoKeys] = useState<string[]>(
     ALL_INFO_FIELDS.filter((f) => !!f.dbVal).map((f) => f.key)
   );
@@ -252,7 +257,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, custom, voiceClaimUrl, avatarUrl,
+          name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, customFieldName, custom, voiceClaimUrl, avatarUrl,
           isDesigner,
           designerCredit: isDesigner ? null : (creditValue.trim()
             ? creditType === "onsite" ? `@${creditValue.trim()}` : `[${creditLabel.trim()}](${creditValue.trim()})`
@@ -277,7 +282,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, custom, voiceClaimUrl, avatarUrl, isDesigner, creditType, creditValue, creditLabel, swatches, router]);
+  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, customFieldName, custom, voiceClaimUrl, avatarUrl, isDesigner, creditType, creditValue, creditLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(character.name);
@@ -290,6 +295,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     setKingdom(character.kingdom ?? "");
     setEthnicity(character.ethnicity ?? "");
     setRace(character.race ?? "");
+    setGender(character.gender ?? "");
+    setCustomFieldName(character.customFieldName ?? "");
     setCustom(character.custom ?? "");
     setVoiceClaimUrl(character.voiceClaimUrl ?? "");
     setIsDesigner(character.isDesigner);
@@ -1151,39 +1158,98 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                   ) : undefined}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {visibleInfoFields.map(({ key, label, state, setter, dbVal, multiline }) => {
+                    {visibleInfoFields.map(({ key, label, state, setter, dbVal, multiline, fieldType }) => {
                       const value = editing ? state : dbVal;
+                      const GENDER_PRESETS = ["Homme", "Femme", "Non-binaire", "Iel", "Autre"];
+                      const isGenderCustom = fieldType === "gender" && value !== "" && !GENDER_PRESETS.includes(value ?? "");
+                      const displayLabel = fieldType === "custom" ? (editing ? customFieldName || "Custom" : character.customFieldName || "Custom") : label;
                       return (
-                        <div key={key} style={{ display: "flex", alignItems: multiline ? "flex-start" : "center", justifyContent: "space-between", gap: 8 }}>
-                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0, paddingTop: multiline ? 6 : 0 }}>
-                            {label}
+                        <div key={key} style={{ display: "flex", alignItems: (multiline || fieldType === "gender") ? "flex-start" : "center", justifyContent: "space-between", gap: 8 }}>
+                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0, paddingTop: (multiline || fieldType === "gender") ? 6 : 0 }}>
+                            {displayLabel}
                           </span>
                           {editing ? (
-                            <div style={{ display: "flex", gap: 4, flex: 1 }}>
-                              {multiline ? (
-                                <textarea
-                                  value={state ?? ""}
-                                  onChange={(e) => setter(e.target.value)}
-                                  placeholder="—"
-                                  rows={3}
-                                  style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1, resize: "vertical", minHeight: 64 }}
-                                />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                              {fieldType === "gender" ? (
+                                <>
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+                                    {GENDER_PRESETS.map((opt) => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setter(state === opt ? "" : opt)}
+                                        style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: state === opt ? "var(--novae-btn-primary)" : "none", color: state === opt ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}
+                                      >{opt}</button>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => setter(isGenderCustom ? "" : "custom-")}
+                                      style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: isGenderCustom ? "var(--novae-btn-primary)" : "none", color: isGenderCustom ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}
+                                    >Custom</button>
+                                    <button
+                                      onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))}
+                                      style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", marginLeft: "auto" }}
+                                    >×</button>
+                                  </div>
+                                  {isGenderCustom && (
+                                    <input
+                                      value={state.startsWith("custom-") ? state.slice(7) : state}
+                                      onChange={(e) => setter("custom-" + e.target.value)}
+                                      placeholder="Mon genre…"
+                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                                    />
+                                  )}
+                                </>
+                              ) : fieldType === "custom" ? (
+                                <>
+                                  <input
+                                    value={customFieldName}
+                                    onChange={(e) => setCustomFieldName(e.target.value)}
+                                    placeholder="Nom du champ…"
+                                    style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                                  />
+                                  <div style={{ display: "flex", gap: 4 }}>
+                                    <textarea
+                                      value={state ?? ""}
+                                      onChange={(e) => setter(e.target.value)}
+                                      placeholder="Contenu…"
+                                      rows={3}
+                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1, resize: "vertical", minHeight: 64 }}
+                                    />
+                                    <button
+                                      onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))}
+                                      style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", alignSelf: "flex-start" }}
+                                    >×</button>
+                                  </div>
+                                </>
                               ) : (
-                                <input
-                                  value={state ?? ""}
-                                  onChange={(e) => setter(e.target.value)}
-                                  placeholder="—"
-                                  style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1 }}
-                                />
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  {multiline ? (
+                                    <textarea
+                                      value={state ?? ""}
+                                      onChange={(e) => setter(e.target.value)}
+                                      placeholder="—"
+                                      rows={3}
+                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1, resize: "vertical", minHeight: 64 }}
+                                    />
+                                  ) : (
+                                    <input
+                                      value={state ?? ""}
+                                      onChange={(e) => setter(e.target.value)}
+                                      placeholder="—"
+                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1 }}
+                                    />
+                                  )}
+                                  <button
+                                    onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))}
+                                    style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px" }}
+                                  >×</button>
+                                </div>
                               )}
-                              <button
-                                onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))}
-                                style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px" }}
-                              >×</button>
                             </div>
                           ) : (
                             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", whiteSpace: multiline ? "pre-wrap" : undefined }}>
-                              {value || "—"}
+                              {fieldType === "gender" && value?.startsWith("custom-") ? value.slice(7) : (value || "—")}
                             </span>
                           )}
                         </div>
