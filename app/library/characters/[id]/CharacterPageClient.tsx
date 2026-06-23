@@ -444,10 +444,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   };
 
   const saveEditRel = async () => {
+    if (!editingRel) return;
     // typeA = other char's role (shows on current char's page); typeB = current char's role (shows on other char's page)
     const typeA = (editingRel.isA ? editingRel.otherLabel : editingRel.myLabel).trim();
     const typeB = (editingRel.isA ? editingRel.myLabel : editingRel.otherLabel).trim();
-    if (!editingRel || !typeA) return;
+    if (!typeA) return;
     setRelSaving(true);
     try {
       const res = await fetch(`/api/characters/${character.id}/relationships/${editingRel.id}`, {

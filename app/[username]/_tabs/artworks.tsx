@@ -125,7 +125,7 @@ function ArtworkCard({
               <svg width="11" height="11" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onDelete(artwork.id); }}
+              onClick={(e) => { e.stopPropagation(); onDelete(String(artwork.id)); }}
               style={{ width: 28, height: 28, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
               title="Delete"
             >×</button>
