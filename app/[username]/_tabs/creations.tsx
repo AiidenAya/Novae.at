@@ -130,7 +130,7 @@ export default function CreationsTab({
         {isEditing ? (
           <EditableGrid items={featuredChars} all={allCharacters} onRemove={onRemoveCharacter} onAdd={onAddCharacter} addLabel="Add character" />
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 32, justifyContent: "flex-start" }}>
             {featuredChars.map((c, i) => <CharacterCard key={i} {...c} />)}
           </div>
         )}

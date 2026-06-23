@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 const EditorField    = dynamic(() => import("@/components/editor/EditorField"),    { ssr: false });
 const EditorRenderer = dynamic(() => import("@/components/editor/EditorRenderer"), { ssr: false });
@@ -35,6 +37,11 @@ interface CharacterData {
   customFieldName: string | null;
   custom: string | null;
   voiceClaimUrl: string | null;
+  playlistUrl: string | null;
+  summary: string | null;
+  biography: string | null;
+  relationshipsA: { id: string; type: string; typeB: string | null; description: string | null; characterB: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } }[];
+  relationshipsB: { id: string; type: string; typeB: string | null; description: string | null; characterA: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } }[];
   isDesigner: boolean;
   designerCredit: string | null;
   isWriter: boolean;
@@ -46,6 +53,7 @@ interface CharacterData {
   tags: Tag[];
   colorPalettes: { id: string; swatches: Swatch[] }[];
   favorites: { id: string }[];
+  galleries: { id: string; name: string; images: { id: string; artworkId: string; order: number }[] }[];
 }
 
 interface Props {
@@ -152,13 +160,156 @@ function ColorPickerPopover({
   );
 }
 
+// ─── Placeholder data ───────────────────────────────────────────────────────
+
+const PLACEHOLDER_STORY = [
+  {
+    id: "1",
+    title: "The First Chapter",
+    description: "In the beginning, before the world knew her name, she wandered the forgotten roads between kingdoms, carrying nothing but a blade and a purpose no one else could see.",
+    date: "03/12/2025",
+    coverUrl: null as string | null,
+  },
+  {
+    id: "2",
+    title: "Echoes of the Past",
+    description: "Old wounds resurface when a mysterious letter arrives bearing a seal she thought buried forever. The choices she makes now will echo through every story that follows.",
+    date: "07/28/2025",
+    coverUrl: null as string | null,
+  },
+];
+
+const PLACEHOLDER_MUSIC = [
+  {
+    id: "1",
+    title: "Placeholder Song Title",
+    artist: "Artist Name",
+    url: null as string | null,
+    thumbnailUrl: null as string | null,
+  },
+  {
+    id: "2",
+    title: "Another Track",
+    artist: "Another Artist",
+    url: null as string | null,
+    thumbnailUrl: null as string | null,
+  },
+];
+
+const PLACEHOLDER_RELATIONSHIPS = [
+  {
+    id: "1",
+    name: "Character Name",
+    role: "Best Friend",
+    description: "A steadfast companion through the darkest of times, always the first to offer a hand.",
+    avatarUrl: null as string | null,
+  },
+  {
+    id: "2",
+    name: "Another Character",
+    role: "Rival",
+    description: "Their rivalry began years ago and still burns with the fire of unresolved history.",
+    avatarUrl: null as string | null,
+  },
+];
+
+// ─── Gallery DnD sub-components ──────────────────────────────────────────────
+
+type GalleryData = { id: string; name: string; images: { id: string; artworkId: string; order: number }[] };
+
+function DraggableArtworkTile({
+  artwork, isOwner, galleries, characterId, assigningArtwork, setAssigningArtwork,
+  setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive,
+}: {
+  artwork: Artwork;
+  isOwner: boolean;
+  galleries: GalleryData[];
+  characterId: string;
+  assigningArtwork: string | null;
+  setAssigningArtwork: React.Dispatch<React.SetStateAction<string | null>>;
+  setLightbox: (v: { url: string; artist: string | null } | null) => void;
+  openEditCredits: (a: Artwork) => void;
+  deleteArtwork: (id: string) => void;
+  setGalleries: React.Dispatch<React.SetStateAction<GalleryData[]>>;
+  isDndActive: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `artwork-${artwork.id}` });
+  const tileStyle: React.CSSProperties = {
+    position: "relative", aspectRatio: "1",
+    borderRadius: "var(--novae-radius-md)", overflow: "hidden",
+    backgroundColor: "var(--novae-bg-card)",
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.4 : 1,
+    touchAction: "none",
+    cursor: isDragging ? "grabbing" : "zoom-in",
+  };
+  return (
+    <div ref={setNodeRef} style={tileStyle}>
+      {isOwner && isDndActive && (
+        <div {...attributes} {...listeners} style={{ position: "absolute", inset: 0, zIndex: 6, cursor: "grab" }} onClick={(e) => e.preventDefault()} />
+      )}
+      <div onClick={() => !isDragging && setLightbox({ url: artwork.imageUrl, artist: artwork.title })} style={{ position: "absolute", inset: 0 }}>
+        <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill className="object-cover" />
+      </div>
+      {isOwner && (
+        <div className="artwork-actions" style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 4, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
+          {galleries.length > 0 && (
+            <button onClick={(e) => { e.stopPropagation(); setAssigningArtwork((prev) => prev === artwork.id ? null : artwork.id); }} style={{ width: 28, height: 28, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Manage categories">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </button>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }} style={{ width: 28, height: 28, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit credits">
+            <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); deleteArtwork(artwork.id); }} style={{ width: 28, height: 28, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }} title="Delete">×</button>
+        </div>
+      )}
+      {isOwner && assigningArtwork === artwork.id && galleries.length > 0 && (
+        <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", bottom: 6, left: 6, right: 6, background: "rgba(0,0,0,0.88)", borderRadius: "var(--novae-radius-sm)", padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4, zIndex: 20 }}>
+          {galleries.map((g) => {
+            const inGallery = g.images.some((i) => i.artworkId === artwork.id);
+            return (
+              <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)" }}>
+                <input type="checkbox" checked={inGallery} onChange={async () => {
+                  const res = await fetch(`/api/characters/${characterId}/galleries/${g.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artworkId: artwork.id, remove: inGallery }) });
+                  if (res.ok) setGalleries((prev) => prev.map((gal) => {
+                    if (gal.id !== g.id) return gal;
+                    if (inGallery) return { ...gal, images: gal.images.filter((i) => i.artworkId !== artwork.id) };
+                    return { ...gal, images: [...gal.images, { id: Math.random().toString(), artworkId: artwork.id, order: 0 }] };
+                  }));
+                }} style={{ accentColor: "var(--novae-btn-primary)", cursor: "pointer" }} />
+                {g.name}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DroppableGallerySection({
+  galleryId, isOver, children,
+}: {
+  galleryId: string;
+  isOver: boolean;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef } = useDroppable({ id: `gallery-${galleryId}` });
+  return (
+    <div ref={setNodeRef} style={{ borderRadius: "var(--novae-radius-md)", border: `2px dashed ${isOver ? "var(--novae-text-link)" : "transparent"}`, transition: "border-color 0.15s", padding: isOver ? 8 : 0 }}>
+      {children}
+    </div>
+  );
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function CharacterPageClient({ character, isOwner, currentUserId }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"profile" | "gallery">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "story" | "relationships" | "gallery" | "timeline">("profile");
 
   // Edit state mirrors the DB fields
   const [name, setName] = useState(character.name);
@@ -195,6 +346,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [writerValue, setWriterValue] = useState(parsedWriter.value);
   const [writerLabel, setWriterLabel] = useState(parsedWriter.label);
   const [voiceClaimUrl, setVoiceClaimUrl] = useState(character.voiceClaimUrl ?? "");
+  const [playlistUrl, setPlaylistUrl] = useState(character.playlistUrl ?? "");
+  const [summary, setSummary] = useState(character.summary ?? "");
+  const [biography, setBiography] = useState(character.biography ?? "");
   const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl ?? "");
 
   // Tags
@@ -219,15 +373,110 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   // Lightbox
   const [lightbox, setLightbox] = useState<{ url: string; artist: string | null } | null>(null);
 
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
+
+  // Galleries
+  const [galleries, setGalleries] = useState<GalleryData[]>(character.galleries ?? []);
+  const [collapsedGalleries, setCollapsedGalleries] = useState<Record<string, boolean>>({});
+  const [galleryDragId, setGalleryDragId] = useState<string | null>(null);
+  const [galleryOverId, setGalleryOverId] = useState<string | null>(null);
+  const gallerySensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [newGalleryName, setNewGalleryName] = useState("");
+  const [creatingGallery, setCreatingGallery] = useState(false);
+  const [renamingGallery, setRenamingGallery] = useState<{ id: string; name: string } | null>(null);
+  const [assigningArtwork, setAssigningArtwork] = useState<string | null>(null); // artworkId
+
+  // Relationships
+  type RelEntry = { id: string; type: string; typeRaw: string; typeBRaw: string | null; isA: boolean; description: string | null; character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } };
+  const initRels = (): RelEntry[] => [
+    ...character.relationshipsA.map((r) => ({ id: r.id, type: r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: true, description: r.description, character: r.characterB })),
+    ...character.relationshipsB.map((r) => ({ id: r.id, type: r.typeB ?? r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: false, description: r.description, character: r.characterA })),
+  ];
+  const [relationships, setRelationships] = useState<RelEntry[]>(initRels);
+  const [showAddRel, setShowAddRel] = useState(false);
+  const [relSearch, setRelSearch] = useState("");
+  const [relSearchResults, setRelSearchResults] = useState<{ id: string; name: string; numId: number; slug: string; avatarUrl: string | null }[]>([]);
+  const [relSearchLoading, setRelSearchLoading] = useState(false);
+  const [relSelectedChar, setRelSelectedChar] = useState<{ id: string; name: string; numId: number; slug: string; avatarUrl: string | null } | null>(null);
+  const [relType, setRelType] = useState("");
+  const [relTypeB, setRelTypeB] = useState("");
+  const [relDesc, setRelDesc] = useState("");
+  const [relSaving, setRelSaving] = useState(false);
+  // myLabel = label from current char's perspective, otherLabel = the other side's label
+  const [editingRel, setEditingRel] = useState<{ id: string; isA: boolean; myLabel: string; otherLabel: string; description: string; error?: string } | null>(null);
+
+  const searchRelChars = async (q: string) => {
+    if (!q.trim()) { setRelSearchResults([]); return; }
+    setRelSearchLoading(true);
+    try {
+      const res = await fetch(`/api/characters?search=${encodeURIComponent(q)}&limit=8&exclude=${character.id}`);
+      if (res.ok) setRelSearchResults(await res.json());
+    } finally { setRelSearchLoading(false); }
+  };
+
+  const addRelationship = async () => {
+    if (!relSelectedChar || !relType.trim()) return;
+    setRelSaving(true);
+    try {
+      const res = await fetch(`/api/characters/${character.id}/relationships`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterBId: relSelectedChar.id, type: relType.trim(), typeB: relTypeB.trim() || null, description: relDesc.trim() || null }),
+      });
+      if (res.ok) {
+        const raw = await res.json();
+        const newRel: RelEntry = { ...raw, isA: true, typeRaw: relType.trim(), typeBRaw: relTypeB.trim() || null };
+        setRelationships((prev) => [...prev, newRel]);
+        setShowAddRel(false);
+        setRelSearch(""); setRelSearchResults([]); setRelSelectedChar(null); setRelType(""); setRelTypeB(""); setRelDesc("");
+      }
+    } finally { setRelSaving(false); }
+  };
+
+  const deleteRelationship = async (relId: string) => {
+    await fetch(`/api/characters/${character.id}/relationships/${relId}`, { method: "DELETE" });
+    setRelationships((prev) => prev.filter((r) => r.id !== relId));
+  };
+
+  const saveEditRel = async () => {
+    // typeA = other char's role (shows on current char's page); typeB = current char's role (shows on other char's page)
+    const typeA = (editingRel.isA ? editingRel.otherLabel : editingRel.myLabel).trim();
+    const typeB = (editingRel.isA ? editingRel.myLabel : editingRel.otherLabel).trim();
+    if (!editingRel || !typeA) return;
+    setRelSaving(true);
+    try {
+      const res = await fetch(`/api/characters/${character.id}/relationships/${editingRel.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: typeA, typeB: typeB || null, description: editingRel.description.trim() || null }),
+      });
+      if (res.ok) {
+        setRelationships((prev) => prev.map((r) => r.id === editingRel.id
+          ? { ...r, type: editingRel.isA ? typeA : (typeB || typeA), typeRaw: typeA, typeBRaw: typeB || null, description: editingRel.description.trim() || null }
+          : r
+        ));
+        setEditingRel(null);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setEditingRel((r) => r && { ...r, error: body.error ?? `Error ${res.status}` });
+      }
+    } finally { setRelSaving(false); }
+  };
+
   // Creator modal
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [pendingIsAvatar, setPendingIsAvatar] = useState(false);
-  const [pendingCreatorType, setPendingCreatorType] = useState<"onsite" | "offsite">("onsite");
+  const [pendingCreatorType, setPendingCreatorType] = useState<"me" | "onsite" | "offsite">("me");
   const [pendingCreator, setPendingCreator] = useState("");
   const [pendingCreatorLabel, setPendingCreatorLabel] = useState("");
 
   // Informations: which fields are visible
-  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean; fieldType?: "gender" | "custom" }[] = [
+  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean; fieldType?: "gender" }[] = [
     { key: "gender",      label: "Genre",       state: gender,      setter: setGender,      dbVal: character.gender,      fieldType: "gender" },
     { key: "orientation", label: "Orientation", state: orientation, setter: setOrientation, dbVal: character.orientation },
     { key: "birthdate",  label: "Birthdate",  state: birthdate,  setter: setBirthdate,  dbVal: character.birthdate },
@@ -238,12 +487,24 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     { key: "kingdom",    label: "Kingdom",    state: kingdom,    setter: setKingdom,    dbVal: character.kingdom },
     { key: "ethnicity",  label: "Ethnicity",  state: ethnicity,  setter: setEthnicity,  dbVal: character.ethnicity },
     { key: "race",       label: "Race",       state: race,       setter: setRace,       dbVal: character.race },
-    { key: "custom",     label: customFieldName || "Custom",  state: custom, setter: setCustom, dbVal: character.custom, multiline: true, fieldType: "custom" },
   ];
   const [activeInfoKeys, setActiveInfoKeys] = useState<string[]>(
     ALL_INFO_FIELDS.filter((f) => !!f.dbVal).map((f) => f.key)
   );
   const [showInfoFieldPicker, setShowInfoFieldPicker] = useState(false);
+
+  // Multiple custom fields
+  type CustomField = { id: string; name: string; content: string };
+  const parseCustomFields = (): CustomField[] => {
+    if (!character.custom) return [];
+    try {
+      const parsed = JSON.parse(character.custom);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    // Legacy: single custom field
+    return [{ id: "legacy", name: character.customFieldName || "Custom", content: character.custom }];
+  };
+  const [customFields, setCustomFields] = useState<CustomField[]>(parseCustomFields);
 
   // Custom containers
   type Container = { id: string; title: string };
@@ -254,6 +515,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [creditsType, setCreditsType] = useState<"onsite" | "offsite">("onsite");
   const [creditsValue, setCreditsValue] = useState("");
   const [creditsLabel, setCreditsLabel] = useState("");
+  const [creditsCharacters, setCreditsCharacters] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
+  const [creditsCharSearch, setCreditsCharSearch] = useState("");
+  const [creditsCharResults, setCreditsCharResults] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
+  const [creditsCharLoading, setCreditsCharLoading] = useState(false);
 
   // Favorite
   const [favorited, setFavorited] = useState(
@@ -271,7 +536,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFieldName, custom, voiceClaimUrl, avatarUrl,
+          name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation,
+          custom: customFields.length > 0 ? JSON.stringify(customFields) : null,
+          customFieldName: null,
+          voiceClaimUrl, playlistUrl, summary, biography, avatarUrl,
           isDesigner,
           designerCredit: isDesigner ? null : (creditValue.trim()
             ? creditType === "onsite" ? `@${creditValue.trim()}` : `[${creditLabel.trim()}](${creditValue.trim()})`
@@ -300,7 +568,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFieldName, custom, voiceClaimUrl, avatarUrl, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
+  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, voiceClaimUrl, playlistUrl, summary, biography, avatarUrl, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(character.name);
@@ -318,13 +586,17 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     setCustomFieldName(character.customFieldName ?? "");
     setCustom(character.custom ?? "");
     setVoiceClaimUrl(character.voiceClaimUrl ?? "");
+    setPlaylistUrl(character.playlistUrl ?? "");
     setIsDesigner(character.isDesigner);
     const p = parseCredit(character.designerCredit);
     setCreditType(p.type); setCreditValue(p.value); setCreditLabel(p.label);
     setIsWriter(character.isWriter);
     const pw = parseCredit(character.writerCredit);
     setWriterType(pw.type); setWriterValue(pw.value); setWriterLabel(pw.label);
+    setCustomFields(parseCustomFields());
     setAvatarUrl(character.avatarUrl ?? "");
+    setSummary(character.summary ?? "");
+    setBiography(character.biography ?? "");
     setSwatches(initialSwatches);
     setEditing(false);
   };
@@ -376,16 +648,6 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ avatarUrl: url }),
         });
-        // Also add to gallery
-        const res = await fetch(`/api/characters/${character.id}/artworks`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl: url, title: creator || "Avatar" }),
-        });
-        if (res.ok) {
-          const artwork = await res.json();
-          setArtworks((prev) => [artwork, ...prev]);
-        }
         router.refresh();
       } else {
         for (const file of uploaded) {
@@ -406,6 +668,17 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  // Builds the credit string for the upload modal, or null if the choice is incomplete.
+  const buildCreatorCredit = (): string | null => {
+    if (pendingCreatorType === "me") return `@${character.user.username ?? ""}`;
+    const raw = pendingCreator.trim();
+    if (!raw) return null;
+    if (pendingCreatorType === "onsite") return `@${raw.replace(/^@/, "")}`;
+    const label = pendingCreatorLabel.trim();
+    if (!label) return null;
+    return `${label}::${raw}`;
   };
 
   const deleteArtwork = async (artworkId: string) => {
@@ -430,7 +703,25 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
       setCreditsValue(title);
       setCreditsLabel("");
     }
+    setCreditsCharacters(artwork.characters ?? []);
+    setCreditsCharSearch("");
+    setCreditsCharResults([]);
     setEditingCredits(artwork);
+  };
+
+  const searchCreditsChars = async (q: string) => {
+    setCreditsCharSearch(q);
+    if (!q.trim()) { setCreditsCharResults([]); return; }
+    setCreditsCharLoading(true);
+    try {
+      const res = await fetch(`/api/characters?search=${encodeURIComponent(q)}&limit=8`);
+      if (res.ok) {
+        const data = await res.json();
+        setCreditsCharResults((data.characters ?? data).filter((c: { id: string }) => c.id !== character.id));
+      }
+    } finally {
+      setCreditsCharLoading(false);
+    }
   };
 
   const saveCredits = async () => {
@@ -443,9 +734,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     await fetch(`/api/characters/${character.id}/artworks/${editingCredits.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newTitle }),
+      body: JSON.stringify({ title: newTitle, characterIds: creditsCharacters.map((c) => c.id) }),
     });
-    setArtworks((prev) => prev.map((a) => a.id === editingCredits.id ? { ...a, title: newTitle } : a));
+    setArtworks((prev) => prev.map((a) => a.id === editingCredits.id ? { ...a, title: newTitle, characters: creditsCharacters } : a));
     setEditingCredits(null);
   };
 
@@ -484,14 +775,17 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  const displayAvatar = avatarUrl || artworks[0]?.imageUrl || null;
+  const displayAvatar = avatarUrl || null;
   const latestImages = artworks.slice(0, 4);
 
   const visibleInfoFields = ALL_INFO_FIELDS.filter((f) => activeInfoKeys.includes(f.key));
 
-  const TABS = [
-    { key: "profile" as const, label: "Profile" },
-    { key: "gallery" as const, label: "Gallery" },
+  const TABS: { key: "profile" | "story" | "relationships" | "gallery" | "timeline"; label: string; icon: React.ReactNode }[] = [
+    { key: "profile", label: "Profile", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
+    { key: "story", label: "Story", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
+    { key: "relationships", label: "Relationships", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
+    { key: "gallery", label: "Gallery", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> },
+    { key: "timeline", label: "Timeline", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   ];
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -510,7 +804,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         className="hidden"
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
-          if (files.length) { setPendingFiles(files); setPendingIsAvatar(false); setPendingCreator(""); }
+          if (files.length) { setPendingFiles(files); setPendingIsAvatar(false); setPendingCreator(""); setPendingCreatorLabel(""); setPendingCreatorType("me"); }
           e.target.value = "";
         }}
       />
@@ -521,7 +815,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         className="hidden"
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
-          if (files.length) { setPendingFiles(files); setPendingIsAvatar(true); setPendingCreator(""); }
+          if (files.length) { setPendingFiles(files); setPendingIsAvatar(true); setPendingCreator(""); setPendingCreatorLabel(""); setPendingCreatorType("me"); }
           e.target.value = "";
         }}
       />
@@ -569,32 +863,69 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                 style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
               />
             )}
-            <input
-              autoFocus={creditsType === "onsite"}
-              value={creditsValue}
-              onChange={(e) => setCreditsValue(e.target.value)}
-              placeholder={creditsType === "onsite" ? "username" : "https://..."}
-              onKeyDown={(e) => { if (e.key === "Enter") saveCredits(); }}
-              style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {creditsType === "onsite" && (
+                <button
+                  type="button"
+                  onClick={() => setCreditsValue(character.user.username ?? "")}
+                  style={{ alignSelf: "flex-start", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                >
+                  Me (@{character.user.username})
+                </button>
+              )}
+              <input
+                autoFocus={creditsType === "onsite"}
+                value={creditsValue}
+                onChange={(e) => setCreditsValue(e.target.value)}
+                placeholder={creditsType === "onsite" ? "username" : "https://..."}
+                onKeyDown={(e) => { if (e.key === "Enter") saveCredits(); }}
+                style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
+              />
+            </div>
+
+            {/* Characters in this image */}
+            <div>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                Characters in this image
+              </span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {creditsCharacters.map((c) => (
+                  <span key={c.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-tag)" }}>
+                    {c.name}
+                    <button onClick={() => setCreditsCharacters((prev) => prev.filter((x) => x.id !== c.id))} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: "0 0 0 2px", lineHeight: 1, fontSize: 13 }}>×</button>
+                  </span>
+                ))}
+              </div>
+              <div style={{ position: "relative", marginTop: 8 }}>
+                <input
+                  value={creditsCharSearch}
+                  onChange={(e) => searchCreditsChars(e.target.value)}
+                  placeholder="Search characters to tag…"
+                  style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                />
+                {creditsCharResults.length > 0 && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 60, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", marginTop: 4, overflow: "hidden" }}>
+                    {creditsCharResults.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          if (!creditsCharacters.find((x) => x.id === c.id)) setCreditsCharacters((prev) => [...prev, c]);
+                          setCreditsCharSearch(""); setCreditsCharResults([]);
+                        }}
+                        style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", cursor: "pointer" }}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {creditsCharLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--novae-text-secondary)" }}>…</span>}
+              </div>
+            </div>
 
             <div style={{ display: "flex", gap: 12 }}>
-              <button
-                onClick={() => setEditingCredits(null)}
-                style={{ flex: 1, padding: "10px 0", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", cursor: "pointer" }}
-              >Cancel</button>
-              <button
-                disabled={!creditsValue.trim() || (creditsType === "offsite" && !creditsLabel.trim())}
-                onClick={saveCredits}
-                style={{
-                  flex: 1, padding: "10px 0",
-                  background: (creditsValue.trim() && (creditsType === "onsite" || creditsLabel.trim())) ? "var(--novae-btn-primary)" : "var(--novae-bg-input)",
-                  border: "none", borderRadius: "var(--novae-radius-md)",
-                  color: (creditsValue.trim() && (creditsType === "onsite" || creditsLabel.trim())) ? "#fff" : "var(--novae-text-secondary)",
-                  fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)",
-                  fontWeight: 600, cursor: (creditsValue.trim() && (creditsType === "onsite" || creditsLabel.trim())) ? "pointer" : "not-allowed",
-                }}
-              >Save</button>
+              <button onClick={() => setEditingCredits(null)} style={{ flex: 1, padding: "10px 0", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", cursor: "pointer" }}>Cancel</button>
+              <button onClick={saveCredits} style={{ flex: 1, padding: "10px 0", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}>Save</button>
             </div>
           </div>
         </div>
@@ -707,23 +1038,27 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
               {pendingFiles.length} file{pendingFiles.length > 1 ? "s" : ""} selected.
             </p>
 
-            {/* Toggle onsite / offsite */}
+            {/* Toggle me / onsite / offsite — same design as new-character page */}
             <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-              {(["onsite", "offsite"] as const).map((t) => (
+              {([
+                { key: "me",      label: "Me" },
+                { key: "onsite",  label: "Novae" },
+                { key: "offsite", label: "Outside website" },
+              ] as const).map(({ key, label }) => (
                 <button
-                  key={t}
-                  onClick={() => { setPendingCreatorType(t); setPendingCreator(""); setPendingCreatorLabel(""); }}
+                  key={key}
+                  onClick={() => { setPendingCreatorType(key); setPendingCreator(""); setPendingCreatorLabel(""); }}
                   style={{
                     flex: 1, padding: "8px 0",
-                    background: pendingCreatorType === t ? "var(--novae-btn-primary)" : "none",
+                    background: pendingCreatorType === key ? "var(--novae-btn-primary)" : "none",
                     border: "none",
-                    color: pendingCreatorType === t ? "#fff" : "var(--novae-text-secondary)",
+                    color: pendingCreatorType === key ? "#fff" : "var(--novae-text-secondary)",
                     fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                    fontWeight: pendingCreatorType === t ? 600 : 400,
+                    fontWeight: pendingCreatorType === key ? 600 : 400,
                     cursor: "pointer",
                   }}
                 >
-                  {t === "onsite" ? "On Novae" : "External"}
+                  {label}
                 </button>
               ))}
             </div>
@@ -737,26 +1072,23 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                 style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
               />
             )}
-            <input
-              autoFocus={pendingCreatorType === "onsite"}
-              value={pendingCreator}
-              onChange={(e) => setPendingCreator(e.target.value)}
-              placeholder={pendingCreatorType === "onsite" ? "username" : "https://twitter.com/..."}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && pendingCreator.trim()) {
-                  const files = pendingFiles!;
-                  const isAvatar = pendingIsAvatar;
-                  const raw = pendingCreator.trim();
-                  const label = pendingCreatorLabel.trim();
-                  const creator = pendingCreatorType === "onsite"
-                    ? `@${raw.replace(/^@/, "")}`
-                    : label ? `${label}::${raw}` : raw;
-                  setPendingFiles(null);
-                  uploadArtwork(files, isAvatar, creator, pendingCreatorType);
-                }
-              }}
-              style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
-            />
+            {pendingCreatorType !== "me" && (
+              <input
+                autoFocus={pendingCreatorType === "onsite"}
+                value={pendingCreator}
+                onChange={(e) => setPendingCreator(e.target.value)}
+                placeholder={pendingCreatorType === "onsite" ? "username" : "https://twitter.com/..."}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const creator = buildCreatorCredit();
+                    if (creator === null) return;
+                    setPendingFiles(null);
+                    uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite");
+                  }
+                }}
+                style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
+              />
+            )}
 
             <div style={{ display: "flex", gap: 12 }}>
               <button
@@ -772,26 +1104,21 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                 }}
               >Cancel</button>
               <button
-                disabled={!pendingCreator.trim() || (pendingCreatorType === "offsite" && !pendingCreatorLabel.trim())}
+                disabled={buildCreatorCredit() === null}
                 onClick={() => {
-                  const files = pendingFiles!;
-                  const isAvatar = pendingIsAvatar;
-                  const raw = pendingCreator.trim();
-                  const label = pendingCreatorLabel.trim();
-                  const creator = pendingCreatorType === "onsite"
-                    ? `@${raw.replace(/^@/, "")}`
-                    : label ? `${label}::${raw}` : raw;
+                  const creator = buildCreatorCredit();
+                  if (creator === null) return;
                   setPendingFiles(null);
-                  uploadArtwork(files, isAvatar, creator, pendingCreatorType);
+                  uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite");
                 }}
                 style={{
                   flex: 1, padding: "10px 0",
-                  background: (pendingCreator.trim() && (pendingCreatorType === "onsite" || pendingCreatorLabel.trim())) ? "var(--novae-btn-primary)" : "var(--novae-bg-input)",
+                  background: buildCreatorCredit() !== null ? "var(--novae-btn-primary)" : "var(--novae-bg-input)",
                   border: "none",
                   borderRadius: "var(--novae-radius-md)",
-                  color: (pendingCreator.trim() && (pendingCreatorType === "onsite" || pendingCreatorLabel.trim())) ? "#fff" : "var(--novae-text-secondary)",
+                  color: buildCreatorCredit() !== null ? "#fff" : "var(--novae-text-secondary)",
                   fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)",
-                  fontWeight: 600, cursor: (pendingCreator.trim() && (pendingCreatorType === "onsite" || pendingCreatorLabel.trim())) ? "pointer" : "not-allowed",
+                  fontWeight: 600, cursor: buildCreatorCredit() !== null ? "pointer" : "not-allowed",
                 }}
               >Upload</button>
             </div>
@@ -945,31 +1272,35 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
               {/* Name + quote + meta */}
               <div className="flex flex-col gap-3 w-full">
-                {editing ? (
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    style={{
-                      ...inputStyle,
-                      fontFamily: "var(--font-space-grotesk)",
-                      fontSize: "var(--novae-text-5xl)",
-                      fontWeight: 700,
-                      padding: "8px 12px",
-                    }}
-                  />
-                ) : (
-                  <h1
-                    style={{
-                      fontFamily: "var(--font-space-grotesk)",
-                      fontSize: "var(--novae-text-5xl)",
-                      fontWeight: 700,
-                      color: "var(--novae-text-primary)",
-                      margin: 0,
-                    }}
-                  >
-                    {name}
-                  </h1>
-                )}
+                {/* Name row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  {editing ? (
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        fontFamily: "var(--font-space-grotesk)",
+                        fontSize: "var(--novae-text-5xl)",
+                        fontWeight: 700,
+                        padding: "8px 12px",
+                        flex: 1,
+                      }}
+                    />
+                  ) : (
+                    <h1
+                      style={{
+                        fontFamily: "var(--font-space-grotesk)",
+                        fontSize: "var(--novae-text-5xl)",
+                        fontWeight: 700,
+                        color: "var(--novae-text-primary)",
+                        margin: 0,
+                      }}
+                    >
+                      {name}
+                    </h1>
+                  )}
+                </div>
 
                 {editing ? (
                   <textarea
@@ -993,9 +1324,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                     display: "flex",
                     flexWrap: "wrap" as const,
                     gap: "24px",
-                    paddingTop: 16,
+                    paddingTop: 20,
                     borderTop: "1px solid var(--novae-outline-all)",
-                    marginTop: 4,
+                    marginTop: 12,
                   }}
                 >
                   <MetaItem label="Owner" value={`@${character.user.username}`} href={`/${character.user.username}`} />
@@ -1058,79 +1389,19 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                               style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
                             />
                           )}
+                          {creditType === "onsite" && (
+                            <button
+                              type="button"
+                              onClick={() => setCreditValue(character.user.username ?? "")}
+                              style={{ alignSelf: "flex-start", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                            >
+                              Me (@{character.user.username})
+                            </button>
+                          )}
                           <input
                             value={creditValue}
                             onChange={(e) => setCreditValue(e.target.value)}
                             placeholder={creditType === "onsite" ? "username" : "https://..."}
-                            style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {/* Writer — view mode */}
-                  {!editing && (() => {
-                    if (character.isWriter) {
-                      return <MetaItem label="Writer" value={`@${character.user.username}`} href={`/${character.user.username}`} />;
-                    }
-                    if (!character.writerCredit) return null;
-                    if (character.writerCredit.startsWith("@")) {
-                      const u = character.writerCredit.slice(1);
-                      return <MetaItem label="Writer" value={`@${u}`} href={`/${u}`} />;
-                    }
-                    const m = character.writerCredit.match(/^\[(.+)\]\((.+)\)$/);
-                    if (m) return <MetaItem label="Writer" value={m[1]} href={m[2]} />;
-                    return <MetaItem label="Writer" value={character.writerCredit} />;
-                  })()}
-                  {/* Writer — edit mode */}
-                  {editing && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Writer
-                      </span>
-                      <div style={{ display: "flex", borderRadius: "var(--novae-radius-sm)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-                        {([
-                          { key: "me",      label: "Me" },
-                          { key: "onsite",  label: "Novae" },
-                          { key: "offsite", label: "Outside website" },
-                        ] as const).map(({ key, label }) => {
-                          const active = key === "me" ? isWriter : (!isWriter && writerType === key);
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => {
-                                if (key === "me") { setIsWriter(true); }
-                                else { setIsWriter(false); setWriterType(key); setWriterValue(""); setWriterLabel(""); }
-                              }}
-                              style={{
-                                flex: 1, padding: "5px 0",
-                                background: active ? "var(--novae-btn-primary)" : "none",
-                                border: "none",
-                                color: active ? "#fff" : "var(--novae-text-secondary)",
-                                fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
-                                fontWeight: active ? 600 : 400, cursor: "pointer",
-                              }}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {!isWriter && (
-                        <>
-                          {writerType === "offsite" && (
-                            <input
-                              value={writerLabel}
-                              onChange={(e) => setWriterLabel(e.target.value)}
-                              placeholder="Nom de l'auteur"
-                              style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                            />
-                          )}
-                          <input
-                            value={writerValue}
-                            onChange={(e) => setWriterValue(e.target.value)}
-                            placeholder={writerType === "onsite" ? "username" : "https://..."}
                             style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
                           />
                         </>
@@ -1159,6 +1430,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 style={{
+                  display: "flex", alignItems: "center", gap: 6,
                   padding: "12px 20px",
                   background: "none",
                   border: "none",
@@ -1172,6 +1444,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                   transition: "color 0.15s",
                 }}
               >
+                {tab.icon}
                 {tab.label}
               </button>
             ))}
@@ -1223,7 +1496,20 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                               }}
                             >{f.label}</button>
                           ))}
-                          {ALL_INFO_FIELDS.every((f) => activeInfoKeys.includes(f.key)) && (
+                          {/* Custom always available */}
+                          <button
+                            onClick={() => {
+                              setCustomFields((prev) => [...prev, { id: crypto.randomUUID(), name: "", content: "" }]);
+                              setShowInfoFieldPicker(false);
+                            }}
+                            style={{
+                              background: "none", border: "none", textAlign: "left",
+                              padding: "6px 10px", borderRadius: "var(--novae-radius-sm)",
+                              fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
+                              color: "var(--novae-text-primary)", cursor: "pointer",
+                            }}
+                          >Custom</button>
+                          {ALL_INFO_FIELDS.every((f) => activeInfoKeys.includes(f.key)) && customFields.length > 0 && (
                             <p style={{ margin: 0, padding: "6px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
                               All fields added
                             </p>
@@ -1238,11 +1524,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                       const value = editing ? state : dbVal;
                       const GENDER_PRESETS = ["Homme", "Femme", "Non-binaire", "Iel", "Autre"];
                       const isGenderCustom = fieldType === "gender" && value !== "" && !GENDER_PRESETS.includes(value ?? "");
-                      const displayLabel = fieldType === "custom" ? (editing ? customFieldName || "Custom" : character.customFieldName || "Custom") : label;
                       return (
                         <div key={key} style={{ display: "flex", alignItems: (multiline || fieldType === "gender") ? "flex-start" : "center", justifyContent: "space-between", gap: 8 }}>
                           <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0, paddingTop: (multiline || fieldType === "gender") ? 6 : 0 }}>
-                            {displayLabel}
+                            {label}
                           </span>
                           {editing ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
@@ -1250,88 +1535,59 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                                 <>
                                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
                                     {GENDER_PRESETS.map((opt) => (
-                                      <button
-                                        key={opt}
-                                        type="button"
-                                        onClick={() => setter(state === opt ? "" : opt)}
-                                        style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: state === opt ? "var(--novae-btn-primary)" : "none", color: state === opt ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}
-                                      >{opt}</button>
+                                      <button key={opt} type="button" onClick={() => setter(state === opt ? "" : opt)} style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: state === opt ? "var(--novae-btn-primary)" : "none", color: state === opt ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}>{opt}</button>
                                     ))}
-                                    <button
-                                      type="button"
-                                      onClick={() => setter(isGenderCustom ? "" : "custom-")}
-                                      style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: isGenderCustom ? "var(--novae-btn-primary)" : "none", color: isGenderCustom ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}
-                                    >Custom</button>
-                                    <button
-                                      onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))}
-                                      style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", marginLeft: "auto" }}
-                                    >×</button>
+                                    <button type="button" onClick={() => setter(isGenderCustom ? "" : "custom-")} style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: isGenderCustom ? "var(--novae-btn-primary)" : "none", color: isGenderCustom ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}>Custom</button>
+                                    <button onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", marginLeft: "auto" }}>×</button>
                                   </div>
                                   {isGenderCustom && (
-                                    <input
-                                      value={state.startsWith("custom-") ? state.slice(7) : state}
-                                      onChange={(e) => setter("custom-" + e.target.value)}
-                                      placeholder="Mon genre…"
-                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                                    />
+                                    <input value={state.startsWith("custom-") ? state.slice(7) : state} onChange={(e) => setter("custom-" + e.target.value)} placeholder="Mon genre…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
                                   )}
-                                </>
-                              ) : fieldType === "custom" ? (
-                                <>
-                                  <input
-                                    value={customFieldName}
-                                    onChange={(e) => setCustomFieldName(e.target.value)}
-                                    placeholder="Nom du champ…"
-                                    style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                                  />
-                                  <div style={{ display: "flex", gap: 4 }}>
-                                    <textarea
-                                      value={state ?? ""}
-                                      onChange={(e) => setter(e.target.value)}
-                                      placeholder="Contenu…"
-                                      rows={3}
-                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1, resize: "vertical", minHeight: 64 }}
-                                    />
-                                    <button
-                                      onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))}
-                                      style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", alignSelf: "flex-start" }}
-                                    >×</button>
-                                  </div>
                                 </>
                               ) : (
                                 <div style={{ display: "flex", gap: 4 }}>
-                                  {multiline ? (
-                                    <textarea
-                                      value={state ?? ""}
-                                      onChange={(e) => setter(e.target.value)}
-                                      placeholder="—"
-                                      rows={3}
-                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1, resize: "vertical", minHeight: 64 }}
-                                    />
-                                  ) : (
-                                    <input
-                                      value={state ?? ""}
-                                      onChange={(e) => setter(e.target.value)}
-                                      placeholder="—"
-                                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1 }}
-                                    />
-                                  )}
-                                  <button
-                                    onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))}
-                                    style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px" }}
-                                  >×</button>
+                                  <input value={state ?? ""} onChange={(e) => setter(e.target.value)} placeholder="—" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1 }} />
+                                  <button onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px" }}>×</button>
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", whiteSpace: multiline ? "pre-wrap" : undefined }}>
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
                               {fieldType === "gender" && value?.startsWith("custom-") ? value.slice(7) : (value || "—")}
                             </span>
                           )}
                         </div>
                       );
                     })}
-                    {visibleInfoFields.length === 0 && !editing && (
+
+                    {/* Custom fields */}
+                    {editing ? customFields.map((cf) => (
+                      <div key={cf.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                        <input
+                          value={cf.name}
+                          onChange={(e) => setCustomFields((prev) => prev.map((f) => f.id === cf.id ? { ...f, name: e.target.value } : f))}
+                          placeholder="Field name…"
+                          style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", fontWeight: 700, width: "45%", flexShrink: 0, color: "var(--novae-text-secondary)" }}
+                        />
+                        <div style={{ display: "flex", gap: 4, flex: 1 }}>
+                          <textarea
+                            value={cf.content}
+                            onChange={(e) => setCustomFields((prev) => prev.map((f) => f.id === cf.id ? { ...f, content: e.target.value } : f))}
+                            placeholder="Content…"
+                            rows={3}
+                            style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1, resize: "vertical", minHeight: 64 }}
+                          />
+                          <button onClick={() => setCustomFields((prev) => prev.filter((f) => f.id !== cf.id))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", alignSelf: "flex-start" }}>×</button>
+                        </div>
+                      </div>
+                    )) : customFields.filter((cf) => cf.content).map((cf) => (
+                      <div key={cf.id} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0 }}>{cf.name || "Custom"}</span>
+                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", whiteSpace: "pre-wrap" }}>{cf.content}</span>
+                      </div>
+                    ))}
+
+                    {visibleInfoFields.length === 0 && customFields.length === 0 && !editing && (
                       <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
                         No info yet.
                       </p>
@@ -1456,14 +1712,24 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
               {/* Main content area */}
               <div className="char-body-main gap-6">
                 {/* Latest images */}
-                <SectionCard title="Latest Images">
-                  <div style={{ display: "flex", gap: 8, maxHeight: 200, overflow: "hidden" }}>
+                <SectionCard
+                  title="Latest Images"
+                  action={
+                    <button
+                      onClick={() => setActiveTab("gallery")}
+                      style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}
+                    >
+                      View more
+                    </button>
+                  }
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                     {latestImages.length > 0 ? latestImages.map((artwork) => (
                       <div
                         key={artwork.id}
                         onClick={() => setLightbox({ url: artwork.imageUrl, artist: artwork.title })}
                         style={{
-                          width: 160, height: 160, flexShrink: 0,
+                          aspectRatio: "1",
                           borderRadius: "var(--novae-radius-md)",
                           overflow: "hidden",
                           backgroundColor: "var(--novae-bg-main)",
@@ -1471,17 +1737,62 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                           cursor: "zoom-in",
                         }}
                       >
-                        <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill className="object-cover" />
+                        <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill className="object-cover" style={{ pointerEvents: "none" }} />
+                        {isOwner && (
+                          <div className="artwork-actions" style={{ position: "absolute", top: 4, right: 4, display: "flex", gap: 3, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
+                            <button onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit">
+                              <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); deleteArtwork(artwork.id); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }} title="Delete">×</button>
+                          </div>
+                        )}
                       </div>
-                    )) : null}
+                    )) : (
+                      [1,2,3,4].map((i) => (
+                        <div key={i} style={{ aspectRatio: "1", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-bg-main)" }} />
+                      ))
+                    )}
                   </div>
-                  <button
-                    onClick={() => setActiveTab("gallery")}
-                    style={{ alignSelf: "flex-end", background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}
-                  >
-                    View all ({artworks.length}) →
-                  </button>
                 </SectionCard>
+
+                {/* Story section — read-only preview, edit happens in Story tab */}
+                {summary && (
+                  <SectionCard
+                    title="Story"
+                    action={
+                      <button onClick={() => setActiveTab("story")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
+                        View more
+                      </button>
+                    }
+                  >
+                    <EditorRenderer content={summary} />
+                  </SectionCard>
+                )}
+
+                {/* Music section */}
+                {(playlistUrl || editing) && (
+                  <SectionCard title="Music">
+                    {editing ? (
+                      <input
+                        value={playlistUrl}
+                        onChange={(e) => setPlaylistUrl(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                        placeholder="YouTube playlist URL"
+                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                      />
+                    ) : playlistUrl ? (
+                      <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
+                        <iframe
+                          src={`https://www.youtube.com/embed/videoseries?list=${playlistUrl.match(/[?&]list=([^&]+)/)?.[1] ?? playlistUrl.split("/").pop()}`}
+                          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title="Music playlist"
+                        />
+                      </div>
+                    ) : null}
+                  </SectionCard>
+                )}
 
                 {/* Custom containers */}
                 {customContainers.map((container) => (
@@ -1540,90 +1851,405 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
             </div>
           )}
 
-          {/* Tab: Gallery */}
-          {activeTab === "gallery" && (
+          {/* Tab: Story */}
+          {activeTab === "story" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Summary box */}
+              <SectionCard title="Summary">
+                {isOwner && editing ? (
+                  <EditorField
+                    value={summary}
+                    onChange={setSummary}
+                    placeholder="A short summary of the character…"
+                  />
+                ) : summary ? (
+                  <EditorRenderer content={summary} />
+                ) : (
+                  <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+                    {isOwner ? "Add a summary to describe this character." : "No summary yet."}
+                  </p>
+                )}
+              </SectionCard>
+
+              {/* Full story */}
+              <SectionCard title="Story">
+                {isOwner && editing ? (
+                  <EditorField
+                    value={biography}
+                    onChange={setBiography}
+                    placeholder="Write the character's full story…"
+                  />
+                ) : biography ? (
+                  <EditorRenderer content={biography} />
+                ) : (
+                  <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+                    {isOwner ? "Click Edit to write the full story." : "No story written yet."}
+                  </p>
+                )}
+              </SectionCard>
+
+              {isOwner && !editing && (
+                <button
+                  onClick={() => setEditing(true)}
+                  style={{
+                    alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 8,
+                    padding: "10px 20px",
+                    background: "var(--novae-btn-primary)", border: "none",
+                    borderRadius: "var(--novae-radius-md)", color: "#fff",
+                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)",
+                    fontWeight: 600, cursor: "pointer",
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Edit story
+                </button>
+              )}
+              {isOwner && editing && (
+                <div style={{ display: "flex", gap: 12 }}>
+                  <button onClick={cancelEdit} style={{ padding: "10px 20px", background: "var(--novae-btn-secondary)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", cursor: "pointer" }}>Cancel</button>
+                  <button onClick={save} disabled={saving} style={{ padding: "10px 24px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Relationships */}
+          {activeTab === "relationships" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {isOwner && (
                 <button
-                  onClick={() => artworkFileRef.current?.click()}
-                  disabled={uploadingImage}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    alignSelf: "flex-start",
-                    padding: "10px 20px",
-                    background: "var(--novae-btn-primary)",
-                    border: "none",
-                    borderRadius: "var(--novae-radius-md)",
-                    color: "#fff",
-                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)",
-                    fontWeight: 600, cursor: uploadingImage ? "not-allowed" : "pointer",
-                    opacity: uploadingImage ? 0.7 : 1,
-                  }}
+                  onClick={() => setShowAddRel(true)}
+                  style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "flex-start", padding: "10px 20px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  {uploadingImage ? "Uploading…" : "Add images"}
+                  Add relationship
                 </button>
               )}
-
-              {artworks.length === 0 ? (
-                <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>
-                  No images yet.{isOwner ? ' Click "Add images" to get started.' : ""}
-                </p>
+              {relationships.length === 0 ? (
+                <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>No relationships yet.</p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-                  {artworks.map((artwork) => (
-                    <div
-                      key={artwork.id}
-                      onClick={() => setLightbox({ url: artwork.imageUrl, artist: artwork.title })}
-                      style={{
-                        position: "relative",
-                        aspectRatio: "1",
-                        borderRadius: "var(--novae-radius-md)",
-                        overflow: "hidden",
-                        backgroundColor: "var(--novae-bg-card)",
-                        cursor: "zoom-in",
-                      }}
-                    >
-                      <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill className="object-cover" />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+                  {relationships.map((rel) => (
+                    <div key={rel.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", backgroundColor: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 12, position: "relative" }}>
+                      <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)" }}>
+                        {rel.character.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : null}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <a href={`/library/characters/${rel.character.numId}-${rel.character.slug}`} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{rel.character.name}</a>
+                        <span style={{ display: "inline-block", marginTop: 3, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", color: "var(--novae-text-tag)" }}>{rel.type}</span>
+                        {rel.description && <p style={{ margin: "6px 0 0", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", lineHeight: 1.5 }}>{rel.description}</p>}
+                      </div>
                       {isOwner && (
-                        <div
-                          className="artwork-actions"
-                          style={{
-                            position: "absolute", top: 6, right: 6,
-                            display: "flex", gap: 4,
-                            opacity: 0, transition: "opacity 0.15s",
-                          }}
-                        >
+                        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
                           <button
-                            onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }}
-                            style={{
-                              width: 28, height: 28,
-                              background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%",
-                              color: "#fff", cursor: "pointer",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                            }}
-                            title="Edit credits"
+                            onClick={() => setEditingRel({ id: rel.id, isA: rel.isA, myLabel: rel.isA ? (rel.typeBRaw ?? "") : rel.typeRaw, otherLabel: rel.isA ? rel.typeRaw : (rel.typeBRaw ?? ""), description: rel.description ?? "" })}
+                            style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 13, padding: "2px 5px" }}
+                            title="Edit"
                           >
                             <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteArtwork(artwork.id); }}
-                            style={{
-                              width: 28, height: 28,
-                              background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%",
-                              color: "#fff", cursor: "pointer", fontSize: 14,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                            }}
-                            title="Delete"
-                          >×</button>
+                          <button onClick={() => deleteRelationship(rel.id)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14, padding: "2px 5px" }}>×</button>
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
               )}
+
+              {/* Add Relationship Modal */}
+              {showAddRel && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddRel(false); }}>
+                  <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 420, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 16 }}>
+                    <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Add Relationship</h3>
+
+                    {/* Character search */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Character</label>
+                      {relSelectedChar ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-selected)", borderRadius: "var(--novae-radius-md)" }}>
+                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", flex: 1 }}>{relSelectedChar.name}</span>
+                          <button onClick={() => setRelSelectedChar(null)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14 }}>×</button>
+                        </div>
+                      ) : (
+                        <div style={{ position: "relative" }}>
+                          <input value={relSearch} onChange={(e) => { setRelSearch(e.target.value); searchRelChars(e.target.value); }} placeholder="Search characters…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                          {relSearchLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--novae-text-secondary)", fontSize: 12 }}>…</span>}
+                          {relSearchResults.length > 0 && (
+                            <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", zIndex: 10, maxHeight: 200, overflowY: "auto" }}>
+                              {relSearchResults.map((c) => (
+                                <button key={c.id} onClick={() => { setRelSelectedChar(c); setRelSearch(""); setRelSearchResults([]); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
+                                  {c.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Two-sided relationship types */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>
+                          {name}&apos;s label
+                        </label>
+                        <input value={relType} onChange={(e) => setRelType(e.target.value)} placeholder="e.g. Grandparent" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>
+                          {relSelectedChar?.name ?? "Other"}&apos;s label
+                        </label>
+                        <input value={relTypeB} onChange={(e) => setRelTypeB(e.target.value)} placeholder="e.g. Granddaughter" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Description (optional)</label>
+                      <textarea value={relDesc} onChange={(e) => setRelDesc(e.target.value)} placeholder="Describe the relationship…" rows={3} style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", resize: "vertical" }} />
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <button onClick={() => setShowAddRel(false)} style={{ padding: "8px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={addRelationship} disabled={!relSelectedChar || !relType.trim() || relSaving} style={{ padding: "8px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer", opacity: (!relSelectedChar || !relType.trim() || relSaving) ? 0.5 : 1 }}>
+                        {relSaving ? "Saving…" : "Add"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Edit Relationship Modal */}
+              {editingRel && (() => {
+                const otherChar = relationships.find((r) => r.id === editingRel.id)?.character;
+                return (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setEditingRel(null); }}>
+                    <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 460, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 20 }}>
+                      <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Edit Relationship</h3>
+
+                      {/* Character row with labels */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, alignItems: "end" }}>
+                        {/* This char */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{name}</span>
+                          </div>
+                          <input value={editingRel.myLabel} onChange={(e) => setEditingRel((r) => r && { ...r, myLabel: e.target.value, error: undefined })} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                        </div>
+
+                        {/* Arrow */}
+                        <div style={{ paddingBottom: 10, color: "var(--novae-text-secondary)", fontSize: 18 }}>⇄</div>
+
+                        {/* Other char */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {otherChar?.avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={otherChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{otherChar?.name ?? "Other"}</span>
+                          </div>
+                          <input value={editingRel.otherLabel} onChange={(e) => setEditingRel((r) => r && { ...r, otherLabel: e.target.value, error: undefined })} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optional)</label>
+                        <textarea value={editingRel.description} onChange={(e) => setEditingRel((r) => r && { ...r, description: e.target.value, error: undefined })} placeholder="Describe the relationship…" rows={3} style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", resize: "vertical" }} />
+                      </div>
+
+                      {editingRel.error && (
+                        <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "#e55" }}>{editingRel.error}</p>
+                      )}
+
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button onClick={() => setEditingRel(null)} style={{ padding: "8px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
+                        <button onClick={saveEditRel} disabled={!(editingRel.isA ? editingRel.otherLabel : editingRel.myLabel).trim() || relSaving} style={{ padding: "8px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer", opacity: (!(editingRel.isA ? editingRel.otherLabel : editingRel.myLabel).trim() || relSaving) ? 0.5 : 1 }}>
+                          {relSaving ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
+
+          {/* Tab: Timeline */}
+          {activeTab === "timeline" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 0", gap: 12 }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--novae-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)" }}>Timeline coming soon.</p>
+            </div>
+          )}
+
+          {/* Tab: Gallery */}
+          {activeTab === "gallery" && (() => {
+              const galleryImageStyle: React.CSSProperties = {
+                position: "relative", aspectRatio: "1",
+                borderRadius: "var(--novae-radius-md)", overflow: "hidden",
+                backgroundColor: "var(--novae-bg-card)", cursor: "zoom-in",
+              };
+
+              const assignToGallery = async (artworkId: string, galleryId: string) => {
+                const inGallery = galleries.find((g) => g.id === galleryId)?.images.some((i) => i.artworkId === artworkId);
+                if (inGallery) return;
+                const res = await fetch(`/api/characters/${character.id}/galleries/${galleryId}`, {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ artworkId }),
+                });
+                if (res.ok) setGalleries((prev) => prev.map((gal) =>
+                  gal.id === galleryId ? { ...gal, images: [...gal.images, { id: Math.random().toString(), artworkId, order: 0 }] } : gal
+                ));
+              };
+
+              const uncategorized = artworks.filter((a) => !galleries.some((g) => g.images.some((i) => i.artworkId === a.id)));
+
+              const tileProps = { isOwner, galleries, characterId: character.id, assigningArtwork, setAssigningArtwork, setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive: galleries.length > 0 };
+
+              return (
+                <DndContext
+                  sensors={gallerySensors}
+                  onDragStart={(e) => setGalleryDragId(e.active.id as string)}
+                  onDragOver={(e) => setGalleryOverId(e.over?.id as string ?? null)}
+                  onDragEnd={(e: DragEndEvent) => {
+                    setGalleryDragId(null); setGalleryOverId(null);
+                    const { active, over } = e;
+                    if (!over) return;
+                    const artworkId = (active.id as string).replace("artwork-", "");
+                    const dropId = over.id as string;
+                    if (dropId.startsWith("gallery-")) assignToGallery(artworkId, dropId.replace("gallery-", ""));
+                  }}
+                  onDragCancel={() => { setGalleryDragId(null); setGalleryOverId(null); }}
+                >
+                <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+
+                  {/* ── Toolbar ─────────────────────────────────── */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {isOwner && (
+                      <button onClick={() => artworkFileRef.current?.click()} disabled={uploadingImage} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: uploadingImage ? "not-allowed" : "pointer", opacity: uploadingImage ? 0.7 : 1 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        {uploadingImage ? "Uploading…" : "Add images"}
+                      </button>
+                    )}
+                    {isOwner && !creatingGallery && (
+                      <button onClick={() => setCreatingGallery(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        New category
+                      </button>
+                    )}
+                    {isOwner && creatingGallery && (
+                      <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!newGalleryName.trim()) return;
+                        const res = await fetch(`/api/characters/${character.id}/galleries`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newGalleryName.trim() }) });
+                        if (res.ok) { const g = await res.json(); setGalleries((prev) => [...prev, g]); }
+                        setNewGalleryName(""); setCreatingGallery(false);
+                      }} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <input autoFocus value={newGalleryName} onChange={(e) => setNewGalleryName(e.target.value)} placeholder="Category name…" style={{ padding: "7px 10px", background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", outline: "none" }} />
+                        <button type="submit" style={{ padding: "7px 12px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer" }}>Create</button>
+                        <button type="button" onClick={() => { setCreatingGallery(false); setNewGalleryName(""); }} style={{ padding: "7px 10px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
+                      </form>
+                    )}
+                  </div>
+
+                  {/* ── Gallery sections ─────────────────────────── */}
+                  {galleries.map((g) => {
+                    const isCollapsed = collapsedGalleries[g.id] ?? false;
+                    const toggle = () => setCollapsedGalleries((prev) => ({ ...prev, [g.id]: !prev[g.id] }));
+                    const galleryArtworks = artworks.filter((a) => g.images.some((i) => i.artworkId === a.id));
+                    const isOver = galleryOverId === `gallery-${g.id}`;
+                    return (
+                      <DroppableGallerySection key={g.id} galleryId={g.id} isOver={isOver}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: isCollapsed ? 0 : 16 }}>
+                          <button onClick={toggle} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s", color: "var(--novae-text-secondary)" }}><polyline points="6 9 12 15 18 9"/></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--novae-text-link)" }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                            {renamingGallery?.id === g.id ? (
+                              <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                if (!renamingGallery.name.trim()) return;
+                                const res = await fetch(`/api/characters/${character.id}/galleries/${g.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: renamingGallery.name.trim() }) });
+                                if (res.ok) setGalleries((prev) => prev.map((gal) => gal.id === g.id ? { ...gal, name: renamingGallery.name.trim() } : gal));
+                                setRenamingGallery(null);
+                              }} onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 4 }}>
+                                <input autoFocus value={renamingGallery.name} onChange={(e) => setRenamingGallery((r) => r && { ...r, name: e.target.value })} style={{ padding: "3px 8px", background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", outline: "none", width: 140 }} />
+                                <button type="submit" style={{ padding: "3px 8px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-sm)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}>✓</button>
+                                <button type="button" onClick={() => setRenamingGallery(null)} style={{ padding: "3px 8px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}>✕</button>
+                              </form>
+                            ) : (
+                              <>
+                                <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{g.name}</span>
+                                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{galleryArtworks.length}</span>
+                              </>
+                            )}
+                          </button>
+                          {isOwner && (
+                            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+                              <button onClick={() => setRenamingGallery({ id: g.id, name: g.name })} title="Rename" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: 0.6 }}>
+                                <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              </button>
+                              <button onClick={async () => {
+                                if (!confirm(`Delete category "${g.name}"? Images won't be deleted.`)) return;
+                                const res = await fetch(`/api/characters/${character.id}/galleries/${g.id}`, { method: "DELETE" });
+                                if (res.ok) setGalleries((prev) => prev.filter((gal) => gal.id !== g.id));
+                              }} title="Delete category" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: 0.6, fontSize: 16 }}>×</button>
+                            </div>
+                          )}
+                        </div>
+                        {!isCollapsed && (
+                          galleryArtworks.length === 0 ? (
+                            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: isOver ? "var(--novae-text-link)" : "var(--novae-text-secondary)", margin: 0, paddingLeft: 4 }}>
+                              {isOver ? "Drop here to add to this category" : "Empty — drag an image here or use the folder icon."}
+                            </p>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                              {galleryArtworks.map((a) => <DraggableArtworkTile key={a.id} artwork={a} {...tileProps} />)}
+                            </div>
+                          )
+                        )}
+                      </DroppableGallerySection>
+                    );
+                  })}
+
+                  {/* ── Uncategorized ────────────────────────────── */}
+                  {(galleries.length === 0 || uncategorized.length > 0) && (
+                    <div>
+                      {galleries.length > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                          <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-secondary)" }}>Uncategorized</span>
+                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{uncategorized.length}</span>
+                        </div>
+                      )}
+                      {uncategorized.length === 0 ? (
+                        <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>
+                          No images yet.{isOwner ? ' Click "Add images" to get started.' : ""}
+                        </p>
+                      ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                          {uncategorized.map((a) => <DraggableArtworkTile key={a.id} artwork={a} {...tileProps} />)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <DragOverlay>
+                  {galleryDragId && (() => {
+                    const artworkId = galleryDragId.replace("artwork-", "");
+                    const artwork = artworks.find((a) => a.id === artworkId);
+                    return artwork ? (
+                      <div style={{ position: "relative", width: 120, height: 120, borderRadius: "var(--novae-radius-md)", overflow: "hidden", transform: "rotate(2deg)", opacity: 0.9, pointerEvents: "none" }}>
+                        <Image src={artwork.imageUrl} alt="" fill className="object-cover" />
+                      </div>
+                    ) : null;
+                  })()}
+                </DragOverlay>
+                </DndContext>
+              );
+          })()}
         </div>
 
         {/* ── Right sidebar ─────────────────────────────────────────────── */}
@@ -1644,9 +2270,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               {[
                 { count: artworks.length, label: "images" },
-                { count: 0, label: "relations" },
+                { count: relationships.length, label: "relations" },
                 { count: character.favorites.length, label: "favorites" },
-                { count: 0, label: "entries" },
+                { count: tags.length, label: "tags" },
               ].map(({ count, label }) => (
                 <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                   <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-2xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
@@ -1723,6 +2349,25 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
               )}
             </div>
           </SectionCard>
+
+          {/* Relationships */}
+          <SectionCard
+            title="Relationships"
+            action={
+              <button onClick={() => setActiveTab("relationships")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
+                View more
+              </button>
+            }
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {relationships.slice(0, 3).map((rel) => (
+                <RelCard key={rel.id} rel={rel} />
+              ))}
+              {relationships.length === 0 && (
+                <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>No relationships yet.</p>
+              )}
+            </div>
+          </SectionCard>
         </aside>
       </div>
 
@@ -1730,12 +2375,33 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
       <style>{`
         .artwork-delete-btn { opacity: 0 !important; }
         div:hover > .artwork-delete-btn { opacity: 1 !important; }
+        .artwork-actions { opacity: 0 !important; }
+        div:hover > .artwork-actions { opacity: 1 !important; }
       `}</style>
     </div>
   );
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+function RelCard({ rel }: { rel: { id: string; type: string; description: string | null; character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } } }) {
+  const href = `/library/characters/${rel.character.numId}-${rel.character.slug}`;
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+      <a href={href} style={{ width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" }}>
+        {rel.character.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : null}
+      </a>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <a href={href} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{rel.character.name}</a>
+        <span style={{ display: "inline-block", marginTop: 2, padding: "1px 7px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", color: "var(--novae-text-tag)" }}>{rel.type}</span>
+        {rel.description && <p style={{ margin: "4px 0 0", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{rel.description}</p>}
+      </div>
+    </div>
+  );
+}
 
 function MetaItem({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
