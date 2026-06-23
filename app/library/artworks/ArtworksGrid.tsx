@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Artwork } from "@/app/[username]/_mock-data";
 
 type LightboxEntry = { url: string; artist: string | null; characters: Artwork["characters"] };
@@ -32,6 +32,12 @@ function ArtistCredit({ artist }: { artist: string }) {
 }
 
 function Lightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       onClick={onClose}

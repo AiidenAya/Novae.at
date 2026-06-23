@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json();
   const allowed = ["name", "description", "avatarUrl", "backgroundImageUrl", "isPublic",
-    "birthdate", "age", "height", "weight", "mbti", "kingdom", "ethnicity", "race", "gender", "orientation", "customFieldName", "custom", "voiceClaimUrl",
+    "birthdate", "age", "height", "weight", "mbti", "kingdom", "ethnicity", "race", "gender", "orientation", "customFieldName", "custom", "voiceClaimUrl", "playlistUrl", "summary", "biography",
     "isDesigner", "designerCredit", "isWriter", "writerCredit"] as const;
 
   const data: Record<string, unknown> = {};
@@ -54,6 +54,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const character = await prisma.character.findUnique({ where: { id } });
   if (!character) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (character.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Delete artworks that belong only to this character
+  const soloArtworks = await prisma.artwork.findMany({
+    where: { characters: { some: { id } } },
+    include: { characters: { select: { id: true } } },
+  });
+  const toDelete = soloArtworks.filter((a) => a.characters.length === 1).map((a) => a.id);
+  if (toDelete.length) await prisma.artwork.deleteMany({ where: { id: { in: toDelete } } });
 
   await prisma.character.delete({ where: { id } });
   return new NextResponse(null, { status: 204 });

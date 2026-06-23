@@ -22,14 +22,24 @@ async function uniqueSlug(base: string): Promise<string> {
   return slug;
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { searchParams } = new URL(req.url);
+  const search = searchParams.get("search")?.trim();
+  const limit = Math.min(parseInt(searchParams.get("limit") ?? "100"), 100);
+  const exclude = searchParams.get("exclude");
+
   const characters = await prisma.character.findMany({
-    where: { userId: session.user.id },
+    where: {
+      userId: session.user.id,
+      ...(search && { name: { contains: search, mode: "insensitive" } }),
+      ...(exclude && { id: { not: exclude } }),
+    },
     select: { id: true, name: true, avatarUrl: true, numId: true, slug: true },
     orderBy: { name: "asc" },
+    take: limit,
   });
 
   return NextResponse.json(characters);

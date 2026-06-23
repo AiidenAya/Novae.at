@@ -10,10 +10,6 @@ export default function NewCharacterPage() {
   const [creditType, setCreditType] = useState<"onsite" | "offsite">("onsite");
   const [creditValue, setCreditValue] = useState("");
   const [creditLabel, setCreditLabel] = useState("");
-  const [isWriter, setIsWriter] = useState<boolean | null>(null);
-  const [writerType, setWriterType] = useState<"onsite" | "offsite">("onsite");
-  const [writerValue, setWriterValue] = useState("");
-  const [writerLabel, setWriterLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -21,7 +17,6 @@ export default function NewCharacterPage() {
     e.preventDefault();
     if (!name.trim()) return;
     if (isDesigner === null) { setError("Please choose a designer option."); return; }
-    if (isWriter === null) { setError("Please choose a writer option."); return; }
     setLoading(true);
     setError("");
 
@@ -36,12 +31,6 @@ export default function NewCharacterPage() {
             ? creditType === "onsite"
               ? `@${creditValue.trim()}`
               : `[${creditLabel.trim()}](${creditValue.trim()})`
-            : null,
-          isWriter: isWriter as boolean,
-          writerCredit: isWriter === false && writerValue.trim()
-            ? writerType === "onsite"
-              ? `@${writerValue.trim()}`
-              : `[${writerLabel.trim()}](${writerValue.trim()})`
             : null,
         }),
       });
@@ -203,68 +192,6 @@ export default function NewCharacterPage() {
                 value={creditValue}
                 onChange={(e) => setCreditValue(e.target.value)}
                 placeholder={creditType === "onsite" ? "username" : "https://..."}
-                style={{ background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", padding: "10px 14px", width: "100%", boxSizing: "border-box" }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-selected)")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Writer */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>
-            Writing
-          </span>
-
-          <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-            {([
-              { key: "me",      label: "Me" },
-              { key: "onsite",  label: "Novae" },
-              { key: "offsite", label: "Outside website" },
-            ] as const).map(({ key, label }) => {
-              const active = key === "me" ? isWriter === true : (isWriter === false && writerType === key);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    if (key === "me") { setIsWriter(true); }
-                    else { setIsWriter(false); setWriterType(key); setWriterValue(""); setWriterLabel(""); }
-                  }}
-                  style={{
-                    flex: 1, padding: "10px 0",
-                    background: active ? "var(--novae-btn-primary)" : "none",
-                    border: "none",
-                    color: active ? "#fff" : "var(--novae-text-secondary)",
-                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                    fontWeight: active ? 600 : 400, cursor: "pointer",
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {isWriter === false && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {writerType === "offsite" && (
-                <input
-                  type="text"
-                  value={writerLabel}
-                  onChange={(e) => setWriterLabel(e.target.value)}
-                  placeholder="Writer name"
-                  style={{ background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", padding: "10px 14px", width: "100%", boxSizing: "border-box" }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-selected)")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
-                />
-              )}
-              <input
-                type="text"
-                value={writerValue}
-                onChange={(e) => setWriterValue(e.target.value)}
-                placeholder={writerType === "onsite" ? "username" : "https://..."}
                 style={{ background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", padding: "10px 14px", width: "100%", boxSizing: "border-box" }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-selected)")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}

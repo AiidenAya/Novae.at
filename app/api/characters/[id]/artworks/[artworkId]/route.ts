@@ -15,8 +15,17 @@ export async function PATCH(
   if (!artwork || !artwork.characters.some((c) => c.id === id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (artwork.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title } = await req.json();
-  const updated = await prisma.artwork.update({ where: { id: artworkId }, data: { title } });
+  const { title, characterIds } = await req.json();
+  const updated = await prisma.artwork.update({
+    where: { id: artworkId },
+    data: {
+      title,
+      ...(Array.isArray(characterIds) && {
+        characters: { set: characterIds.map((cid: string) => ({ id: cid })) },
+      }),
+    },
+    include: { characters: { select: { id: true, name: true, numId: true, slug: true } } },
+  });
   return NextResponse.json(updated);
 }
 

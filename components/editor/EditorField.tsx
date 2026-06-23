@@ -21,7 +21,7 @@ const TOOLBAR_ITEMS = [
   { label: "❝",  title: "Citation",     block: "quote",   data: { text: "", caption: "" } },
 ] as const;
 
-export default function EditorField({ value, onChange, placeholder, minHeight = 80 }: Props) {
+export default function EditorField({ value, onChange, placeholder, minHeight = 150 }: Props) {
   const id = useId().replace(/:/g, "");
   const holderRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorJS | null>(null);

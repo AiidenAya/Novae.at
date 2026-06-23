@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 type Char = {
   id: string;
@@ -19,7 +21,7 @@ type Char = {
 
 type Folder = { id: string; name: string };
 
-function CharacterCard({
+function DraggableCard({
   char,
   folders,
   onDelete,
@@ -30,6 +32,28 @@ function CharacterCard({
   onDelete: (id: string) => void;
   onMove: (charId: string, folderId: string | null) => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: char.id });
+  const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.4 : 1, touchAction: "none" };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <CharacterCard char={char} folders={folders} onDelete={onDelete} onMove={onMove} dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
+function CharacterCard({
+  char,
+  folders,
+  onDelete,
+  onMove,
+  dragHandleProps,
+}: {
+  char: Char;
+  folders: Folder[];
+  onDelete: (id: string) => void;
+  onMove: (charId: string, folderId: string | null) => void;
+  dragHandleProps?: Record<string, unknown>;
+}) {
   const cover = char.avatarUrl ?? char.artworks[0]?.imageUrl ?? null;
   const [showMenu, setShowMenu] = useState(false);
 
@@ -38,6 +62,14 @@ function CharacterCard({
       <Link href={`/library/characters/${char.numId}-${char.slug}`} style={{ textDecoration: "none" }}>
         <div className="character-card">
           <div style={{ width: "100%", aspectRatio: "1", backgroundColor: "var(--novae-bg-main)", position: "relative" }}>
+            {/* Drag handle — covers the image area */}
+            {dragHandleProps && (
+              <div
+                {...dragHandleProps}
+                onClick={(e) => e.preventDefault()}
+                style={{ position: "absolute", inset: 0, zIndex: 5, cursor: "grab" }}
+              />
+            )}
             {cover ? (
               <Image src={cover} alt={char.name} fill sizes="220px" className="object-cover" />
             ) : (
@@ -68,8 +100,8 @@ function CharacterCard({
         </div>
       </Link>
 
-      {/* Actions button */}
-      <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
+      {/* Actions */}
+      <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4, zIndex: 10 }}>
         {folders.length > 0 && (
           <div style={{ position: "relative" }}>
             <button
@@ -121,13 +153,59 @@ function CharacterCard({
   );
 }
 
-function CharGrid({ chars, folders, onDelete, onMove }: { chars: Char[]; folders: Folder[]; onDelete: (id: string) => void; onMove: (charId: string, folderId: string | null) => void }) {
+function DroppableFolder({
+  folder,
+  isOver,
+  children,
+}: {
+  folder: Folder;
+  isOver: boolean;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef } = useDroppable({ id: `folder-${folder.id}` });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        borderRadius: "var(--novae-radius-md)",
+        border: `2px dashed ${isOver ? "var(--novae-text-link)" : "transparent"}`,
+        transition: "border-color 0.15s",
+        padding: isOver ? 8 : 0,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DroppableUngrouped({ isOver, children }: { isOver: boolean; children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id: "ungrouped" });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        borderRadius: "var(--novae-radius-md)",
+        border: `2px dashed ${isOver ? "var(--novae-text-link)" : "transparent"}`,
+        transition: "border-color 0.15s",
+        padding: isOver ? 8 : 0,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CharGrid({ chars, folders, onDelete, onMove, draggable }: { chars: Char[]; folders: Folder[]; onDelete: (id: string) => void; onMove: (charId: string, folderId: string | null) => void; draggable?: boolean }) {
   if (chars.length === 0) return null;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
-      {chars.map((char) => (
-        <CharacterCard key={char.id} char={char} folders={folders} onDelete={onDelete} onMove={onMove} />
-      ))}
+      {chars.map((char) =>
+        draggable ? (
+          <DraggableCard key={char.id} char={char} folders={folders} onDelete={onDelete} onMove={onMove} />
+        ) : (
+          <CharacterCard key={char.id} char={char} folders={folders} onDelete={onDelete} onMove={onMove} />
+        )
+      )}
     </div>
   );
 }
@@ -139,14 +217,15 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
   const [folders, setFolders] = useState(initialFolders);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
-  // Folder creation
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [folderPending, setFolderPending] = useState(false);
-
-  // Folder collapse state
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   async function handleDelete() {
     if (!confirmId) return;
@@ -168,7 +247,6 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
         body: JSON.stringify({ characterId: charId }),
       });
     } else {
-      // find current folder
       const char = localChars.find((c) => c.id === charId);
       if (char?.folderId) {
         await fetch(`/api/character-folders/${char.folderId}/assign`, {
@@ -208,12 +286,28 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
     setLocalChars((cs) => cs.map((c) => c.folderId === folderId ? { ...c, folderId: null } : c));
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveId(null);
+    setOverId(null);
+    if (!over) return;
+    const charId = active.id as string;
+    const dropId = over.id as string;
+    if (dropId === "ungrouped") {
+      handleMove(charId, null);
+    } else if (dropId.startsWith("folder-")) {
+      const folderId = dropId.replace("folder-", "");
+      handleMove(charId, folderId);
+    }
+  }
+
   const ungrouped = localChars.filter((c) => !c.folderId);
   const confirmChar = localChars.find((c) => c.id === confirmId);
+  const activeChar = localChars.find((c) => c.id === activeId);
+  const hasFolders = folders.length > 0;
 
   return (
     <>
-      {/* Confirm delete dialog */}
       {confirmChar && (
         <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setConfirmId(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 360, display: "flex", flexDirection: "column", gap: 20 }}>
@@ -277,63 +371,78 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
           </Link>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
-          {/* Folders */}
-          {folders.map((folder) => {
-            const folderChars = localChars.filter((c) => c.folderId === folder.id);
-            const isCollapsed = collapsed[folder.id];
-            return (
-              <div key={folder.id}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                  <button
-                    onClick={() => setCollapsed((s) => ({ ...s, [folder.id]: !s[folder.id] }))}
-                    style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s", color: "var(--novae-text-secondary)" }}>
-                      <polyline points="6 9 12 15 18 9"/>
-                    </svg>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--novae-text-link)" }}>
-                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                    </svg>
-                    <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{folder.name}</span>
-                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{folderChars.length}</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteFolder(folder.id)}
-                    title="Delete folder"
-                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: 0.5 }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    </svg>
-                  </button>
-                </div>
-                {!isCollapsed && (
-                  folderChars.length === 0 ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", margin: 0, paddingLeft: 4 }}>
-                      Empty folder — move characters here using the folder icon on each card.
-                    </p>
-                  ) : (
-                    <CharGrid chars={folderChars} folders={folders} onDelete={setConfirmId} onMove={handleMove} />
-                  )
-                )}
-              </div>
-            );
-          })}
+        <DndContext
+          sensors={sensors}
+          onDragStart={(e) => setActiveId(e.active.id as string)}
+          onDragOver={(e) => setOverId(e.over?.id as string ?? null)}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => { setActiveId(null); setOverId(null); }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+            {folders.map((folder) => {
+              const folderChars = localChars.filter((c) => c.folderId === folder.id);
+              const isCollapsed = collapsed[folder.id];
+              const isOver = overId === `folder-${folder.id}`;
+              return (
+                <DroppableFolder key={folder.id} folder={folder} isOver={isOver}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                    <button
+                      onClick={() => setCollapsed((s) => ({ ...s, [folder.id]: !s[folder.id] }))}
+                      style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s", color: "var(--novae-text-secondary)" }}>
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: isOver ? "var(--novae-text-link)" : "var(--novae-text-link)" }}>
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                      </svg>
+                      <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{folder.name}</span>
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{folderChars.length}</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFolder(folder.id)}
+                      title="Delete folder"
+                      style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: 0.5 }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                      </svg>
+                    </button>
+                  </div>
+                  {!isCollapsed && (
+                    folderChars.length === 0 ? (
+                      <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: isOver ? "var(--novae-text-link)" : "var(--novae-text-secondary)", margin: 0, paddingLeft: 4 }}>
+                        {isOver ? "Drop here to add to this folder" : "Empty — drag a character here or use the folder icon on each card."}
+                      </p>
+                    ) : (
+                      <CharGrid chars={folderChars} folders={folders} onDelete={setConfirmId} onMove={handleMove} draggable />
+                    )
+                  )}
+                </DroppableFolder>
+              );
+            })}
 
-          {/* Ungrouped */}
-          {ungrouped.length > 0 && (
-            <div>
-              {folders.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-secondary)" }}>Ungrouped</span>
-                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{ungrouped.length}</span>
-                </div>
-              )}
-              <CharGrid chars={ungrouped} folders={folders} onDelete={setConfirmId} onMove={handleMove} />
-            </div>
-          )}
-        </div>
+            {(ungrouped.length > 0 || (hasFolders && activeId)) && (
+              <DroppableUngrouped isOver={overId === "ungrouped"}>
+                {hasFolders && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                    <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-secondary)" }}>Ungrouped</span>
+                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{ungrouped.length}</span>
+                  </div>
+                )}
+                <CharGrid chars={ungrouped} folders={folders} onDelete={setConfirmId} onMove={handleMove} draggable />
+              </DroppableUngrouped>
+            )}
+          </div>
+
+          <DragOverlay>
+            {activeChar && (
+              <div style={{ width: 220, opacity: 0.9, transform: "rotate(2deg)", pointerEvents: "none" }}>
+                <CharacterCard char={activeChar} folders={[]} onDelete={() => {}} onMove={() => {}} />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
     </>
   );

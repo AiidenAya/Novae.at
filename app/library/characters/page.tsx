@@ -17,7 +17,7 @@ export default async function CharactersLibraryPage() {
         tags:      { include: { tag: true }, take: 3 },
         favorites: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { name: "asc" },
     }),
     prisma.characterFolder.findMany({
       where: { userId: session.user.id },

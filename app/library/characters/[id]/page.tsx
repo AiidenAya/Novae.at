@@ -24,6 +24,9 @@ export default async function CharacterPage({ params }: Props) {
         tags:          { include: { tag: true } },
         colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
         favorites: true,
+          relationshipsA: { include: { characterB: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true } } } },
+          relationshipsB: { include: { characterA: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true } } } },
+          galleries: { include: { images: { orderBy: { order: "asc" }, select: { id: true, artworkId: true, order: true } } }, orderBy: { name: "asc" } },
       },
     }),
   ]);
