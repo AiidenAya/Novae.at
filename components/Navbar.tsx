@@ -220,23 +220,23 @@ function Logo() {
 // ── Ticket / Bug report ───────────────────────────────────────────────────────
 
 function TicketButton() {
+  const { data: session } = useSession();
   const [open, setOpen]   = useState(false);
-  const [title, setTitle] = useState("");
   const [body, setBody]   = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent]   = useState<{ url: string; number: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function reset() { setTitle(""); setBody(""); setSent(null); setError(null); }
+  function reset() { setBody(""); setSent(null); setError(null); }
 
   async function send() {
-    if (!title.trim()) return;
+    const username = (session?.user as Record<string, unknown> | undefined)?.username as string | undefined ?? session?.user?.email ?? "inconnu";
     setSending(true);
     setError(null);
     const res = await fetch("/api/bug-report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body }),
+      body: JSON.stringify({ title: `[Bug] signalé par @${username}`, body }),
     });
     const data = await res.json();
     if (res.ok) setSent(data);
@@ -287,10 +287,6 @@ function TicketButton() {
             ) : (
               <>
                 {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Titre</label>
-                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Résumé du problème" style={inp} />
-                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
                   <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="Décris le problème, les étapes pour le reproduire..." style={inp} />

@@ -7,7 +7,6 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { title, body } = await req.json() as { title?: string; body?: string };
-  if (!title?.trim()) return NextResponse.json({ error: "Title required" }, { status: 400 });
 
   const token = process.env.GITHUB_TOKEN;
   if (!token) return NextResponse.json({ error: "GitHub token not configured" }, { status: 500 });
