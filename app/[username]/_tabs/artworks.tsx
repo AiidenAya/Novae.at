@@ -132,10 +132,6 @@ function ArtworkCard({
           </div>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, paddingTop: 16, paddingBottom: 16, color: "var(--novae-text-secondary)" }}>
-        <IconHeart />
-        <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{artwork.hearts}</span>
-      </div>
     </div>
   );
 }

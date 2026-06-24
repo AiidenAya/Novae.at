@@ -40,6 +40,7 @@ interface CharacterData {
   playlistUrl: string | null;
   summary: string | null;
   biography: string | null;
+  sections: string | null;
   relationshipsA: { id: string; type: string; typeB: string | null; description: string | null; characterB: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } }[];
   relationshipsB: { id: string; type: string; typeB: string | null; description: string | null; characterA: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } }[];
   isDesigner: boolean;
@@ -109,6 +110,80 @@ function SectionCard({ title, action, children }: { title: React.ReactNode; acti
         {action}
       </div>
       {children}
+    </div>
+  );
+}
+
+// ─── Playlist importer ──────────────────────────────────────────────────────
+
+function PlaylistImport({ onImport }: { onImport: (tracks: { id: string; title: string; artist: string }[]) => void }) {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleImport = async () => {
+    if (!url.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/playlist?url=${encodeURIComponent(url.trim())}`);
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to import"); return; }
+      if (!data.tracks?.length) { setError("No tracks found in this playlist"); return; }
+      onImport(data.tracks);
+      setUrl("");
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input
+          value={url}
+          onChange={(e) => { setUrl(e.target.value); setError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleImport(); }}
+          placeholder="Import from YouTube playlist URL…"
+          style={{
+            background: "var(--novae-bg-input)",
+            border: "1px solid var(--novae-outline-all)",
+            borderRadius: "var(--novae-radius-sm)",
+            outline: "none",
+            color: "var(--novae-text-primary)",
+            fontFamily: "var(--font-dm-sans)",
+            fontSize: "var(--novae-text-sm)",
+            padding: "6px 10px",
+            flex: 1,
+            boxSizing: "border-box" as const,
+          }}
+        />
+        <button
+          onClick={handleImport}
+          disabled={!url.trim() || loading}
+          style={{
+            padding: "6px 14px",
+            background: url.trim() && !loading ? "var(--novae-btn-primary)" : "var(--novae-bg-card)",
+            border: "1px solid var(--novae-outline-all)",
+            borderRadius: "var(--novae-radius-sm)",
+            color: url.trim() && !loading ? "#fff" : "var(--novae-text-secondary)",
+            fontFamily: "var(--font-dm-sans)",
+            fontSize: "var(--novae-text-sm)",
+            fontWeight: 600,
+            cursor: url.trim() && !loading ? "pointer" : "not-allowed",
+            flexShrink: 0,
+          }}
+        >
+          {loading ? "Importing…" : "Import"}
+        </button>
+      </div>
+      {error && (
+        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-error, #e05252)" }}>
+          {error}
+        </span>
+      )}
     </div>
   );
 }
@@ -346,7 +421,17 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [writerValue, setWriterValue] = useState(parsedWriter.value);
   const [writerLabel, setWriterLabel] = useState(parsedWriter.label);
   const [voiceClaimUrl, setVoiceClaimUrl] = useState(character.voiceClaimUrl ?? "");
-  const [playlistUrl, setPlaylistUrl] = useState(character.playlistUrl ?? "");
+
+  type Track = { id: string; title: string; artist: string };
+  const parseTracks = (): Track[] => {
+    if (!character.playlistUrl) return [];
+    try {
+      const parsed = JSON.parse(character.playlistUrl);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  };
+  const [tracks, setTracks] = useState<Track[]>(parseTracks);
   const [summary, setSummary] = useState(character.summary ?? "");
   const [biography, setBiography] = useState(character.biography ?? "");
   const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl ?? "");
@@ -496,20 +581,24 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
   // Multiple custom fields
   type CustomField = { id: string; name: string; content: string };
+  type Container = { id: string; title: string; content: string };
+
   const parseCustomFields = (): CustomField[] => {
     if (!character.custom) return [];
     try {
       const parsed = JSON.parse(character.custom);
       if (Array.isArray(parsed)) return parsed;
     } catch {}
-    // Legacy: single custom field
     return [{ id: "legacy", name: character.customFieldName || "Custom", content: character.custom }];
   };
-  const [customFields, setCustomFields] = useState<CustomField[]>(parseCustomFields);
 
-  // Custom containers
-  type Container = { id: string; title: string };
-  const [customContainers, setCustomContainers] = useState<Container[]>([]);
+  const parseContainers = (): Container[] => {
+    if (!character.sections) return [];
+    try { return JSON.parse(character.sections); } catch { return []; }
+  };
+
+  const [customFields, setCustomFields] = useState<CustomField[]>(parseCustomFields);
+  const [customContainers, setCustomContainers] = useState<Container[]>(parseContainers);
 
   // Edit credits modal
   const [editingCredits, setEditingCredits] = useState<Artwork | null>(null);
@@ -539,8 +628,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         body: JSON.stringify({
           name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation,
           custom: customFields.length > 0 ? JSON.stringify(customFields) : null,
+          sections: customContainers.length > 0 ? JSON.stringify(customContainers) : null,
           customFieldName: null,
-          voiceClaimUrl, playlistUrl, summary, biography, avatarUrl,
+          voiceClaimUrl,
+          playlistUrl: tracks.length > 0 ? JSON.stringify(tracks) : null,
+          summary, biography, avatarUrl,
           isDesigner,
           designerCredit: isDesigner ? null : (creditValue.trim()
             ? creditType === "onsite" ? `@${creditValue.trim()}` : `[${creditLabel.trim()}](${creditValue.trim()})`
@@ -569,7 +661,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, voiceClaimUrl, playlistUrl, summary, biography, avatarUrl, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
+  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, customContainers, voiceClaimUrl, tracks, summary, biography, avatarUrl, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(character.name);
@@ -587,7 +679,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     setCustomFieldName(character.customFieldName ?? "");
     setCustom(character.custom ?? "");
     setVoiceClaimUrl(character.voiceClaimUrl ?? "");
-    setPlaylistUrl(character.playlistUrl ?? "");
+    setTracks(parseTracks());
     setIsDesigner(character.isDesigner);
     const p = parseCredit(character.designerCredit);
     setCreditType(p.type); setCreditValue(p.value); setCreditLabel(p.label);
@@ -595,6 +687,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     const pw = parseCredit(character.writerCredit);
     setWriterType(pw.type); setWriterValue(pw.value); setWriterLabel(pw.label);
     setCustomFields(parseCustomFields());
+    setCustomContainers(parseContainers());
     setAvatarUrl(character.avatarUrl ?? "");
     setSummary(character.summary ?? "");
     setBiography(character.biography ?? "");
@@ -1771,27 +1864,61 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                 )}
 
                 {/* Music section */}
-                {(playlistUrl || editing) && (
+                {(tracks.length > 0 || editing) && (
                   <SectionCard title="Music">
-                    {editing ? (
-                      <input
-                        value={playlistUrl}
-                        onChange={(e) => setPlaylistUrl(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                        placeholder="YouTube playlist URL"
-                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                      />
-                    ) : playlistUrl ? (
-                      <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
-                        <iframe
-                          src={`https://www.youtube.com/embed/videoseries?list=${playlistUrl.match(/[?&]list=([^&]+)/)?.[1] ?? playlistUrl.split("/").pop()}`}
-                          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          title="Music playlist"
-                        />
-                      </div>
-                    ) : null}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {tracks.map((track, i) => (
+                        <div key={track.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", width: 20, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
+                          {editing ? (
+                            <>
+                              <input
+                                value={track.title}
+                                onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, title: e.target.value } : t))}
+                                placeholder="Title"
+                                style={{ ...inputStyle, flex: 2, fontSize: "var(--novae-text-sm)" }}
+                              />
+                              <input
+                                value={track.artist}
+                                onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, artist: e.target.value } : t))}
+                                placeholder="Artist"
+                                style={{ ...inputStyle, flex: 1, fontSize: "var(--novae-text-sm)" }}
+                              />
+                              <button
+                                onClick={() => setTracks((prev) => prev.filter((t) => t.id !== track.id))}
+                                style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px", flexShrink: 0 }}
+                              >×</button>
+                            </>
+                          ) : (
+                            <div style={{ display: "flex", flex: 1, gap: 8, alignItems: "baseline" }}>
+                              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{track.title}</span>
+                              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{track.artist}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {editing && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+                          <button
+                            onClick={() => setTracks((prev) => [...prev, { id: crypto.randomUUID(), title: "", artist: "" }])}
+                            style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add a track
+                          </button>
+                          <PlaylistImport onImport={(imported) => setTracks((prev) => [...prev, ...imported])} />
+                          {tracks.length > 0 && (
+                            <button
+                              onClick={() => setTracks([])}
+                              style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                              Clear playlist
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </SectionCard>
                 )}
 
@@ -1800,37 +1927,60 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                   <SectionCard
                     key={container.id}
                     title={
-                      <input
-                        value={container.title}
-                        placeholder="Section title"
-                        onChange={(e) => setCustomContainers((prev) =>
-                          prev.map((c) => c.id === container.id ? { ...c, title: e.target.value } : c)
-                        )}
-                        style={{
-                          background: "none", border: "none", outline: "none",
-                          fontFamily: "var(--font-space-grotesk)",
-                          fontSize: "var(--novae-text-base)",
-                          fontWeight: 700,
-                          color: "var(--novae-text-primary)",
-                          width: "100%",
-                          padding: 0,
-                        }}
-                      />
+                      editing ? (
+                        <input
+                          value={container.title}
+                          placeholder="Section title"
+                          onChange={(e) => setCustomContainers((prev) =>
+                            prev.map((c) => c.id === container.id ? { ...c, title: e.target.value } : c)
+                          )}
+                          style={{
+                            background: "none", border: "none", outline: "none",
+                            fontFamily: "var(--font-space-grotesk)",
+                            fontSize: "var(--novae-text-base)",
+                            fontWeight: 700,
+                            color: "var(--novae-text-primary)",
+                            width: "100%",
+                            padding: 0,
+                          }}
+                        />
+                      ) : container.title
                     }
                     action={
-                      <button
-                        onClick={() => setCustomContainers((prev) => prev.filter((c) => c.id !== container.id))}
-                        style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
-                      >×</button>
+                      editing ? (
+                        <button
+                          onClick={() => setCustomContainers((prev) => prev.filter((c) => c.id !== container.id))}
+                          style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
+                        >×</button>
+                      ) : undefined
                     }
                   >
-                    <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-                      Empty section — content coming soon.
-                    </p>
+                    {editing ? (
+                      <>
+                        <EditorField
+                          value={container.content}
+                          onChange={(val) => setCustomContainers((prev) =>
+                            prev.map((c) => c.id === container.id ? { ...c, content: val } : c)
+                          )}
+                          placeholder="Write something…"
+                        />
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                          <button
+                            onClick={save}
+                            disabled={saving}
+                            style={{ background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-sm)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, padding: "6px 16px", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
+                          >
+                            {saving ? "Saving…" : "Save"}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <EditorRenderer content={container.content} />
+                    )}
                   </SectionCard>
                 ))}
 
-                {isOwner && (
+                {isOwner && editing && (
                   <button
                     onClick={() => setCustomContainers((prev) => [...prev, { id: crypto.randomUUID(), title: "" }])}
                     style={{

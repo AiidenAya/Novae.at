@@ -343,7 +343,7 @@ export default function NewMultiImagePage() {
       if (uniqueChars.length === 1) {
         router.push(`/library/characters/${uniqueChars[0].numId}-${uniqueChars[0].slug}`);
       } else {
-        router.push("/library/artworks");
+        router.push("/library/characters");
       }
     } finally {
       setUploading(false);

@@ -21,7 +21,7 @@ const TOOLBAR_ITEMS = [
   { label: "❝",  title: "Citation",     block: "quote",   data: { text: "", caption: "" } },
 ] as const;
 
-export default function EditorField({ value, onChange, placeholder, minHeight = 150 }: Props) {
+export default function EditorField({ value, onChange, placeholder, minHeight = 100 }: Props) {
   const id = useId().replace(/:/g, "");
   const holderRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorJS | null>(null);
@@ -138,6 +138,7 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
         .ce-block__content, .ce-toolbar__content { max-width: 100% !important; }
         .cdx-block { padding: 0 !important; }
         .ce-toolbar { display: none !important; }
+        .codex-editor__redactor { padding-bottom: 0 !important; }
       `}</style>
 
       {/* Editor.js canvas */}

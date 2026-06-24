@@ -171,7 +171,7 @@ export default function SocialTab({
               </>
             );
             return (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", position: "relative" }}>
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", position: "relative", width: "100%", minWidth: 0 }}>
                 {isEditing ? inner : (
                   <a href={`/${friend.username}`} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", width: "100%", textDecoration: "none" }}>{inner}</a>
                 )}
@@ -230,7 +230,7 @@ export default function SocialTab({
 
       <Card>
         <SectionTitle>Comments</SectionTitle>
-        <EditorField value={commentValue} onChange={setCommentValue} placeholder="Laisse un commentaire…" minHeight={200} />
+        <EditorField value={commentValue} onChange={setCommentValue} placeholder="Laisse un commentaire…" minHeight={100} />
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={postComment} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Post</button>
         </div>

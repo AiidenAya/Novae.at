@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json();
   const allowed = ["name", "description", "avatarUrl", "backgroundImageUrl", "isPublic",
-    "birthdate", "age", "height", "weight", "mbti", "kingdom", "ethnicity", "race", "gender", "orientation", "customFieldName", "custom", "voiceClaimUrl", "playlistUrl", "summary", "biography",
+    "birthdate", "age", "height", "weight", "mbti", "kingdom", "ethnicity", "race", "gender", "orientation", "customFieldName", "custom", "voiceClaimUrl", "playlistUrl", "summary", "biography", "sections",
     "isDesigner", "designerCredit", "isWriter", "writerCredit"] as const;
 
   const data: Record<string, unknown> = {};
@@ -42,8 +42,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.slug = await uniqueSlug(toSlug(body.name.trim()), id);
   }
 
-  const updated = await prisma.character.update({ where: { id }, data, select: { id: true, numId: true, slug: true, name: true } });
-  return NextResponse.json(updated);
+  try {
+    const updated = await prisma.character.update({ where: { id }, data, select: { id: true, numId: true, slug: true, name: true } });
+    return NextResponse.json(updated);
+  } catch (e) {
+    console.error("[PATCH character] Prisma error:", e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

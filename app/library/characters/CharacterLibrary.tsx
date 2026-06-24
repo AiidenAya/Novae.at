@@ -66,7 +66,6 @@ function CharacterCard({
             {dragHandleProps && (
               <div
                 {...dragHandleProps}
-                onClick={(e) => e.preventDefault()}
                 style={{ position: "absolute", inset: 0, zIndex: 5, cursor: "grab" }}
               />
             )}

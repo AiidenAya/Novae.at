@@ -13,10 +13,17 @@ export default function NewCharacterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  function isCreditValid() {
+    if (isDesigner !== false) return true;
+    if (creditType === "onsite") return !!creditValue.trim();
+    return !!creditLabel.trim() && !!creditValue.trim();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     if (isDesigner === null) { setError("Please choose a designer option."); return; }
+    if (!isCreditValid()) { setError("Please fill in the designer credit fields."); return; }
     setLoading(true);
     setError("");
 
@@ -145,7 +152,7 @@ export default function NewCharacterPage() {
           <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
             {([
               { key: "me",      label: "Me" },
-              { key: "onsite",  label: "Novae" },
+              { key: "onsite",  label: "on Novae" },
               { key: "offsite", label: "Outside website" },
             ] as const).map(({ key, label }) => {
               const active = key === "me" ? isDesigner === true : (isDesigner === false && creditType === key);
@@ -221,19 +228,19 @@ export default function NewCharacterPage() {
           </button>
           <button
             type="submit"
-            disabled={!name.trim() || loading}
+            disabled={!name.trim() || !isCreditValid() || loading}
             style={{
               flex: 2,
               padding: "14px 24px",
-              background: name.trim() && !loading ? "var(--novae-btn-primary)" : "var(--novae-bg-card)",
+              background: name.trim() && isCreditValid() && !loading ? "var(--novae-btn-primary)" : "var(--novae-bg-card)",
               border: "none",
               borderRadius: "var(--novae-radius-md)",
               color: "var(--novae-text-btn)",
               fontFamily: "var(--font-dm-sans)",
               fontSize: "var(--novae-text-lg)",
               fontWeight: 600,
-              cursor: name.trim() && !loading ? "pointer" : "not-allowed",
-              opacity: name.trim() && !loading ? 1 : 0.5,
+              cursor: name.trim() && isCreditValid() && !loading ? "pointer" : "not-allowed",
+              opacity: name.trim() && isCreditValid() && !loading ? 1 : 0.5,
               transition: "opacity 0.15s, background 0.15s",
             }}
           >

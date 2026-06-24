@@ -139,6 +139,7 @@ model Character {
   playlistUrl        String?
   summary            String?
   biography          String?
+  sections           String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
