@@ -1982,7 +1982,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
                 {isOwner && editing && (
                   <button
-                    onClick={() => setCustomContainers((prev) => [...prev, { id: crypto.randomUUID(), title: "" }])}
+                    onClick={() => setCustomContainers((prev) => [...prev, { id: crypto.randomUUID(), title: "", content: "" }])}
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       width: "100%", padding: 16,
