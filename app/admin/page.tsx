@@ -20,7 +20,7 @@ export default async function AdminPage() {
       take: 10,
       select: { id: true, username: true, name: true, email: true, roles: true, createdAt: true, invitesUsed: { select: { code: true }, take: 1 } },
     }),
-    prisma.role.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, description: true, createdAt: true } }),
+    prisma.role.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, description: true, icon: true, createdAt: true } }),
     prisma.inviteCode.findMany({
       orderBy: { createdAt: "desc" },
       select: {

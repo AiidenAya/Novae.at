@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { ROLE_ICONS, ROLE_ICON_KEYS, RoleIcon } from "@/lib/role-icons";
 
-type RoleRecord = { id: string; name: string; description: string | null; createdAt: string };
+type RoleRecord = { id: string; name: string; description: string | null; icon: string | null; createdAt: string };
 
 type RecentUser = {
   id: string; username: string | null; name: string | null;
@@ -35,7 +36,7 @@ const th: React.CSSProperties = {
   borderBottom: "1px solid var(--novae-outline-all)",
 };
 
-function RoleBadge({ role }: { role: string }) {
+function RoleBadge({ role, icon }: { role: string; icon?: string | null }) {
   const isAdmin = role === "admin";
   return (
     <span style={{
@@ -46,20 +47,46 @@ function RoleBadge({ role }: { role: string }) {
       color: isAdmin ? "var(--novae-text-tag)" : "var(--novae-text-secondary)",
       border: `0.5px solid ${isAdmin ? "var(--novae-outline-tag)" : "var(--novae-outline-all)"}`,
     }}>
-      {isAdmin && (
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M2 4l3 12h14l3-12-6 5-4-5-4 5-6-5z"/>
-        </svg>
-      )}
+      <RoleIcon name={icon} size={11} color="currentColor" title={role} />
       {role}
     </span>
   );
 }
 
-function RolesBadges({ roles }: { roles: string[] }) {
+function RolesBadges({ roles, iconMap }: { roles: string[]; iconMap: Record<string, string | null> }) {
   return (
     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-      {roles.map(r => <RoleBadge key={r} role={r} />)}
+      {roles.map(r => <RoleBadge key={r} role={r} icon={iconMap[r]} />)}
+    </div>
+  );
+}
+
+// ── Icon picker ───────────────────────────────────────────────────────────────
+
+function IconPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <button type="button" onClick={() => onChange(null)} title="Aucune"
+        style={{
+          width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center",
+          borderRadius: "var(--novae-radius-md)", cursor: "pointer",
+          background: value === null ? "rgba(164,132,220,0.15)" : "var(--novae-bg-card)",
+          border: `1px solid ${value === null ? "var(--novae-outline-tag)" : "var(--novae-outline-all)"}`,
+          color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+        }}>
+        ✕
+      </button>
+      {ROLE_ICON_KEYS.map(key => (
+        <button type="button" key={key} onClick={() => onChange(key)} title={ROLE_ICONS[key].label}
+          style={{
+            width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: "var(--novae-radius-md)", cursor: "pointer",
+            background: value === key ? "rgba(164,132,220,0.15)" : "var(--novae-bg-card)",
+            border: `1px solid ${value === key ? "var(--novae-outline-tag)" : "var(--novae-outline-all)"}`,
+          }}>
+          <RoleIcon name={key} size={18} color="var(--novae-text-primary)" />
+        </button>
+      ))}
     </div>
   );
 }
@@ -99,6 +126,7 @@ function CreateRoleModal({ onClose, onCreated }: {
 }) {
   const [name, setName]               = useState("");
   const [description, setDescription] = useState("");
+  const [icon, setIcon]               = useState<string | null>(null);
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
@@ -115,7 +143,7 @@ function CreateRoleModal({ onClose, onCreated }: {
     const res = await fetch("/api/admin/roles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({ name, description, icon }),
     });
     if (res.ok) {
       onCreated(await res.json());
@@ -147,11 +175,80 @@ function CreateRoleModal({ onClose, onCreated }: {
             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optionnelle)</span>
             <input value={description} onChange={e => setDescription(e.target.value)} placeholder="À quoi sert ce rôle ?" style={inputStyle} />
           </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Icône (affichée sur le profil)</span>
+            <IconPicker value={icon} onChange={setIcon} />
+          </div>
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
           <button onClick={create} disabled={saving || !name.trim()} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: saving || !name.trim() ? 0.5 : 1 }}>
             {saving ? "…" : "Créer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit role modal ───────────────────────────────────────────────────────────
+
+function EditRoleModal({ role, onClose, onSaved }: {
+  role: RoleRecord;
+  onClose: () => void;
+  onSaved: (role: RoleRecord) => void;
+}) {
+  const [description, setDescription] = useState(role.description ?? "");
+  const [icon, setIcon]               = useState<string | null>(role.icon);
+  const [saving, setSaving]           = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "8px 12px", borderRadius: "var(--novae-radius-md)",
+    border: "1px solid var(--novae-outline-all)", background: "var(--novae-bg-card)",
+    color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)",
+    fontSize: "var(--novae-text-sm)", outline: "none", boxSizing: "border-box",
+  };
+
+  async function save() {
+    setSaving(true); setError(null);
+    const res = await fetch("/api/admin/roles", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: role.id, description, icon }),
+    });
+    if (res.ok) {
+      onSaved(await res.json());
+      onClose();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Erreur");
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+      <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+          <RoleIcon name={icon} size={20} color="var(--novae-text-tag)" />
+          Modifier « {role.name} »
+        </h2>
+        {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optionnelle)</span>
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="À quoi sert ce rôle ?" style={inputStyle} />
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Icône (affichée sur le profil)</span>
+            <IconPicker value={icon} onChange={setIcon} />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
+          <button onClick={save} disabled={saving} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: saving ? 0.5 : 1 }}>
+            {saving ? "…" : "Enregistrer"}
           </button>
         </div>
       </div>
@@ -243,6 +340,88 @@ function EditUserModal({ user, availableRoles, onClose, onSaved }: {
   );
 }
 
+// ── Bulk edit modal ───────────────────────────────────────────────────────────
+
+function BulkEditModal({ userIds, availableRoles, onClose, onSaved }: {
+  userIds: string[];
+  availableRoles: RoleRecord[];
+  onClose: () => void;
+  onSaved: (ids: string[], addRoles: string[], removeRoles: string[]) => void;
+}) {
+  const [addRoles, setAddRoles]       = useState<string[]>([]);
+  const [removeRoles, setRemoveRoles] = useState<string[]>([]);
+  const [saving, setSaving]           = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+
+  function toggleAdd(r: string) {
+    setAddRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
+    setRemoveRoles(prev => prev.filter(x => x !== r));
+  }
+  function toggleRemove(r: string) {
+    setRemoveRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
+    setAddRoles(prev => prev.filter(x => x !== r));
+  }
+
+  async function save() {
+    if (addRoles.length === 0 && removeRoles.length === 0) { setError("Aucune modification sélectionnée"); return; }
+    setSaving(true); setError(null);
+    const res = await fetch("/api/admin/users/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: userIds, addRoles, removeRoles }),
+    });
+    if (res.ok) {
+      onSaved(userIds, addRoles, removeRoles);
+      onClose();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Erreur");
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+      <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 460, display: "flex", flexDirection: "column", gap: 20 }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+          Modifier {userIds.length} utilisateur{userIds.length > 1 ? "s" : ""}
+        </h2>
+        {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Ajouter les rôles</span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {availableRoles.map(r => (
+                <label key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: `1px solid ${addRoles.includes(r.name) ? "var(--novae-outline-tag)" : "var(--novae-outline-all)"}`, background: addRoles.includes(r.name) ? "rgba(164,132,220,0.1)" : "transparent" }}>
+                  <input type="checkbox" checked={addRoles.includes(r.name)} onChange={() => toggleAdd(r.name)} style={{ accentColor: "var(--novae-text-tag)" }} />
+                  {r.name}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Retirer les rôles</span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {availableRoles.map(r => (
+                <label key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: `1px solid ${removeRoles.includes(r.name) ? "rgba(220,53,69,0.4)" : "var(--novae-outline-all)"}`, background: removeRoles.includes(r.name) ? "rgba(220,53,69,0.08)" : "transparent" }}>
+                  <input type="checkbox" checked={removeRoles.includes(r.name)} onChange={() => toggleRemove(r.name)} style={{ accentColor: "#ff6b7a" }} />
+                  {r.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
+          <button onClick={save} disabled={saving} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
+            {saving ? "…" : "Appliquer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, initialRoles }: {
   stats: { totalUsers: number; totalCharacters: number; totalArtworks: number };
   recentUsers: RecentUser[];
@@ -259,7 +438,28 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
   const [editingUser, setEditingUser] = useState<RecentUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
   const [showCreateRole, setShowCreateRole] = useState(false);
+  const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const [deletingRole, setDeletingRole] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const roleIconMap = Object.fromEntries(roles.map(r => [r.name, r.icon])) as Record<string, string | null>;
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === users.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(users.map(u => u.id)));
+    }
+  }
 
   function generate() {
     startTransition(async () => {
@@ -311,6 +511,17 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
     setTimeout(() => setCopied(null), 1800);
   }
 
+  function applyBulkEdit(ids: string[], addRoles: string[], removeRoles: string[]) {
+    setUsers(prev => prev.map(u => {
+      if (!ids.includes(u.id)) return u;
+      const next = new Set(u.roles);
+      addRoles.forEach(r => next.add(r));
+      removeRoles.forEach(r => next.delete(r));
+      return { ...u, roles: Array.from(next) };
+    }));
+    setSelectedIds(new Set());
+  }
+
   const filteredCodes = codes.filter(c => {
     if (codeFilter === "all") return true;
     return codeStatus(c) === codeFilter;
@@ -330,6 +541,9 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
     color: codeFilter === f ? "var(--novae-text-btn)" : "var(--novae-text-secondary)",
   });
 
+  const allSelected = users.length > 0 && selectedIds.size === users.length;
+  const someSelected = selectedIds.size > 0;
+
   return (
     <main style={{ width: "100%", padding: "40px 48px", fontFamily: "var(--font-dm-sans)", boxSizing: "border-box" }}>
       {editingUser && (
@@ -344,6 +558,21 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
         <CreateRoleModal
           onClose={() => setShowCreateRole(false)}
           onCreated={(role) => setRoles(prev => [...prev, role])}
+        />
+      )}
+      {editingRole && (
+        <EditRoleModal
+          role={editingRole}
+          onClose={() => setEditingRole(null)}
+          onSaved={(updated) => setRoles(prev => prev.map(r => r.id === updated.id ? updated : r))}
+        />
+      )}
+      {showBulkEdit && (
+        <BulkEditModal
+          userIds={Array.from(selectedIds)}
+          availableRoles={roles}
+          onClose={() => setShowBulkEdit(false)}
+          onSaved={applyBulkEdit}
         />
       )}
 
@@ -372,83 +601,43 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, alignItems: "start" }}>
-        {/* Users table */}
-        <div style={{ ...card, overflowX: "auto" }}>
-          <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--novae-outline-all)" }}>
-            <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Utilisateurs récents</h2>
-          </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+      {/* Roles — full width above users */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, ...card, padding: "16px 20px" }}>
+          <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+            Rôles
+          </h2>
+          <button onClick={() => setShowCreateRole(true)}
+            style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", padding: "7px 14px", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Créer
+          </button>
+        </div>
+        <div style={card}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr>
-                {["Username", "Email", "Rôle", "Code", "Rejoint", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
-              </tr>
+              <tr>{["Nom", "Icône", "Description", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {users.map(u => (
-                <tr key={u.id}>
-                  <td style={{ ...cell, whiteSpace: "nowrap", fontWeight: 600 }}>{u.username ? `@${u.username}` : "—"}</td>
-                  <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{u.email}</td>
-                  <td style={cell}><RolesBadges roles={u.roles} /></td>
-                  <td style={{ ...cell, fontFamily: "monospace", fontSize: "var(--novae-text-xs)", color: u.inviteCode ? "var(--novae-text-tag)" : "var(--novae-text-secondary)", whiteSpace: "nowrap" }}>
-                    {u.inviteCode ?? "—"}
-                  </td>
-                  <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)", whiteSpace: "nowrap" }}>
-                    {new Date(u.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
-                  </td>
-                  <td style={{ ...cell, whiteSpace: "nowrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <button onClick={() => setEditingUser(u)} title="Modifier"
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
-                      <button onClick={() => { if (confirm(`Supprimer @${u.username ?? u.email} ?`)) deleteUser(u.id); }} title="Supprimer"
-                        disabled={deletingUser === u.id}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#ff6b7a", padding: 4, display: "flex", alignItems: "center", opacity: deletingUser === u.id ? 0.4 : 1 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Right column: roles + invite codes */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-        {/* Roles */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, ...card, padding: "16px 20px" }}>
-            <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
-              Rôles
-            </h2>
-            <button onClick={() => setShowCreateRole(true)}
-              style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", padding: "7px 14px", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Créer
-            </button>
-          </div>
-          <div style={card}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>{["Nom", "Description", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {roles.map(r => {
-                  const builtin = ["user", "admin"].includes(r.name);
-                  return (
-                    <tr key={r.id}>
-                      <td style={{ ...cell, whiteSpace: "nowrap" }}><RoleBadge role={r.name} /></td>
-                      <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{r.description ?? "—"}</td>
-                      <td style={{ ...cell, width: 48 }}>
+              {roles.map(r => {
+                const builtin = ["user", "admin"].includes(r.name);
+                return (
+                  <tr key={r.id}>
+                    <td style={{ ...cell, whiteSpace: "nowrap" }}><RoleBadge role={r.name} icon={r.icon} /></td>
+                    <td style={{ ...cell, width: 40 }}>
+                      <RoleIcon name={r.icon} size={18} color="var(--novae-text-tag)" title={r.icon ?? undefined} />
+                    </td>
+                    <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{r.description ?? "—"}</td>
+                    <td style={{ ...cell, width: 80 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <button onClick={() => setEditingRole(r)} title="Modifier l'icône / description"
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center" }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
                         <button
                           onClick={() => { if (!builtin && confirm(`Supprimer le rôle "${r.name}" ?`)) deleteRole(r.id); }}
                           disabled={builtin || deletingRole === r.id}
@@ -458,10 +647,88 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                           </svg>
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Users + Invite codes side by side */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, alignItems: "start" }}>
+
+        {/* Users table */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {/* Bulk action bar */}
+          {someSelected && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", background: "rgba(164,132,220,0.1)", border: "1px solid var(--novae-outline-tag)", borderBottom: "none", borderRadius: "var(--novae-radius-md) var(--novae-radius-md) 0 0" }}>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-tag)", fontWeight: 600 }}>
+                {selectedIds.size} sélectionné{selectedIds.size > 1 ? "s" : ""}
+              </span>
+              <button onClick={() => setShowBulkEdit(true)}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: "var(--novae-radius-sm)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600 }}>
+                Modifier les rôles
+              </button>
+              <button onClick={() => setSelectedIds(new Set())}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", padding: "5px 10px" }}>
+                Désélectionner
+              </button>
+            </div>
+          )}
+          <div style={{ ...card, overflowX: "auto", borderRadius: someSelected ? "0 0 var(--novae-radius-md) var(--novae-radius-md)" : "var(--novae-radius-md)" }}>
+            <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--novae-outline-all)" }}>
+              <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Utilisateurs récents</h2>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, width: 40, paddingRight: 8 }}>
+                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ cursor: "pointer", accentColor: "var(--novae-text-tag)" }} />
+                  </th>
+                  {["Username", "Email", "Rôle", "Code", "Rejoint", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id} style={{ background: selectedIds.has(u.id) ? "rgba(164,132,220,0.05)" : "transparent" }}>
+                    <td style={{ ...cell, width: 40, paddingRight: 8 }}>
+                      <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} style={{ cursor: "pointer", accentColor: "var(--novae-text-tag)" }} />
+                    </td>
+                    <td style={{ ...cell, whiteSpace: "nowrap", fontWeight: 600 }}>
+                      {u.username
+                        ? <a href={`/${u.username}`} style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>@{u.username}</a>
+                        : "—"}
+                    </td>
+                    <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{u.email}</td>
+                    <td style={cell}><RolesBadges roles={u.roles} iconMap={roleIconMap} /></td>
+                    <td style={{ ...cell, fontFamily: "monospace", fontSize: "var(--novae-text-xs)", color: u.inviteCode ? "var(--novae-text-tag)" : "var(--novae-text-secondary)", whiteSpace: "nowrap" }}>
+                      {u.inviteCode ?? "—"}
+                    </td>
+                    <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)", whiteSpace: "nowrap" }}>
+                      {new Date(u.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
+                    </td>
+                    <td style={{ ...cell, whiteSpace: "nowrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <button onClick={() => setEditingUser(u)} title="Modifier"
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center" }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button onClick={() => { if (confirm(`Supprimer @${u.username ?? u.email} ?`)) deleteUser(u.id); }} title="Supprimer"
+                          disabled={deletingUser === u.id}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#ff6b7a", padding: 4, display: "flex", alignItems: "center", opacity: deletingUser === u.id ? 0.4 : 1 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -537,7 +804,6 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
           </div>
         </div>
 
-        </div>{/* end right column */}
       </div>
     </main>
   );
