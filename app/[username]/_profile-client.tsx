@@ -9,6 +9,7 @@ import {
   IconPencil, IconBook, IconUser, IconGlobe, IconPalette, IconUsers,
 } from "./_shared";
 import { thumbUrl } from "@/lib/thumb";
+import { RoleIcon } from "@/lib/role-icons";
 import ImageCropModal from "@/components/ImageCropModal";
 import { MOCK_PROFILE, MOCK_ARTWORKS, ALL_MOCK_CHARACTERS, ALL_MOCK_WORLDS, MOCK_CHARACTER_FOLDERS, MOCK_WORLD_FOLDERS } from "./_mock-data";
 import type { Profile } from "./_mock-data";
@@ -16,6 +17,8 @@ import type { Profile } from "./_mock-data";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Tab = "creations" | "social" | "characters" | "worlds" | "artworks";
+
+export type RoleBadge = { name: string; icon: string; description: string | null };
 
 type EditState = {
   displayName: string;
@@ -179,12 +182,13 @@ function CrownIcon() {
 }
 
 function ProfileHeader({
-  profile, isOwner, isAdmin, isEditing, editState, setEditState, onEdit, onSave, onCancel, onUploadingChange, isUploading,
+  profile, isOwner, isAdmin, roleBadges, isEditing, editState, setEditState, onEdit, onSave, onCancel, onUploadingChange, isUploading,
   initialIsFollowing, profileUsername, onFollowChange,
 }: {
   profile: Profile;
   isOwner: boolean;
   isAdmin: boolean;
+  roleBadges: RoleBadge[];
   isEditing: boolean;
   editState: EditState;
   setEditState: React.Dispatch<React.SetStateAction<EditState>>;
@@ -328,7 +332,10 @@ function ProfileHeader({
                     <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-5xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0, whiteSpace: "nowrap" }}>
                       {profile.displayName}
                     </h1>
-                    {isAdmin && <CrownIcon />}
+                    {roleBadges.map((b) => (
+                      <RoleIcon key={b.name} name={b.icon} title={b.description ?? b.name} />
+                    ))}
+                    {isAdmin && !roleBadges.some((b) => b.name === "admin") && <CrownIcon />}
                   </div>
                   {profile.pronouns && (
                     <span style={{ backgroundColor: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", borderRadius: "var(--novae-radius-sm)", padding: "4px 12px", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>
@@ -457,6 +464,7 @@ export function ProfileClient({
   featuredFriends: dbFeaturedFriends = [],
   isOwner: isOwnerProp,
   isAdmin,
+  roleBadges = [],
   initialIsFollowing = false,
   profileUsername,
 }: {
@@ -470,6 +478,7 @@ export function ProfileClient({
   featuredFriends?: { username: string; avatar: string | null }[];
   isOwner: boolean;
   isAdmin: boolean;
+  roleBadges?: RoleBadge[];
   initialIsFollowing?: boolean;
   profileUsername?: string;
 }) {
@@ -569,6 +578,7 @@ export function ProfileClient({
             profile={profile}
             isOwner={isOwner}
             isAdmin={isAdmin}
+            roleBadges={roleBadges}
             isEditing={isEditing}
             editState={editState}
             setEditState={setEditState}
