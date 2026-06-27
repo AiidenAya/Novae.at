@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyFollowers } from "@/lib/notifications";
 
 function toSlug(name: string): string {
   return name
@@ -65,6 +66,9 @@ export async function POST(req: NextRequest) {
       writerCredit: isWriter !== false ? null : (writerCredit ?? null),
     },
   });
+
+  // fire-and-forget: notify followers
+  notifyFollowers(session.user.id, "new_character", { characterId: character.id }).catch(() => {});
 
   return NextResponse.json(character, { status: 201 });
 }

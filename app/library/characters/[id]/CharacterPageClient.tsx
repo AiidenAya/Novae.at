@@ -10,12 +10,14 @@ import { CSS } from "@dnd-kit/utilities";
 const EditorField    = dynamic(() => import("@/components/editor/EditorField"),    { ssr: false });
 const EditorRenderer = dynamic(() => import("@/components/editor/EditorRenderer"), { ssr: false });
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { thumbUrl } from "@/lib/thumb";
+import ImageCropModal from "@/components/ImageCropModal";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 type Swatch = { id?: string; hex: string; label: string | null };
 type Tag    = { tagId: string; tag: { id: string; name: string } };
-type Artwork = { id: string; imageUrl: string; title: string | null; characters: { id: string; name: string; numId: number; slug: string }[] };
+type Artwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; characters: { id: string; name: string; numId: number; slug: string }[] };
 
 interface CharacterData {
   id: string;
@@ -309,8 +311,11 @@ function DraggableArtworkTile({
   isDndActive: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `artwork-${artwork.id}` });
+  const hasThumbnail = !!artwork.thumbnailUrl;
+  const dragProps = isOwner && isDndActive ? { ...attributes, ...listeners } : {};
   const tileStyle: React.CSSProperties = {
-    position: "relative", aspectRatio: "1",
+    position: "relative",
+    aspectRatio: hasThumbnail ? "1" : undefined,
     borderRadius: "var(--novae-radius-md)", overflow: "hidden",
     backgroundColor: "var(--novae-bg-card)",
     transform: CSS.Translate.toString(transform),
@@ -319,13 +324,14 @@ function DraggableArtworkTile({
     cursor: isDragging ? "grabbing" : "zoom-in",
   };
   return (
-    <div ref={setNodeRef} style={tileStyle}>
-      {isOwner && isDndActive && (
-        <div {...attributes} {...listeners} style={{ position: "absolute", inset: 0, zIndex: 6, cursor: "grab" }} onClick={(e) => e.preventDefault()} />
+    <div ref={setNodeRef} style={tileStyle} {...dragProps} onClick={() => !isDragging && setLightbox({ url: artwork.imageUrl, artist: artwork.title })}>
+      {hasThumbnail ? (
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <Image src={artwork.thumbnailUrl!} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" />
+        </div>
+      ) : (
+        <img src={thumbUrl(artwork.imageUrl, 640) ?? artwork.imageUrl} alt={artwork.title ?? ""} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
       )}
-      <div onClick={() => !isDragging && setLightbox({ url: artwork.imageUrl, artist: artwork.title })} style={{ position: "absolute", inset: 0 }}>
-        <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill className="object-cover" />
-      </div>
       {isOwner && (
         <div className="artwork-actions" style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 4, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
           {galleries.length > 0 && (
@@ -554,6 +560,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     } finally { setRelSaving(false); }
   };
 
+  // Crop modals
+  const [avatarCropSrc, setAvatarCropSrc] = useState<{ src: string; file: File } | null>(null);
+  const [artworkCropSrc, setArtworkCropSrc] = useState<{ src: string; file: File } | null>(null);
+  const [artworkThumbnailFile, setArtworkThumbnailFile] = useState<File | null>(null);
+
   // Creator modal
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [pendingIsAvatar, setPendingIsAvatar] = useState(false);
@@ -609,6 +620,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [creditsCharSearch, setCreditsCharSearch] = useState("");
   const [creditsCharResults, setCreditsCharResults] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
   const [creditsCharLoading, setCreditsCharLoading] = useState(false);
+  // Thumbnail editing inside edit-credits modal
+  const [editThumbCropSrc, setEditThumbCropSrc] = useState<{ src: string; file: File } | null>(null);
+  const [editThumbFile, setEditThumbFile] = useState<File | null>(null);
+  const [editThumbPreview, setEditThumbPreview] = useState<string | null>(null);
+  const [editThumbRemoved, setEditThumbRemoved] = useState(false);
 
   // Favorite
   const [favorited, setFavorited] = useState(
@@ -724,7 +740,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
   // ── Artwork upload ────────────────────────────────────────────────────────
 
-  const uploadArtwork = async (files: File[], isAvatar = false, creator?: string, creatorType?: "onsite" | "offsite") => {
+  const uploadArtwork = async (files: File[], isAvatar = false, creator?: string, creatorType?: "onsite" | "offsite", thumbnailFile?: File | null) => {
     setUploadingImage(true);
     try {
       const uploaded = isAvatar
@@ -736,7 +752,6 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
       if (isAvatar) {
         const url = uploaded[0].ufsUrl;
         setAvatarUrl(url);
-        // Save avatarUrl on character
         await fetch(`/api/characters/${character.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -744,12 +759,20 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         });
         router.refresh();
       } else {
+        // Upload thumbnail separately if provided (only makes sense for single-file uploads)
+        let thumbnailUrl: string | null = null;
+        if (thumbnailFile && files.length === 1) {
+          const thumbUploaded = await startArtworkUpload([thumbnailFile]);
+          thumbnailUrl = thumbUploaded?.[0]?.ufsUrl ?? null;
+        }
+
         for (const file of uploaded) {
           const res = await fetch(`/api/characters/${character.id}/artworks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               imageUrl: file.ufsUrl,
+              thumbnailUrl,
               title: creator || file.name.replace(/\.[^.]+$/, ""),
             }),
           });
@@ -800,6 +823,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     setCreditsCharacters(artwork.characters ?? []);
     setCreditsCharSearch("");
     setCreditsCharResults([]);
+    setEditThumbFile(null);
+    setEditThumbPreview(null);
+    setEditThumbRemoved(false);
     setEditingCredits(artwork);
   };
 
@@ -825,12 +851,27 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
     const newTitle = creditsType === "onsite"
       ? `@${raw.replace(/^@/, "")}`
       : label ? `${label}::${raw}` : raw;
+
+    let newThumbnailUrl: string | null | undefined = undefined; // undefined = no change
+    if (editThumbRemoved) {
+      newThumbnailUrl = null;
+    } else if (editThumbFile) {
+      const uploaded = await startArtworkUpload([editThumbFile]);
+      newThumbnailUrl = uploaded?.[0]?.ufsUrl ?? null;
+    }
+
+    const body: Record<string, unknown> = { title: newTitle, characterIds: creditsCharacters.map((c) => c.id) };
+    if (newThumbnailUrl !== undefined) body.thumbnailUrl = newThumbnailUrl;
+
     await fetch(`/api/characters/${character.id}/artworks/${editingCredits.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newTitle, characterIds: creditsCharacters.map((c) => c.id) }),
+      body: JSON.stringify(body),
     });
-    setArtworks((prev) => prev.map((a) => a.id === editingCredits.id ? { ...a, title: newTitle, characters: creditsCharacters } : a));
+    setArtworks((prev) => prev.map((a) => a.id === editingCredits.id
+      ? { ...a, title: newTitle, characters: creditsCharacters, thumbnailUrl: newThumbnailUrl !== undefined ? newThumbnailUrl : a.thumbnailUrl }
+      : a,
+    ));
     setEditingCredits(null);
   };
 
@@ -898,7 +939,16 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         className="hidden"
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
-          if (files.length) { setPendingFiles(files); setPendingIsAvatar(false); setPendingCreator(""); setPendingCreatorLabel(""); setPendingCreatorType("me"); }
+          if (!files.length) return;
+          setArtworkThumbnailFile(null);
+          if (files.length === 1) {
+            // offer thumbnail crop for single-file uploads
+            setArtworkCropSrc({ src: URL.createObjectURL(files[0]), file: files[0] });
+            setPendingFiles(files);
+          } else {
+            setPendingFiles(files);
+          }
+          setPendingIsAvatar(false); setPendingCreator(""); setPendingCreatorLabel(""); setPendingCreatorType("me");
           e.target.value = "";
         }}
       />
@@ -908,8 +958,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         accept="image/*"
         className="hidden"
         onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
-          if (files.length) { setPendingFiles(files); setPendingIsAvatar(true); setPendingCreator(""); setPendingCreatorLabel(""); setPendingCreatorType("me"); }
+          const file = e.target.files?.[0];
+          if (file) setAvatarCropSrc({ src: URL.createObjectURL(file), file });
           e.target.value = "";
         }}
       />
@@ -918,7 +968,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
       {editingCredits && (
         <div
           onClick={() => setEditingCredits(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ position: "fixed", inset: 0, zIndex: 999, background: "var(--novae-bg-main)", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -927,6 +977,56 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
             <h2 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
               Edit credits
             </h2>
+
+            {/* Thumbnail */}
+            <div>
+              <span style={{ display: "block", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                Thumbnail (square crop)
+              </span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                {/* Current full image */}
+                <div style={{ width: 72, flexShrink: 0, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "var(--novae-bg-card)" }}>
+                  <img src={thumbUrl(editingCredits.imageUrl, 128) ?? editingCredits.imageUrl} alt="" style={{ width: "100%", display: "block" }} />
+                </div>
+
+                {/* Arrow */}
+                <div style={{ display: "flex", alignItems: "center", height: 72, color: "var(--novae-text-secondary)", flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+
+                {/* Thumbnail preview + controls */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                  <div style={{ width: 72, height: 72, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "var(--novae-bg-card)", flexShrink: 0, position: "relative" }}>
+                    {(() => {
+                      const src = editThumbRemoved ? null : (editThumbPreview ?? editingCredits.thumbnailUrl ?? null);
+                      return src
+                        ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--novae-text-secondary)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+                          </div>;
+                    })()}
+                  </div>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", cursor: "pointer" }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    {(editThumbPreview || (!editThumbRemoved && editingCredits.thumbnailUrl)) ? "Change" : "Upload"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      setEditThumbCropSrc({ src: URL.createObjectURL(f), file: f });
+                      e.target.value = "";
+                    }} />
+                  </label>
+                  {(editThumbPreview || (!editThumbRemoved && editingCredits.thumbnailUrl)) && (
+                    <button
+                      onClick={() => { setEditThumbFile(null); setEditThumbPreview(null); setEditThumbRemoved(true); }}
+                      style={{ padding: "6px 12px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: "none", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Toggle */}
             <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
@@ -1031,7 +1131,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
           onClick={() => setLightbox(null)}
           style={{
             position: "fixed", inset: 0, zIndex: 1000,
-            background: "rgba(0,0,0,0.85)",
+            background: "var(--novae-bg-main)",
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16,
             cursor: "zoom-out",
           }}
@@ -1104,10 +1204,61 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
         </div>
       )}
 
+      {/* ── Avatar crop modal ────────────────────────────────────────── */}
+      {avatarCropSrc && (
+        <ImageCropModal
+          src={avatarCropSrc.src}
+          filename={avatarCropSrc.file.name}
+          originalFile={avatarCropSrc.file}
+          aspect={1}
+          onConfirm={(croppedFile) => {
+            setAvatarCropSrc(null);
+            setPendingFiles([croppedFile]);
+            setPendingIsAvatar(true);
+            setPendingCreator("");
+            setPendingCreatorLabel("");
+            setPendingCreatorType("me");
+          }}
+          onCancel={() => setAvatarCropSrc(null)}
+        />
+      )}
+
+      {/* ── Artwork thumbnail crop modal ──────────────────────────────── */}
+      {artworkCropSrc && (
+        <ImageCropModal
+          src={artworkCropSrc.src}
+          filename={artworkCropSrc.file.name}
+          originalFile={artworkCropSrc.file}
+          aspect={1}
+          onConfirm={(croppedFile) => {
+            setArtworkThumbnailFile(croppedFile);
+            setArtworkCropSrc(null);
+          }}
+          onCancel={() => setArtworkCropSrc(null)}
+        />
+      )}
+
+      {/* ── Edit thumbnail crop modal ─────────────────────────────────── */}
+      {editThumbCropSrc && (
+        <ImageCropModal
+          src={editThumbCropSrc.src}
+          filename={editThumbCropSrc.file.name}
+          originalFile={editThumbCropSrc.file}
+          aspect={1}
+          onConfirm={(croppedFile, preview) => {
+            setEditThumbFile(croppedFile);
+            setEditThumbPreview(preview);
+            setEditThumbRemoved(false);
+            setEditThumbCropSrc(null);
+          }}
+          onCancel={() => setEditThumbCropSrc(null)}
+        />
+      )}
+
       {/* ── Creator modal ─────────────────────────────────────────────── */}
-      {pendingFiles && (
+      {pendingFiles && !artworkCropSrc && (
         <div
-          onClick={() => setPendingFiles(null)}
+          onClick={() => { setPendingFiles(null); setArtworkThumbnailFile(null); }}
           style={{
             position: "fixed", inset: 0, zIndex: 999,
             background: "rgba(0,0,0,0.6)",
@@ -1177,7 +1328,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                     const creator = buildCreatorCredit();
                     if (creator === null) return;
                     setPendingFiles(null);
-                    uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite");
+                    uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite", pendingIsAvatar ? null : artworkThumbnailFile);
                   }
                 }}
                 style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
@@ -1186,7 +1337,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
             <div style={{ display: "flex", gap: 12 }}>
               <button
-                onClick={() => setPendingFiles(null)}
+                onClick={() => { setPendingFiles(null); setArtworkThumbnailFile(null); }}
                 style={{
                   flex: 1, padding: "10px 0",
                   background: "none",
@@ -1203,7 +1354,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                   const creator = buildCreatorCredit();
                   if (creator === null) return;
                   setPendingFiles(null);
-                  uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite");
+                  uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite", pendingIsAvatar ? null : artworkThumbnailFile);
                 }}
                 style={{
                   flex: 1, padding: "10px 0",
@@ -1831,7 +1982,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                           cursor: "zoom-in",
                         }}
                       >
-                        <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill className="object-cover" style={{ pointerEvents: "none" }} />
+                        <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" style={{ pointerEvents: "none" }} />
                         {isOwner && (
                           <div className="artwork-actions" style={{ position: "absolute", top: 4, right: 4, display: "flex", gap: 3, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
                             <button onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit">
@@ -2087,7 +2238,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                       <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)" }}>
                         {rel.character.avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img src={thumbUrl(rel.character.avatarUrl, 128) ?? rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : null}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -2114,7 +2265,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
 
               {/* Add Relationship Modal */}
               {showAddRel && (
-                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddRel(false); }}>
+                <div style={{ position: "fixed", inset: 0, background: "var(--novae-bg-main)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddRel(false); }}>
                   <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 420, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 16 }}>
                     <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Add Relationship</h3>
 
@@ -2178,7 +2329,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
               {editingRel && (() => {
                 const otherChar = relationships.find((r) => r.id === editingRel.id)?.character;
                 return (
-                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setEditingRel(null); }}>
+                  <div style={{ position: "fixed", inset: 0, background: "var(--novae-bg-main)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setEditingRel(null); }}>
                     <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 460, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 20 }}>
                       <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Edit Relationship</h3>
 
@@ -2187,7 +2338,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                         {/* This char */}
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            {avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(avatarUrl, 64) ?? avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
                             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{name}</span>
                           </div>
                           <input value={editingRel.myLabel} onChange={(e) => setEditingRel((r) => r && { ...r, myLabel: e.target.value, error: undefined })} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
@@ -2199,7 +2350,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                         {/* Other char */}
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {otherChar?.avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={otherChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            {otherChar?.avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(otherChar.avatarUrl, 64) ?? otherChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
                             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{otherChar?.name ?? "Other"}</span>
                           </div>
                           <input value={editingRel.otherLabel} onChange={(e) => setEditingRel((r) => r && { ...r, otherLabel: e.target.value, error: undefined })} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
@@ -2393,7 +2544,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
                     const artwork = artworks.find((a) => a.id === artworkId);
                     return artwork ? (
                       <div style={{ position: "relative", width: 120, height: 120, borderRadius: "var(--novae-radius-md)", overflow: "hidden", transform: "rotate(2deg)", opacity: 0.9, pointerEvents: "none" }}>
-                        <Image src={artwork.imageUrl} alt="" fill className="object-cover" />
+                        <Image src={artwork.imageUrl} alt="" fill sizes="120px" className="object-cover" />
                       </div>
                     ) : null;
                   })()}
@@ -2542,7 +2693,7 @@ function RelCard({ rel }: { rel: { id: string; type: string; description: string
       <a href={href} style={{ width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" }}>
         {rel.character.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={thumbUrl(rel.character.avatarUrl, 128) ?? rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : null}
       </a>
       <div style={{ flex: 1, minWidth: 0 }}>

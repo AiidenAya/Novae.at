@@ -8,6 +8,8 @@ import {
   Card, SectionTitle, Avatar, SocialIcon,
   IconPencil, IconBook, IconUser, IconGlobe, IconPalette, IconUsers,
 } from "./_shared";
+import { thumbUrl } from "@/lib/thumb";
+import ImageCropModal from "@/components/ImageCropModal";
 import { MOCK_PROFILE, MOCK_ARTWORKS, ALL_MOCK_CHARACTERS, ALL_MOCK_WORLDS, MOCK_CHARACTER_FOLDERS, MOCK_WORLD_FOLDERS } from "./_mock-data";
 import type { Profile } from "./_mock-data";
 
@@ -178,6 +180,7 @@ function CrownIcon() {
 
 function ProfileHeader({
   profile, isOwner, isAdmin, isEditing, editState, setEditState, onEdit, onSave, onCancel, onUploadingChange, isUploading,
+  initialIsFollowing, profileUsername,
 }: {
   profile: Profile;
   isOwner: boolean;
@@ -190,11 +193,23 @@ function ProfileHeader({
   onCancel: () => void;
   onUploadingChange: (v: boolean) => void;
   isUploading: boolean;
+  initialIsFollowing: boolean;
+  profileUsername: string;
 }) {
   const coverRef  = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover,  setUploadingCover]  = useState(false);
+  const [cropPending, setCropPending] = useState<{ src: string; file: File; key: "coverImage" | "avatarImage" } | null>(null);
+  const [following, setFollowing] = useState(initialIsFollowing);
+  const [followLoading, setFollowLoading] = useState(false);
+  const toggleFollow = async () => {
+    setFollowLoading(true);
+    try {
+      const res = await fetch(`/api/users/${profileUsername}/follow`, { method: "POST" });
+      if (res.ok) { const { following: f } = await res.json(); setFollowing(f); }
+    } finally { setFollowLoading(false); }
+  };
 
   const { startUpload: uploadAvatar } = useUploadThing("profileAvatar");
   const { startUpload: uploadCover  } = useUploadThing("profileCover");
@@ -202,17 +217,24 @@ function ProfileHeader({
   const coverImage  = isEditing ? editState.coverImage  : profile.coverImage;
   const avatarImage = isEditing ? editState.avatarImage : profile.avatarImage;
 
-  async function handleFile(key: "coverImage" | "avatarImage", file: File | undefined) {
+  function handleFileSelect(key: "coverImage" | "avatarImage", file: File | undefined) {
     if (!file) return;
+    const src = URL.createObjectURL(file);
+    setCropPending({ src, file, key });
+  }
+
+  async function handleCropped(croppedFile: File, preview: string) {
+    if (!cropPending) return;
+    const { key } = cropPending;
+    setCropPending(null);
     onUploadingChange(true);
-    const preview = URL.createObjectURL(file);
 
     if (key === "avatarImage") {
       const prev = editState.avatarImage;
       setEditState((p) => ({ ...p, avatarImage: preview }));
       setUploadingAvatar(true);
       try {
-        const res = await uploadAvatar([file]);
+        const res = await uploadAvatar([croppedFile]);
         setEditState((p) => ({ ...p, avatarImage: res?.[0]?.url ?? prev }));
       } catch {
         setEditState((p) => ({ ...p, avatarImage: prev }));
@@ -223,7 +245,7 @@ function ProfileHeader({
       setEditState((p) => ({ ...p, coverImage: preview }));
       setUploadingCover(true);
       try {
-        const res = await uploadCover([file]);
+        const res = await uploadCover([croppedFile]);
         setEditState((p) => ({ ...p, coverImage: res?.[0]?.url ?? prev }));
       } catch {
         setEditState((p) => ({ ...p, coverImage: prev }));
@@ -235,6 +257,16 @@ function ProfileHeader({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
+      {cropPending && (
+        <ImageCropModal
+          src={cropPending.src}
+          filename={cropPending.file.name}
+          originalFile={cropPending.file}
+          aspect={cropPending.key === "coverImage" ? 16 / 9 : 1}
+          onConfirm={handleCropped}
+          onCancel={() => setCropPending(null)}
+        />
+      )}
       <div style={{ backgroundColor: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden", paddingBottom: "var(--novae-space-3xl)" }}>
         {/* Cover */}
         <div
@@ -242,7 +274,7 @@ function ProfileHeader({
           onClick={() => isEditing && coverRef.current?.click()}
         >
           {coverImage
-            ? <img src={coverImage} alt="Cover" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ? <img src={isEditing ? coverImage : (thumbUrl(coverImage, 1200) ?? coverImage)} alt="Cover" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, rgba(105,61,169,0.4), rgba(164,132,220,0.2))" }} />
           }
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 35%, var(--novae-bg-main) 100%)", pointerEvents: "none" }} />
@@ -253,7 +285,7 @@ function ProfileHeader({
               </span>
             </div>
           )}
-          <input ref={coverRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("coverImage", e.target.files?.[0])} suppressHydrationWarning />
+          <input ref={coverRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFileSelect("coverImage", e.target.files?.[0])} suppressHydrationWarning />
         </div>
 
         {/* Avatar row */}
@@ -270,7 +302,7 @@ function ProfileHeader({
                 </span>
               </div>
             )}
-            <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile("avatarImage", e.target.files?.[0])} suppressHydrationWarning />
+            <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFileSelect("avatarImage", e.target.files?.[0])} suppressHydrationWarning />
           </div>
 
           <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-end", minWidth: 0, paddingTop: 16, paddingBottom: 16 }}>
@@ -312,6 +344,24 @@ function ProfileHeader({
             {isOwner && !isEditing && (
               <button onClick={onEdit} style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-sm)", backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "12px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500, flexShrink: 0 }}>
                 <IconPencil /> Edit
+              </button>
+            )}
+            {!isOwner && (
+              <button
+                onClick={toggleFollow}
+                disabled={followLoading}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+                  backgroundColor: following ? "transparent" : "var(--novae-btn-primary)",
+                  border: following ? "1px solid var(--novae-outline-all)" : "none",
+                  borderRadius: "var(--novae-radius-md)", padding: "12px 20px",
+                  cursor: followLoading ? "not-allowed" : "pointer",
+                  color: following ? "var(--novae-text-secondary)" : "var(--novae-text-btn)",
+                  fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500,
+                  opacity: followLoading ? 0.6 : 1,
+                }}
+              >
+                {following ? "Following" : "Follow"}
               </button>
             )}
             {isEditing && (
@@ -385,7 +435,7 @@ function makeEditState(p: Profile): EditState {
 
 type DbCharacter = { id?: string; numId?: number; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
 type DbFolder = { id: string; name: string };
-type DbArtwork = { id: string; imageUrl: string; title: string | null; characters: { id: string; numId: number; slug: string; name: string }[] };
+type DbArtwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; characters: { id: string; numId: number; slug: string; name: string }[] };
 type DbProfile = {
   name: string | null;
   bio: string | null;
@@ -406,6 +456,8 @@ export function ProfileClient({
   featuredFriends: dbFeaturedFriends = [],
   isOwner: isOwnerProp,
   isAdmin,
+  initialIsFollowing = false,
+  profileUsername,
 }: {
   username: string;
   dbProfile: DbProfile;
@@ -417,6 +469,8 @@ export function ProfileClient({
   featuredFriends?: { username: string; avatar: string | null }[];
   isOwner: boolean;
   isAdmin: boolean;
+  initialIsFollowing?: boolean;
+  profileUsername?: string;
 }) {
   const dbSocials = dbProfile?.socials
     ? MOCK_PROFILE.socials.map((s) => ({
@@ -521,13 +575,15 @@ export function ProfileClient({
             onCancel={onCancel}
             onUploadingChange={setIsUploading}
             isUploading={isUploading}
+            initialIsFollowing={initialIsFollowing}
+            profileUsername={profileUsername ?? username}
           />
           <TabBar active={activeTab} onChange={setActiveTab} />
           {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={[]} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
           {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
           {activeTab === "worlds"     && <WorldsTab     folders={[]} isEditing={isEditing} />}
           {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isAdmin={isAdmin} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
-          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, hearts: 0, characters: a.characters }))} isOwner={isOwner} username={username} />}
+          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, thumbnailUrl: a.thumbnailUrl ?? null, hearts: 0, characters: a.characters }))} isOwner={isOwner} username={username} />}
         </div>
         <Sidebar
           profile={profile}

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { thumbUrl } from "@/lib/thumb";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function Avatar({ src, size, name }: { src: string | null; size: number; name: string }) {
-  if (src) return <img src={src} alt={name} style={{ width: size, height: size, objectFit: "cover", borderRadius: "var(--novae-radius-md)", display: "block" }} />;
+  if (src) return <img src={thumbUrl(src, size * 2) ?? src} alt={name} style={{ width: size, height: size, objectFit: "cover", borderRadius: "var(--novae-radius-md)", display: "block" }} />;
   return (
     <div style={{ width: size, height: size, borderRadius: "var(--novae-radius-md)", backgroundColor: "#19202e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, color: "var(--novae-text-link)", fontFamily: "var(--font-space-grotesk)", fontWeight: 700 }}>
       {name[0]?.toUpperCase() ?? "?"}
@@ -82,7 +83,7 @@ export function CharacterCard({ name, hearts, images, coverImage, slug, numId }:
     <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start", width: 156, flexShrink: 0 }}>
       <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "rgba(105,61,169,0.1)" }}>
         {coverImage
-          ? <img src={coverImage} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ? <img src={thumbUrl(coverImage, 320) ?? coverImage} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           : <div style={{ width: "100%", height: "100%", backgroundImage: "repeating-conic-gradient(rgba(136,136,136,0.15) 0% 25%, transparent 0% 50%)", backgroundSize: "20px 20px" }} />
         }
       </div>

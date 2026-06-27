@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { thumbUrl } from "@/lib/thumb";
 import { Card, IconHeart } from "../_shared";
 import type { Artwork } from "../_mock-data";
 
@@ -44,7 +45,7 @@ function Lightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => voi
   return (
     <div
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.88)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, cursor: "zoom-out" }}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "var(--novae-bg-main)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, cursor: "zoom-out" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -97,9 +98,11 @@ function ArtworkCard({
         style={{ width: "100%", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "rgba(105,61,169,0.1)", position: "relative", cursor: "zoom-in" }}
         className="artwork-card-wrap"
       >
-        {artwork.image
-          ? <img src={artwork.image} alt={artwork.title} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
-          : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
+        {artwork.thumbnailUrl
+          ? <img src={thumbUrl(artwork.thumbnailUrl, 400) ?? artwork.thumbnailUrl} alt={artwork.title} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+          : artwork.image
+            ? <img src={thumbUrl(artwork.image, 640) ?? artwork.image} alt={artwork.title} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
+            : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
         }
         {artwork.characters.length > 0 && (
           <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -136,6 +139,14 @@ function ArtworkCard({
   );
 }
 
+function isMineArtwork(title: string | null | undefined, username: string) {
+  const t = title ?? "";
+  if (!t || t === `@${username}`) return true;
+  if (t.startsWith("@") && t.slice(1).toLowerCase() !== username.toLowerCase()) return false;
+  if (t.includes("::") || t.startsWith("http")) return false;
+  return true;
+}
+
 export default function ArtworksTab({
   artworks: initial, isOwner = false, username = "",
 }: {
@@ -144,7 +155,12 @@ export default function ArtworksTab({
   username?: string;
 }) {
   const [artworks, setArtworks] = useState(initial);
+  const [filter, setFilter] = useState<"mine" | "all">("mine");
   const [lightbox, setLightbox] = useState<LightboxEntry | null>(null);
+
+  const visibleArtworks = filter === "mine"
+    ? artworks.filter((a) => isMineArtwork(a.title, username))
+    : artworks;
 
   // Edit credits modal state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -235,7 +251,7 @@ export default function ArtworksTab({
       {editingId && (
         <div
           onClick={() => setEditingId(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ position: "fixed", inset: 0, zIndex: 999, background: "var(--novae-bg-main)", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -343,8 +359,30 @@ export default function ArtworksTab({
         </div>
       )}
 
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {(["mine", "all"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            style={{
+              padding: "5px 14px",
+              borderRadius: "var(--novae-radius-md)",
+              border: filter === f ? "none" : "1px solid var(--novae-outline-all)",
+              background: filter === f ? "var(--novae-btn-primary)" : "none",
+              color: filter === f ? "#fff" : "var(--novae-text-secondary)",
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "var(--novae-text-sm)",
+              fontWeight: filter === f ? 600 : 400,
+              cursor: "pointer",
+            }}
+          >
+            {f === "mine" ? "Mine" : "All"}
+          </button>
+        ))}
+      </div>
+
       <div style={{ columnCount: 3, columnGap: 16 }}>
-        {artworks.map((a) => (
+        {visibleArtworks.map((a) => (
           <ArtworkCard
             key={a.id}
             artwork={a}
