@@ -583,7 +583,7 @@ export default function Navbar() {
                         </span>
                       )}
                     </span>
-                    <span>Notifications</span>
+                    <span>{t.navNotifications}</span>
                   </Link>
 
                   <Divider />

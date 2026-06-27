@@ -27,17 +27,6 @@ const CHOICES = [
     ),
   },
   {
-    id: "image",
-    label: "Image",
-    description: "Upload a single artwork or illustration to your gallery.",
-    disabled: true,
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-      </svg>
-    ),
-  },
-  {
     id: "multi-image",
     label: "Multi Image",
     description: "Upload multiple artworks at once and organize them together.",
@@ -70,7 +59,7 @@ export default function NewPage() {
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {CHOICES.map((c) => (
             <button
               key={c.id}
