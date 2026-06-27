@@ -697,7 +697,11 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                     <td style={{ ...cell, width: 40, paddingRight: 8 }}>
                       <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} style={{ cursor: "pointer", accentColor: "var(--novae-text-tag)" }} />
                     </td>
-                    <td style={{ ...cell, whiteSpace: "nowrap", fontWeight: 600 }}>{u.username ? `@${u.username}` : "—"}</td>
+                    <td style={{ ...cell, whiteSpace: "nowrap", fontWeight: 600 }}>
+                      {u.username
+                        ? <a href={`/${u.username}`} style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>@{u.username}</a>
+                        : "—"}
+                    </td>
                     <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{u.email}</td>
                     <td style={cell}><RolesBadges roles={u.roles} iconMap={roleIconMap} /></td>
                     <td style={{ ...cell, fontFamily: "monospace", fontSize: "var(--novae-text-xs)", color: u.inviteCode ? "var(--novae-text-tag)" : "var(--novae-text-secondary)", whiteSpace: "nowrap" }}>
