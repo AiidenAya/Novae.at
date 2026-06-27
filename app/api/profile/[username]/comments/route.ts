@@ -19,14 +19,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ use
       id: true,
       text: true,
       createdAt: true,
-      author: { select: { username: true, avatar: true } },
+      author: { select: { username: true, name: true, avatar: true } },
       replies: {
         orderBy: { createdAt: "asc" },
         select: {
           id: true,
           text: true,
           createdAt: true,
-          author: { select: { username: true, avatar: true } },
+          author: { select: { username: true, name: true, avatar: true } },
         },
       },
     },
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ use
       id: true,
       text: true,
       createdAt: true,
-      author: { select: { username: true, avatar: true } },
+      author: { select: { username: true, name: true, avatar: true } },
       replies: true,
     },
   });
