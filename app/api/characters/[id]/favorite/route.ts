@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUser } from "@/lib/notifications";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -23,6 +24,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   await prisma.favorite.create({
     data: { userId: session.user.id, characterId: id },
   });
+
+  // notify the character owner (skip self-favorite)
+  if (character.userId !== session.user.id) {
+    notifyUser(character.userId, session.user.id, "new_favorite", { characterId: id }).catch(() => {});
+  }
 
   return NextResponse.json({ favorited: true });
 }

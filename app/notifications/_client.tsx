@@ -28,6 +28,8 @@ type CharGroup = {
 type ActorGroup = {
   actor: NotifActor;
   chars: Map<string, CharGroup>;
+  newFollower: Notification | null;
+  newFavorites: Notification[];
   unread: boolean;
 };
 
@@ -37,10 +39,13 @@ function groupNotifications(notifs: Notification[]): ActorGroup[] {
   for (const n of notifs) {
     const actorId = n.actor.id;
     if (!actors.has(actorId)) {
-      actors.set(actorId, { actor: n.actor, chars: new Map(), unread: false });
+      actors.set(actorId, { actor: n.actor, chars: new Map(), newFollower: null, newFavorites: [], unread: false });
     }
     const ag = actors.get(actorId)!;
     if (!n.read) ag.unread = true;
+
+    if (n.type === "new_follower") { ag.newFollower = n; continue; }
+    if (n.type === "new_favorite") { ag.newFavorites.push(n); continue; }
 
     const charKey = n.character?.id ?? "__none__";
     if (!ag.chars.has(charKey)) {
@@ -141,10 +146,14 @@ function CharGroupRow({ cg }: { cg: CharGroup }) {
 }
 
 function ActorCard({ ag, onMarkRead }: { ag: ActorGroup; onMarkRead: (ids: string[]) => void }) {
-  const allIds = [...ag.chars.values()].flatMap((cg) => [
-    cg.newCharacter?.id,
-    ...cg.newArtworks.map((n) => n.id),
-  ]).filter(Boolean) as string[];
+  const allIds = [
+    ag.newFollower?.id,
+    ...ag.newFavorites.map((n) => n.id),
+    ...[...ag.chars.values()].flatMap((cg) => [
+      cg.newCharacter?.id,
+      ...cg.newArtworks.map((n) => n.id),
+    ]),
+  ].filter(Boolean) as string[];
 
   return (
     <div style={{ background: "var(--novae-bg-card)", border: `1px solid ${ag.unread ? "var(--novae-btn-primary)" : "var(--novae-outline-all)"}`, borderRadius: "var(--novae-radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -180,10 +189,46 @@ function ActorCard({ ag, onMarkRead }: { ag: ActorGroup; onMarkRead: (ids: strin
         )}
       </div>
 
+      {/* New follower event */}
+      {ag.newFollower && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-btn-primary)" }}>
+            ✦ Started following you
+          </span>
+          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+            {relativeTime(ag.newFollower.createdAt)}
+          </span>
+        </div>
+      )}
+
+      {/* New favorite events */}
+      {ag.newFavorites.map((n) => (
+        <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(220,50,50,0.12)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "#e05252" }}>
+            ♥ Favorited
+          </span>
+          {n.character && (
+            <Link href={`/library/characters/${n.character.numId}-${n.character.slug}`} style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none" }}>
+              {n.character.avatarUrl && (
+                <div style={{ width: 20, height: 20, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0 }}>
+                  <img src={thumbUrl(n.character.avatarUrl, 40) ?? n.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </div>
+              )}
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)" }}>{n.character.name}</span>
+            </Link>
+          )}
+          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+            {relativeTime(n.createdAt)}
+          </span>
+        </div>
+      ))}
+
       {/* Character groups */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {[...ag.chars.values()].map((cg, i) => <CharGroupRow key={i} cg={cg} />)}
-      </div>
+      {ag.chars.size > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[...ag.chars.values()].map((cg, i) => <CharGroupRow key={i} cg={cg} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -192,14 +237,6 @@ function ActorCard({ ag, onMarkRead }: { ag: ActorGroup; onMarkRead: (ids: strin
 
 export function NotificationsClient({ notifications: initial }: { notifications: Notification[] }) {
   const [notifs, setNotifs] = useState(initial);
-
-  useEffect(() => {
-    // mark all as read after 2s on the server side
-    const t = setTimeout(() => {
-      fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-    }, 2000);
-    return () => clearTimeout(t);
-  }, []);
 
   const markRead = (ids: string[]) => {
     setNotifs((prev) => prev.map((n) => ids.includes(n.id) ? { ...n, read: true } : n));
@@ -210,7 +247,7 @@ export function NotificationsClient({ notifications: initial }: { notifications:
   const unreadCount = notifs.filter((n) => !n.read).length;
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px 80px", display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ padding: "40px 24px 80px", display: "flex", flexDirection: "column", gap: 24 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <div>

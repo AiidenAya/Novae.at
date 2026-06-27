@@ -22,3 +22,19 @@ export async function notifyFollowers(
     skipDuplicates: true,
   });
 }
+
+export async function notifyUser(
+  recipientId: string,
+  actorId: string,
+  type: "new_follower" | "new_favorite",
+  opts: { characterId?: string } = {},
+) {
+  await prisma.notification.create({
+    data: {
+      type,
+      recipientId,
+      actorId,
+      characterId: opts.characterId ?? null,
+    },
+  });
+}

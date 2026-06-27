@@ -495,16 +495,34 @@ export default function Navbar() {
                 onClick={() => toggle("profile")}
                 className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
               >
-                {avatarUrl ? (
-                  <img src={thumbUrl(avatarUrl, 80) ?? avatarUrl} alt={username ?? ""} className="size-10 rounded-full object-cover" />
-                ) : (
-                  <div
-                    className="size-10 rounded-full flex items-center justify-center text-sm font-medium shrink-0"
-                    style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-primary)" }}
-                  >
-                    {(username ?? "?")[0].toUpperCase()}
-                  </div>
-                )}
+                {/* Avatar with unread dot */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  {avatarUrl ? (
+                    <img src={thumbUrl(avatarUrl, 80) ?? avatarUrl} alt={username ?? ""} className="size-10 rounded-full object-cover" />
+                  ) : (
+                    <div
+                      className="size-10 rounded-full flex items-center justify-center text-sm font-medium"
+                      style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-primary)" }}
+                    >
+                      {(username ?? "?")[0].toUpperCase()}
+                    </div>
+                  )}
+                  {unreadCount > 0 && (
+                    <span style={{
+                      position: "absolute", top: -2, right: -2,
+                      minWidth: 18, height: 18,
+                      background: "#e53e3e",
+                      border: "2px solid var(--novae-bg-card)",
+                      borderRadius: 999,
+                      fontSize: 10, fontWeight: 700, color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: "0 3px",
+                      fontFamily: "var(--font-dm-sans)",
+                    }}>
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </div>
                 <span
                   className="font-medium"
                   style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)" }}
@@ -553,11 +571,6 @@ export default function Navbar() {
                       )}
                     </span>
                     <span>Notifications</span>
-                    {unreadCount > 0 && (
-                      <span style={{ marginLeft: "auto", minWidth: 20, height: 20, background: "var(--novae-btn-primary)", borderRadius: 999, fontSize: 11, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    )}
                   </Link>
 
                   <Divider />

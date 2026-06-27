@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUser } from "@/lib/notifications";
 
 export async function POST(
   _req: NextRequest,
@@ -24,6 +25,7 @@ export async function POST(
     return NextResponse.json({ following: false });
   } else {
     await prisma.follow.create({ data: { followerId: session.user.id, followingId: target.id } });
+    notifyUser(target.id, session.user.id, "new_follower").catch(() => {});
     return NextResponse.json({ following: true });
   }
 }

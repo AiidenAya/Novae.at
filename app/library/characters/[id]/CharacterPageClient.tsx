@@ -63,6 +63,7 @@ interface Props {
   character: CharacterData;
   isOwner: boolean;
   currentUserId: string | null;
+  initialFavorited?: boolean;
 }
 
 // ─── Inline styles helpers ──────────────────────────────────────────────────
@@ -386,7 +387,7 @@ function DroppableGallerySection({
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export default function CharacterPageClient({ character, isOwner, currentUserId }: Props) {
+export default function CharacterPageClient({ character, isOwner, currentUserId, initialFavorited = false }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -627,9 +628,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
   const [editThumbRemoved, setEditThumbRemoved] = useState(false);
 
   // Favorite
-  const [favorited, setFavorited] = useState(
-    character.favorites.some(() => false) // will be filled by server prop
-  );
+  const [favorited, setFavorited] = useState(initialFavorited);
+  const [favoritesCount, setFavoritesCount] = useState(character.favorites.length);
   const [favLoading, setFavLoading] = useState(false);
 
   // ── Save handler ──────────────────────────────────────────────────────────
@@ -885,6 +885,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
       if (res.ok) {
         const { favorited: f } = await res.json();
         setFavorited(f);
+        setFavoritesCount((c) => f ? c + 1 : c - 1);
       }
     } finally {
       setFavLoading(false);
@@ -2573,7 +2574,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId 
               {[
                 { count: artworks.length, label: "images" },
                 { count: relationships.length, label: "relations" },
-                { count: character.favorites.length, label: "favorites" },
+                { count: favoritesCount, label: "favorites" },
                 { count: tags.length, label: "tags" },
               ].map(({ count, label }) => (
                 <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>

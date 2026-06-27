@@ -288,7 +288,7 @@ model InviteCode {
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // "new_character" | "new_artwork"
+  type      String   // "new_character" | "new_artwork" | "new_follower" | "new_favorite"
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
