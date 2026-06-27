@@ -40,11 +40,12 @@ interface CharacterData {
   custom: string | null;
   voiceClaimUrl: string | null;
   playlistUrl: string | null;
+  spotifyPlaylistUrl: string | null;
   summary: string | null;
   biography: string | null;
   sections: string | null;
-  relationshipsA: { id: string; type: string; typeB: string | null; description: string | null; characterB: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } }[];
-  relationshipsB: { id: string; type: string; typeB: string | null; description: string | null; characterA: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } }[];
+  relationshipsA: { id: string; type: string; typeB: string | null; description: string | null; status?: string; externalName?: string | null; externalImageUrl?: string | null; characterB: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } | null }[];
+  relationshipsB: { id: string; type: string; typeB: string | null; description: string | null; status?: string; characterA: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } }[];
   isDesigner: boolean;
   designerCredit: string | null;
   isWriter: boolean;
@@ -439,6 +440,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     return [];
   };
   const [tracks, setTracks] = useState<Track[]>(parseTracks);
+  const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState(character.spotifyPlaylistUrl ?? "");
   const [summary, setSummary] = useState(character.summary ?? "");
   const [biography, setBiography] = useState(character.biography ?? "");
   const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl ?? "");
@@ -484,17 +486,32 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [assigningArtwork, setAssigningArtwork] = useState<string | null>(null); // artworkId
 
   // Relationships
-  type RelEntry = { id: string; type: string; typeRaw: string; typeBRaw: string | null; isA: boolean; description: string | null; character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } };
+  type RelEntry = {
+    id: string; type: string; typeRaw: string; typeBRaw: string | null; isA: boolean; description: string | null;
+    status: string;
+    character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } | null;
+    externalName: string | null; externalImageUrl: string | null;
+  };
   const initRels = (): RelEntry[] => [
-    ...character.relationshipsA.map((r) => ({ id: r.id, type: r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: true, description: r.description, character: r.characterB })),
-    ...character.relationshipsB.map((r) => ({ id: r.id, type: r.typeB ?? r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: false, description: r.description, character: r.characterA })),
+    ...character.relationshipsA.map((r) => ({ id: r.id, type: r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: true, description: r.description, status: r.status ?? "accepted", character: r.characterB, externalName: (r as { externalName?: string | null }).externalName ?? null, externalImageUrl: (r as { externalImageUrl?: string | null }).externalImageUrl ?? null })),
+    ...character.relationshipsB.map((r) => ({ id: r.id, type: r.typeB ?? r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: false, description: r.description, status: r.status ?? "accepted", character: r.characterA, externalName: null, externalImageUrl: null })),
   ];
   const [relationships, setRelationships] = useState<RelEntry[]>(initRels);
   const [showAddRel, setShowAddRel] = useState(false);
+  const [relMode, setRelMode] = useState<"site" | "external">("site");
+  // step 1: which user owns the character
+  type RelUser = { id: string; username: string | null; name: string | null; avatar: string | null };
+  const [relUser, setRelUser] = useState<RelUser | null>(null); // null = not chosen yet
+  const [relUserSearch, setRelUserSearch] = useState("");
+  const [relUserResults, setRelUserResults] = useState<RelUser[]>([]);
+  const [relUserLoading, setRelUserLoading] = useState(false);
+  // step 2: the character
   const [relSearch, setRelSearch] = useState("");
-  const [relSearchResults, setRelSearchResults] = useState<{ id: string; name: string; numId: number; slug: string; avatarUrl: string | null }[]>([]);
+  const [relSearchResults, setRelSearchResults] = useState<{ id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } }[]>([]);
   const [relSearchLoading, setRelSearchLoading] = useState(false);
   const [relSelectedChar, setRelSelectedChar] = useState<{ id: string; name: string; numId: number; slug: string; avatarUrl: string | null } | null>(null);
+  const [relExternalName, setRelExternalName] = useState("");
+  const [relExternalImage, setRelExternalImage] = useState("");
   const [relType, setRelType] = useState("");
   const [relTypeB, setRelTypeB] = useState("");
   const [relDesc, setRelDesc] = useState("");
@@ -502,30 +519,57 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   // myLabel = label from current char's perspective, otherLabel = the other side's label
   const [editingRel, setEditingRel] = useState<{ id: string; isA: boolean; myLabel: string; otherLabel: string; description: string; error?: string } | null>(null);
 
+  const searchRelUsers = async (q: string) => {
+    if (!q.trim()) { setRelUserResults([]); return; }
+    setRelUserLoading(true);
+    try {
+      const res = await fetch(`/api/users/search?multi=1&q=${encodeURIComponent(q)}`);
+      if (res.ok) { const { users } = await res.json(); setRelUserResults(users ?? []); }
+    } finally { setRelUserLoading(false); }
+  };
+
+  // search characters belonging to the chosen user (relUser)
   const searchRelChars = async (q: string) => {
-    if (!q.trim()) { setRelSearchResults([]); return; }
+    if (!relUser) { setRelSearchResults([]); return; }
     setRelSearchLoading(true);
     try {
-      const res = await fetch(`/api/characters?search=${encodeURIComponent(q)}&limit=8&exclude=${character.id}`);
+      const params = new URLSearchParams({ userId: relUser.id, limit: "20", exclude: character.id });
+      if (q.trim()) params.set("search", q.trim());
+      const res = await fetch(`/api/characters?${params.toString()}`);
       if (res.ok) setRelSearchResults(await res.json());
     } finally { setRelSearchLoading(false); }
   };
 
+  const pickRelUser = (u: RelUser) => {
+    setRelUser(u);
+    setRelUserResults([]); setRelUserSearch("");
+    setRelSelectedChar(null); setRelSearch(""); setRelSearchResults([]);
+  };
+
+  const meUser: RelUser = { id: currentUserId ?? "", username: character.user?.username ?? null, name: null, avatar: avatarUrl ?? null };
+
   const addRelationship = async () => {
-    if (!relSelectedChar || !relType.trim()) return;
+    if (!relType.trim()) return;
+    if (relMode === "site" && !relSelectedChar) return;
+    if (relMode === "external" && !relExternalName.trim()) return;
     setRelSaving(true);
     try {
+      const body = relMode === "site"
+        ? { characterBId: relSelectedChar!.id, type: relType.trim(), typeB: relTypeB.trim() || null, description: relDesc.trim() || null }
+        : { externalName: relExternalName.trim(), externalImageUrl: relExternalImage.trim() || null, type: relType.trim(), typeB: null, description: relDesc.trim() || null };
       const res = await fetch(`/api/characters/${character.id}/relationships`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ characterBId: relSelectedChar.id, type: relType.trim(), typeB: relTypeB.trim() || null, description: relDesc.trim() || null }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const raw = await res.json();
-        const newRel: RelEntry = { ...raw, isA: true, typeRaw: relType.trim(), typeBRaw: relTypeB.trim() || null };
-        setRelationships((prev) => [...prev, newRel]);
+        setRelationships((prev) => [...prev, raw]);
         setShowAddRel(false);
-        setRelSearch(""); setRelSearchResults([]); setRelSelectedChar(null); setRelType(""); setRelTypeB(""); setRelDesc("");
+        setRelUser(null); setRelUserSearch(""); setRelUserResults([]);
+        setRelSearch(""); setRelSearchResults([]); setRelSelectedChar(null);
+        setRelExternalName(""); setRelExternalImage("");
+        setRelType(""); setRelTypeB(""); setRelDesc("");
       }
     } finally { setRelSaving(false); }
   };
@@ -648,6 +692,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           customFieldName: null,
           voiceClaimUrl,
           playlistUrl: tracks.length > 0 ? JSON.stringify(tracks) : null,
+          spotifyPlaylistUrl: spotifyPlaylistUrl.trim() || null,
           summary, biography, avatarUrl,
           isDesigner,
           designerCredit: isDesigner ? null : (creditValue.trim()
@@ -1007,9 +1052,24 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                           </div>;
                     })()}
                   </div>
+                  {/* Crop from existing image */}
+                  <button
+                    onClick={async () => {
+                      const src = editThumbRemoved ? null : (editThumbPreview ?? editingCredits.thumbnailUrl ?? null);
+                      const cropSrc = src ?? editingCredits.imageUrl;
+                      const res = await fetch(cropSrc);
+                      const blob = await res.blob();
+                      const file = new File([blob], "thumbnail.jpg", { type: blob.type || "image/jpeg" });
+                      setEditThumbCropSrc({ src: URL.createObjectURL(file), file });
+                    }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: "none", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", cursor: "pointer" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 2 6 8 2 8"/><polyline points="18 22 18 16 22 16"/><path d="M2 8C2 5.79 3.79 4 6 4h8"/><path d="M22 16C22 18.21 20.21 20 18 20H10"/></svg>
+                    Crop
+                  </button>
                   <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", cursor: "pointer" }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    {(editThumbPreview || (!editThumbRemoved && editingCredits.thumbnailUrl)) ? "Change" : "Upload"}
+                    Upload new
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (!f) return;
@@ -1983,7 +2043,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                           cursor: "zoom-in",
                         }}
                       >
-                        <Image src={artwork.imageUrl} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" style={{ pointerEvents: "none" }} />
+                        <Image src={artwork.thumbnailUrl ?? artwork.imageUrl} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" style={{ pointerEvents: "none" }} />
                         {isOwner && (
                           <div className="artwork-actions" style={{ position: "absolute", top: 4, right: 4, display: "flex", gap: 3, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
                             <button onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit">
@@ -2016,7 +2076,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                 )}
 
                 {/* Music section */}
-                {(tracks.length > 0 || editing) && (
+                {(tracks.length > 0 || !!spotifyPlaylistUrl || editing) && (
                   <SectionCard title="Music">
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {tracks.map((track, i) => (
@@ -2070,6 +2130,45 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                           )}
                         </div>
                       )}
+
+                      {/* Spotify embed */}
+                      {(() => {
+                        const spotifyId = spotifyPlaylistUrl.trim().match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
+                        return (
+                          <>
+                            {spotifyId && !editing && (
+                              <iframe
+                                src={`https://open.spotify.com/embed/playlist/${spotifyId}?utm_source=generator&theme=0`}
+                                width="100%"
+                                height="352"
+                                frameBorder="0"
+                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                loading="lazy"
+                                style={{ borderRadius: "var(--novae-radius-md)", marginTop: tracks.length > 0 ? 12 : 0 }}
+                              />
+                            )}
+                            {editing && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: tracks.length > 0 ? 8 : 0 }}>
+                                <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                                  Spotify playlist URL
+                                </label>
+                                <input
+                                  value={spotifyPlaylistUrl}
+                                  onChange={(e) => setSpotifyPlaylistUrl(e.target.value)}
+                                  placeholder="https://open.spotify.com/playlist/…"
+                                  style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                                />
+                                {spotifyId && (
+                                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+                                    ✓ Playlist detected
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </SectionCard>
                 )}
@@ -2234,17 +2333,33 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                 <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>No relationships yet.</p>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
-                  {relationships.map((rel) => (
+                  {relationships.map((rel) => {
+                    const isExternal = !rel.character;
+                    const imgSrc = isExternal
+                      ? (rel.externalImageUrl ?? null)
+                      : (rel.character?.avatarUrl ?? null);
+                    const displayName = isExternal ? (rel.externalName ?? "?") : (rel.character?.name ?? "?");
+                    const charHref = !isExternal && rel.character ? `/library/characters/${rel.character.numId}-${rel.character.slug}` : null;
+                    return (
                     <div key={rel.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", backgroundColor: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 12, position: "relative" }}>
                       <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)" }}>
-                        {rel.character.avatarUrl ? (
+                        {imgSrc ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={thumbUrl(rel.character.avatarUrl, 128) ?? rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img src={thumbUrl(imgSrc, 128) ?? imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : null}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <a href={`/library/characters/${rel.character.numId}-${rel.character.slug}`} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{rel.character.name}</a>
+                        {charHref
+                          ? <a href={charHref} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{displayName}</a>
+                          : <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", display: "block" }}>{displayName}</span>
+                        }
+                        {!isExternal && rel.character?.user?.username && (
+                          <span style={{ display: "block", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>by @{rel.character.user.username}</span>
+                        )}
                         <span style={{ display: "inline-block", marginTop: 3, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", color: "var(--novae-text-tag)" }}>{rel.type}</span>
+                        {rel.status === "pending" && (
+                          <span style={{ display: "inline-block", marginTop: 3, marginLeft: 5, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(200,150,40,0.15)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", fontWeight: 600, color: "#c89628" }}>⏳ Pending</span>
+                        )}
                         {rel.description && <p style={{ margin: "6px 0 0", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", lineHeight: 1.5 }}>{rel.description}</p>}
                       </div>
                       {isOwner && (
@@ -2260,7 +2375,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -2270,58 +2386,176 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 420, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 16 }}>
                     <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Add Relationship</h3>
 
-                    {/* Character search */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Character</label>
-                      {relSelectedChar ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-selected)", borderRadius: "var(--novae-radius-md)" }}>
-                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", flex: 1 }}>{relSelectedChar.name}</span>
-                          <button onClick={() => setRelSelectedChar(null)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14 }}>×</button>
-                        </div>
-                      ) : (
-                        <div style={{ position: "relative" }}>
-                          <input value={relSearch} onChange={(e) => { setRelSearch(e.target.value); searchRelChars(e.target.value); }} placeholder="Search characters…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                          {relSearchLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--novae-text-secondary)", fontSize: 12 }}>…</span>}
-                          {relSearchResults.length > 0 && (
-                            <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", zIndex: 10, maxHeight: 200, overflowY: "auto" }}>
-                              {relSearchResults.map((c) => (
-                                <button key={c.id} onClick={() => { setRelSelectedChar(c); setRelSearch(""); setRelSearchResults([]); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
-                                  {c.name}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                    {/* Mode toggle: site character vs external */}
+                    <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
+                      {([["site", "On Novae"], ["external", "External"]] as const).map(([m, label]) => (
+                        <button
+                          key={m}
+                          onClick={() => { setRelMode(m); setRelUser(null); setRelUserSearch(""); setRelUserResults([]); setRelSelectedChar(null); setRelSearch(""); setRelSearchResults([]); setRelExternalName(""); setRelExternalImage(""); }}
+                          style={{
+                            flex: 1, padding: "8px 0",
+                            background: relMode === m ? "var(--novae-btn-primary)" : "none",
+                            border: "none",
+                            color: relMode === m ? "#fff" : "var(--novae-text-secondary)",
+                            fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
+                            fontWeight: relMode === m ? 600 : 400, cursor: "pointer",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
                     </div>
 
-                    {/* Two-sided relationship types */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>
-                          {name}&apos;s label
-                        </label>
-                        <input value={relType} onChange={(e) => setRelType(e.target.value)} placeholder="e.g. Grandparent" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                    {/* Character source */}
+                    {relMode === "site" ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {/* Step 1: choose user */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>1. Whose character?</label>
+                          {relUser ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-selected)", borderRadius: "var(--novae-radius-md)" }}>
+                              {relUser.avatar && <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(relUser.avatar, 56) ?? relUser.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", flex: 1 }}>
+                                {relUser.id === currentUserId ? "Me" : (relUser.name ?? `@${relUser.username}`)}
+                              </span>
+                              <button onClick={() => { setRelUser(null); setRelSelectedChar(null); setRelSearch(""); setRelSearchResults([]); }} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14 }}>×</button>
+                            </div>
+                          ) : (
+                            <>
+                              <button onClick={() => pickRelUser(meUser)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", cursor: "pointer", textAlign: "left" }}>
+                                {avatarUrl && <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(avatarUrl, 56) ?? avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", fontWeight: 600 }}>Me</span>
+                              </button>
+                              <div style={{ position: "relative" }}>
+                                <input value={relUserSearch} onChange={(e) => { setRelUserSearch(e.target.value); searchRelUsers(e.target.value); }} placeholder="…or search another user" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                                {relUserLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--novae-text-secondary)", fontSize: 12 }}>…</span>}
+                                {relUserResults.length > 0 && (
+                                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", zIndex: 10, maxHeight: 240, overflowY: "auto" }}>
+                                    {relUserResults.map((u) => (
+                                      <button key={u.id} onClick={() => pickRelUser(u)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", cursor: "pointer" }}>
+                                        <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "var(--novae-bg-main)" }}>
+                                          {u.avatar && <img src={thumbUrl(u.avatar, 56) ?? u.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                                        </div>
+                                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>{u.name ?? u.username}</span>
+                                        {u.username && <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>@{u.username}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Step 2: choose character (once user is picked) */}
+                        {relUser && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>2. Which character?</label>
+                            {relSelectedChar ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-selected)", borderRadius: "var(--novae-radius-md)" }}>
+                                {relSelectedChar.avatarUrl && <div style={{ width: 28, height: 28, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(relSelectedChar.avatarUrl, 56) ?? relSelectedChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", flex: 1 }}>{relSelectedChar.name}</span>
+                                <button onClick={() => setRelSelectedChar(null)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14 }}>×</button>
+                              </div>
+                            ) : (
+                              <div style={{ position: "relative" }}>
+                                <input value={relSearch} onChange={(e) => { setRelSearch(e.target.value); searchRelChars(e.target.value); }} onFocus={() => searchRelChars(relSearch)} placeholder="Type the character name…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                                {relSearchLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--novae-text-secondary)", fontSize: 12 }}>…</span>}
+                                {relSearchResults.length > 0 && (
+                                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", zIndex: 10, maxHeight: 240, overflowY: "auto" }}>
+                                    {relSearchResults.map((c) => (
+                                      <button key={c.id} onClick={() => { setRelSelectedChar(c); setRelSearch(""); setRelSearchResults([]); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", cursor: "pointer" }}>
+                                        <div style={{ width: 28, height: 28, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0, background: "var(--novae-bg-main)" }}>
+                                          {c.avatarUrl && <img src={thumbUrl(c.avatarUrl, 56) ?? c.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                                        </div>
+                                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>{c.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                {!relSearchLoading && relSearch.trim() && relSearchResults.length === 0 && (
+                                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", marginTop: 4, display: "block" }}>No characters found for this user.</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>
-                          {relSelectedChar?.name ?? "Other"}&apos;s label
-                        </label>
-                        <input value={relTypeB} onChange={(e) => setRelTypeB(e.target.value)} placeholder="e.g. Granddaughter" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                    ) : (
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+                        {/* External image */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                          <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Image</label>
+                          <label style={{ width: 56, height: 56, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "var(--novae-bg-input)", border: "1px dashed var(--novae-outline-all)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                            {relExternalImage ? (
+                              <img src={relExternalImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : (
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--novae-text-secondary)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+                            )}
+                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              const uploaded = await startArtworkUpload([f]);
+                              if (uploaded?.[0]?.ufsUrl) setRelExternalImage(uploaded[0].ufsUrl);
+                              e.target.value = "";
+                            }} />
+                          </label>
+                        </div>
+                        {/* External name */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                          <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Name</label>
+                          <input value={relExternalName} onChange={(e) => setRelExternalName(e.target.value)} placeholder="Character name…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Relationship types */}
+                    {relMode === "site" ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, alignItems: "end" }}>
+                        {/* This char → its label (shown on the other char's page) */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(avatarUrl, 64) ?? avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{name}</span>
+                          </div>
+                          <input value={relTypeB} onChange={(e) => setRelTypeB(e.target.value)} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                        </div>
+
+                        {/* Arrow */}
+                        <div style={{ paddingBottom: 10, color: "var(--novae-text-secondary)", fontSize: 18 }}>⇄</div>
+
+                        {/* Other char → its label (shown on this char's page) */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {relSelectedChar?.avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(relSelectedChar.avatarUrl, 64) ?? relSelectedChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{relSelectedChar?.name ?? "Other"}</span>
+                          </div>
+                          <input value={relType} onChange={(e) => setRelType(e.target.value)} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Relationship label</label>
+                        <input value={relType} onChange={(e) => setRelType(e.target.value)} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
+                      </div>
+                    )}
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Description (optional)</label>
                       <textarea value={relDesc} onChange={(e) => setRelDesc(e.target.value)} placeholder="Describe the relationship…" rows={3} style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", resize: "vertical" }} />
                     </div>
 
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                      <button onClick={() => setShowAddRel(false)} style={{ padding: "8px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
-                      <button onClick={addRelationship} disabled={!relSelectedChar || !relType.trim() || relSaving} style={{ padding: "8px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer", opacity: (!relSelectedChar || !relType.trim() || relSaving) ? 0.5 : 1 }}>
-                        {relSaving ? "Saving…" : "Add"}
-                      </button>
-                    </div>
+                    {(() => {
+                      const invalid = !relType.trim() || (relMode === "site" ? !relSelectedChar : !relExternalName.trim()) || relSaving;
+                      return (
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                          <button onClick={() => setShowAddRel(false)} style={{ padding: "8px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
+                          <button onClick={addRelationship} disabled={invalid} style={{ padding: "8px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer", opacity: invalid ? 0.5 : 1 }}>
+                            {relSaving ? "Saving…" : "Add"}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -2687,18 +2921,24 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function RelCard({ rel }: { rel: { id: string; type: string; description: string | null; character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } } }) {
-  const href = `/library/characters/${rel.character.numId}-${rel.character.slug}`;
+function RelCard({ rel }: { rel: { id: string; type: string; description: string | null; character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } | null; externalName?: string | null; externalImageUrl?: string | null } }) {
+  const isExternal = !rel.character;
+  const href = rel.character ? `/library/characters/${rel.character.numId}-${rel.character.slug}` : null;
+  const imgSrc = isExternal ? (rel.externalImageUrl ?? null) : (rel.character?.avatarUrl ?? null);
+  const displayName = isExternal ? (rel.externalName ?? "?") : (rel.character?.name ?? "?");
+  const avatar = imgSrc ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={thumbUrl(imgSrc, 128) ?? imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+  ) : null;
+  const avatarBox = { width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" } as const;
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-      <a href={href} style={{ width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" }}>
-        {rel.character.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbUrl(rel.character.avatarUrl, 128) ?? rel.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : null}
-      </a>
+      {href ? <a href={href} style={avatarBox}>{avatar}</a> : <div style={avatarBox}>{avatar}</div>}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <a href={href} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{rel.character.name}</a>
+        {href
+          ? <a href={href} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{displayName}</a>
+          : <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", display: "block" }}>{displayName}</span>
+        }
         <span style={{ display: "inline-block", marginTop: 2, padding: "1px 7px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", color: "var(--novae-text-tag)" }}>{rel.type}</span>
         {rel.description && <p style={{ margin: "4px 0 0", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{rel.description}</p>}
       </div>

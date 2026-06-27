@@ -25,8 +25,8 @@ export default async function CharacterPage({ params }: Props) {
       tags:          { include: { tag: true } },
       colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
       favorites: { select: { id: true, userId: true } },
-        relationshipsA: { include: { characterB: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true } } } },
-        relationshipsB: { include: { characterA: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true } } } },
+        relationshipsA: { include: { characterB: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, user: { select: { username: true } } } } } },
+        relationshipsB: { include: { characterA: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, user: { select: { username: true } } } } } },
         galleries: { include: { images: { orderBy: { order: "asc" }, select: { id: true, artworkId: true, order: true } } }, orderBy: { name: "asc" } },
     },
   });
@@ -39,9 +39,17 @@ export default async function CharacterPage({ params }: Props) {
 
   const initialFavorited = !!currentUserId && character.favorites.some((f) => f.userId === currentUserId);
 
+  // hide unaccepted relationships: incoming (B side) only when accepted;
+  // outgoing (A side) pending only visible to the owner
+  const filteredCharacter = {
+    ...character,
+    relationshipsA: character.relationshipsA.filter((r) => r.status === "accepted" || isOwner),
+    relationshipsB: character.relationshipsB.filter((r) => r.status === "accepted"),
+  };
+
   return (
     <CharacterPageClient
-      character={character}
+      character={filteredCharacter}
       isOwner={isOwner}
       currentUserId={currentUserId}
       initialFavorited={initialFavorited}

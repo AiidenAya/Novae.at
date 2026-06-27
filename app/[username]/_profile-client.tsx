@@ -180,7 +180,7 @@ function CrownIcon() {
 
 function ProfileHeader({
   profile, isOwner, isAdmin, isEditing, editState, setEditState, onEdit, onSave, onCancel, onUploadingChange, isUploading,
-  initialIsFollowing, profileUsername,
+  initialIsFollowing, profileUsername, onFollowChange,
 }: {
   profile: Profile;
   isOwner: boolean;
@@ -195,6 +195,7 @@ function ProfileHeader({
   isUploading: boolean;
   initialIsFollowing: boolean;
   profileUsername: string;
+  onFollowChange?: (following: boolean) => void;
 }) {
   const coverRef  = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
@@ -207,7 +208,7 @@ function ProfileHeader({
     setFollowLoading(true);
     try {
       const res = await fetch(`/api/users/${profileUsername}/follow`, { method: "POST" });
-      if (res.ok) { const { following: f } = await res.json(); setFollowing(f); }
+      if (res.ok) { const { following: f } = await res.json(); setFollowing(f); onFollowChange?.(f); }
     } finally { setFollowLoading(false); }
   };
 
@@ -497,6 +498,7 @@ export function ProfileClient({
   const [isEditing, setIsEditing] = useState(false);
   const [editState, setEditState] = useState<EditState>(() => makeEditState(baseProfile));
   const [isUploading, setIsUploading] = useState(false);
+  const [followerCount, setFollowerCount] = useState(dbStats?.followers ?? 0);
 
   const isOwner = isOwnerProp;
 
@@ -577,6 +579,7 @@ export function ProfileClient({
             isUploading={isUploading}
             initialIsFollowing={initialIsFollowing}
             profileUsername={profileUsername ?? username}
+            onFollowChange={(f) => setFollowerCount((c) => Math.max(0, c + (f ? 1 : -1)))}
           />
           <TabBar active={activeTab} onChange={setActiveTab} />
           {activeTab === "creations"  && <CreationsTab  characters={featuredChars} worlds={worlds} allCharacters={dbCharacters} allWorlds={[]} setActiveTab={setActiveTab} isEditing={isEditing} onRemoveCharacter={removeFeatured} onAddCharacter={addFeatured} onRemoveWorld={removeWorld} onAddWorld={addWorld} />}
@@ -587,7 +590,7 @@ export function ProfileClient({
         </div>
         <Sidebar
           profile={profile}
-          dbStats={dbStats}
+          dbStats={dbStats ? { ...dbStats, followers: followerCount } : null}
           isEditing={isEditing}
           editState={editState}
           setEditState={setEditState}

@@ -26,8 +26,8 @@ export async function notifyFollowers(
 export async function notifyUser(
   recipientId: string,
   actorId: string,
-  type: "new_follower" | "new_favorite",
-  opts: { characterId?: string } = {},
+  type: "new_follower" | "new_favorite" | "rel_request" | "rel_accepted" | "rel_declined",
+  opts: { characterId?: string; relationshipId?: string } = {},
 ) {
   await prisma.notification.create({
     data: {
@@ -35,6 +35,7 @@ export async function notifyUser(
       recipientId,
       actorId,
       characterId: opts.characterId ?? null,
+      relationshipId: opts.relationshipId ?? null,
     },
   });
 }

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { thumbUrl } from "@/lib/thumb";
 
 type NotifActor    = { id: string; username: string | null; name: string | null; avatar: string | null };
 type NotifCharacter = { id: string; numId: number; slug: string; name: string; avatarUrl: string | null };
 type NotifArtwork  = { id: string; thumbnailUrl: string | null; imageUrl: string; title: string | null };
+type NotifRelChar  = { numId: number; slug: string; name: string; avatarUrl: string | null };
+type NotifRelationship = { id: string; type: string; status: string; characterA: NotifRelChar | null; characterB: NotifRelChar | null };
 
 export type Notification = {
   id: string;
@@ -16,47 +18,28 @@ export type Notification = {
   actor: NotifActor;
   character: NotifCharacter | null;
   artwork: NotifArtwork | null;
+  relationship: NotifRelationship | null;
 };
 
-// ── Grouping ──────────────────────────────────────────────────────────────────
+// ── Type categories ─────────────────────────────────────────────────────────────
 
-type CharGroup = {
-  character: NotifCharacter | null;
-  newCharacter: Notification | null;
-  newArtworks: Notification[];
+type CategoryKey = "characters" | "artworks" | "follows" | "favorites" | "relationships";
+
+const CATEGORY_META: Record<CategoryKey, { label: string; icon: string }> = {
+  follows:       { label: "Followed by",   icon: "✦" },
+  favorites:     { label: "Liked",         icon: "✦" },
+  relationships: { label: "Relationships", icon: "✦" },
+  characters:    { label: "New Character", icon: "✦" },
+  artworks:      { label: "Images",        icon: "✦" },
 };
-type ActorGroup = {
-  actor: NotifActor;
-  chars: Map<string, CharGroup>;
-  newFollower: Notification | null;
-  newFavorites: Notification[];
-  unread: boolean;
-};
+const CATEGORY_ORDER: CategoryKey[] = ["follows", "favorites", "relationships", "characters", "artworks"];
 
-function groupNotifications(notifs: Notification[]): ActorGroup[] {
-  const actors = new Map<string, ActorGroup>();
-
-  for (const n of notifs) {
-    const actorId = n.actor.id;
-    if (!actors.has(actorId)) {
-      actors.set(actorId, { actor: n.actor, chars: new Map(), newFollower: null, newFavorites: [], unread: false });
-    }
-    const ag = actors.get(actorId)!;
-    if (!n.read) ag.unread = true;
-
-    if (n.type === "new_follower") { ag.newFollower = n; continue; }
-    if (n.type === "new_favorite") { ag.newFavorites.push(n); continue; }
-
-    const charKey = n.character?.id ?? "__none__";
-    if (!ag.chars.has(charKey)) {
-      ag.chars.set(charKey, { character: n.character, newCharacter: null, newArtworks: [] });
-    }
-    const cg = ag.chars.get(charKey)!;
-    if (n.type === "new_character") cg.newCharacter = n;
-    if (n.type === "new_artwork")   cg.newArtworks.push(n);
-  }
-
-  return [...actors.values()];
+function categoryOf(type: string): CategoryKey {
+  if (type === "new_character") return "characters";
+  if (type === "new_artwork") return "artworks";
+  if (type === "new_follower") return "follows";
+  if (type === "new_favorite") return "favorites";
+  return "relationships"; // rel_request | rel_accepted | rel_declined
 }
 
 // ── Relative time ─────────────────────────────────────────────────────────────
@@ -73,162 +56,118 @@ function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── Single notification row ─────────────────────────────────────────────────────
 
-function ArtworkStrip({ artworks }: { artworks: Notification[] }) {
-  const shown = artworks.slice(0, 5);
-  const extra = artworks.length - shown.length;
+function CharLink({ c }: { c: NotifCharacter | NotifRelChar }) {
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-      {shown.map((n) => {
-        const src = n.artwork?.thumbnailUrl ?? n.artwork?.imageUrl;
-        const href = n.character ? `/library/characters/${n.character.numId}-${n.character.slug}` : "#";
-        return (
-          <Link key={n.id} href={href} style={{ display: "block", width: 48, height: 48, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", background: "rgba(105,61,169,0.15)", flexShrink: 0 }}>
-            {src && <img src={thumbUrl(src, 96) ?? src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-          </Link>
-        );
-      })}
-      {extra > 0 && (
-        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-          +{extra} more
-        </span>
-      )}
-    </div>
+    <Link href={`/library/characters/${c.numId}-${c.slug}`} style={{ fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none" }}>
+      {c.name}
+    </Link>
   );
 }
 
-function CharGroupRow({ cg }: { cg: CharGroup }) {
-  const charHref = cg.character ? `/library/characters/${cg.character.numId}-${cg.character.slug}` : null;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 12, borderLeft: "2px solid var(--novae-outline-all)" }}>
-      {/* Character header */}
-      {cg.character && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", background: "rgba(105,61,169,0.15)", flexShrink: 0 }}>
-            {cg.character.avatarUrl && <img src={thumbUrl(cg.character.avatarUrl, 64) ?? cg.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-          </div>
-          {charHref
-            ? <Link href={charHref} style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-link)", textDecoration: "none" }}>{cg.character.name}</Link>
-            : <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{cg.character.name}</span>
-          }
-        </div>
-      )}
+function NotificationRow({ n, onMarkRead, onRespond }: { n: Notification; onMarkRead: (ids: string[]) => void; onRespond: (n: Notification, action: "accept" | "decline") => void }) {
+  const actorName = n.actor.name ?? n.actor.username ?? "Someone";
 
-      {/* New character event */}
-      {cg.newCharacter && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-btn-primary)" }}>
-            ✦ New character
-          </span>
+  // The right-side visual (thumbnail / avatar) and the message body, per type.
+  let badge: { icon: string; bg: string; color: string } | null = null;
+  let body: React.ReactNode = null;
+  let thumb: React.ReactNode = null;
+
+  if (n.type === "new_character") {
+    badge = { icon: "✦", bg: "rgba(105,61,169,0.15)", color: "var(--novae-btn-primary)" };
+    body = <>created a new character{n.character ? <> {" "}<CharLink c={n.character} /></> : null}.</>;
+  } else if (n.type === "new_artwork") {
+    badge = { icon: "✦", bg: "rgba(105,61,169,0.08)", color: "var(--novae-text-secondary)" };
+    body = <>uploaded a new image{n.character ? <> on {" "}<CharLink c={n.character} /></> : null}.</>;
+    const src = n.artwork?.thumbnailUrl ?? n.artwork?.imageUrl;
+    const href = n.character ? `/library/characters/${n.character.numId}-${n.character.slug}` : "#";
+    if (src) thumb = (
+      <Link href={href} style={{ display: "block", width: 48, height: 48, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0 }}>
+        <img src={thumbUrl(src, 96) ?? src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      </Link>
+    );
+  } else if (n.type === "new_follower") {
+    badge = { icon: "✦", bg: "rgba(105,61,169,0.15)", color: "var(--novae-btn-primary)" };
+    body = <>started following you.</>;
+  } else if (n.type === "new_favorite") {
+    badge = { icon: "✦", bg: "rgba(220,50,50,0.12)", color: "#e05252" };
+    body = <>favorited{n.character ? <> {" "}<CharLink c={n.character} /></> : null}.</>;
+  } else if (n.type === "rel_request") {
+    badge = { icon: "✦", bg: "rgba(105,61,169,0.15)", color: "var(--novae-btn-primary)" };
+    const rel = n.relationship;
+    const mine = rel?.characterB;
+    const theirs = rel?.characterA;
+    body = (
+      <>
+        wants to link <strong>{theirs?.name ?? "their character"}</strong>
+        {rel?.type ? <> as <em>{rel.type}</em></> : null}
+        {mine ? <> with your <strong>{mine.name}</strong></> : null}.
+      </>
+    );
+  } else if (n.type === "rel_accepted") {
+    badge = { icon: "✓", bg: "rgba(80,180,100,0.15)", color: "#3fa75a" };
+    body = <>accepted your relationship request{n.relationship?.characterB ? <> with {" "}<CharLink c={n.relationship.characterB} /></> : null}.</>;
+  } else if (n.type === "rel_declined") {
+    badge = { icon: "✕", bg: "rgba(220,50,50,0.12)", color: "#e05252" };
+    body = <>declined or removed a relationship.</>;
+  } else {
+    body = <>sent you a notification.</>;
+  }
+
+  const rel = n.relationship;
+  const showRespond = n.type === "rel_request" && rel?.status === "pending";
+
+  return (
+    <div style={{ position: "relative", display: "flex", gap: 12, alignItems: "flex-start", background: "var(--novae-bg-card)", border: `1px solid ${n.read ? "var(--novae-outline-all)" : "var(--novae-btn-primary)"}`, borderRadius: "var(--novae-radius-lg)", padding: 16, opacity: n.read ? 0.55 : 1, transition: "opacity 0.2s" }}>
+      {/* Unread dot */}
+      {!n.read && <span style={{ position: "absolute", top: 14, right: 14, width: 8, height: 8, borderRadius: "50%", background: "var(--novae-btn-primary)" }} />}
+
+      {/* Actor avatar */}
+      <Link href={n.actor.username ? `/${n.actor.username}` : "#"} style={{ flexShrink: 0 }}>
+        <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)" }}>
+          {n.actor.avatar
+            ? <img src={thumbUrl(n.actor.avatar, 80) ?? n.actor.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-space-grotesk)", fontWeight: 700, fontSize: 16, color: "var(--novae-text-link)" }}>{actorName[0]?.toUpperCase() ?? "?"}</div>}
+        </div>
+      </Link>
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {badge && (
+            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "var(--novae-radius-sm)", background: badge.bg, fontSize: 12, color: badge.color, flexShrink: 0 }}>{badge.icon}</span>
+          )}
+          <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", lineHeight: 1.5 }}>
+            <Link href={n.actor.username ? `/${n.actor.username}` : "#"} style={{ fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none" }}>{actorName}</Link>{" "}
+            {body}
+          </p>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{relativeTime(n.createdAt)}</span>
+          {!n.read && (
+            <button onClick={() => onMarkRead([n.id])} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-link)" }}>
+              Mark read
+            </button>
+          )}
+        </div>
+
+        {/* Relationship request actions */}
+        {showRespond && (
+          <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+            <button onClick={() => onRespond(n, "accept")} style={{ padding: "6px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-sm)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer" }}>Accept</button>
+            <button onClick={() => onRespond(n, "decline")} style={{ padding: "6px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Decline</button>
+          </div>
+        )}
+        {n.type === "rel_request" && rel && rel.status !== "pending" && (
           <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-            {relativeTime(cg.newCharacter.createdAt)}
+            {rel.status === "accepted" ? "✓ Accepted" : "This request is no longer available."}
           </span>
-        </div>
-      )}
-
-      {/* New artworks */}
-      {cg.newArtworks.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.08)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>
-              🖼 {cg.newArtworks.length} new {cg.newArtworks.length === 1 ? "image" : "images"}
-            </span>
-            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-              {relativeTime(cg.newArtworks[0].createdAt)}
-            </span>
-          </div>
-          <ArtworkStrip artworks={cg.newArtworks} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActorCard({ ag, onMarkRead }: { ag: ActorGroup; onMarkRead: (ids: string[]) => void }) {
-  const allIds = [
-    ag.newFollower?.id,
-    ...ag.newFavorites.map((n) => n.id),
-    ...[...ag.chars.values()].flatMap((cg) => [
-      cg.newCharacter?.id,
-      ...cg.newArtworks.map((n) => n.id),
-    ]),
-  ].filter(Boolean) as string[];
-
-  return (
-    <div style={{ background: "var(--novae-bg-card)", border: `1px solid ${ag.unread ? "var(--novae-btn-primary)" : "var(--novae-outline-all)"}`, borderRadius: "var(--novae-radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Actor header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Link href={ag.actor.username ? `/${ag.actor.username}` : "#"} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flex: 1 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)", flexShrink: 0 }}>
-            {ag.actor.avatar
-              ? <img src={thumbUrl(ag.actor.avatar, 80) ?? ag.actor.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-space-grotesk)", fontWeight: 700, fontSize: 16, color: "var(--novae-text-link)" }}>
-                  {(ag.actor.name ?? ag.actor.username)?.[0]?.toUpperCase() ?? "?"}
-                </div>
-            }
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "var(--novae-text-link)" }}>
-              {ag.actor.name ?? ag.actor.username}
-            </span>
-            {ag.actor.username && (
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-                @{ag.actor.username}
-              </span>
-            )}
-          </div>
-        </Link>
-        {ag.unread && (
-          <button
-            onClick={() => onMarkRead(allIds)}
-            style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "4px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
-          >
-            Mark read
-          </button>
         )}
       </div>
 
-      {/* New follower event */}
-      {ag.newFollower && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(105,61,169,0.15)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-btn-primary)" }}>
-            ✦ Started following you
-          </span>
-          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-            {relativeTime(ag.newFollower.createdAt)}
-          </span>
-        </div>
-      )}
-
-      {/* New favorite events */}
-      {ag.newFavorites.map((n) => (
-        <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(220,50,50,0.12)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "#e05252" }}>
-            ♥ Favorited
-          </span>
-          {n.character && (
-            <Link href={`/library/characters/${n.character.numId}-${n.character.slug}`} style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none" }}>
-              {n.character.avatarUrl && (
-                <div style={{ width: 20, height: 20, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0 }}>
-                  <img src={thumbUrl(n.character.avatarUrl, 40) ?? n.character.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                </div>
-              )}
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-link)" }}>{n.character.name}</span>
-            </Link>
-          )}
-          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-            {relativeTime(n.createdAt)}
-          </span>
-        </div>
-      ))}
-
-      {/* Character groups */}
-      {ag.chars.size > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {[...ag.chars.values()].map((cg, i) => <CharGroupRow key={i} cg={cg} />)}
-        </div>
-      )}
+      {thumb}
     </div>
   );
 }
@@ -237,17 +176,65 @@ function ActorCard({ ag, onMarkRead }: { ag: ActorGroup; onMarkRead: (ids: strin
 
 export function NotificationsClient({ notifications: initial }: { notifications: Notification[] }) {
   const [notifs, setNotifs] = useState(initial);
+  const [filter, setFilter] = useState<CategoryKey | "all">("all");
 
   const markRead = (ids: string[]) => {
-    setNotifs((prev) => prev.map((n) => ids.includes(n.id) ? { ...n, read: true } : n));
+    setNotifs((prev) => {
+      const next = prev.map((n) => ids.includes(n.id) ? { ...n, read: true } : n);
+      const remaining = next.filter((n) => !n.read).length;
+      window.dispatchEvent(new CustomEvent("novae:notifications-read", { detail: { remaining } }));
+      return next;
+    });
     fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
   };
 
-  const groups = groupNotifications(notifs);
+  const respond = async (n: Notification, action: "accept" | "decline") => {
+    if (!n.relationship) return;
+    const newStatus = action === "accept" ? "accepted" : "declined";
+    // optimistic: mark read + update embedded relationship status
+    setNotifs((prev) => {
+      const next = prev.map((x) => x.id === n.id
+        ? { ...x, read: true, relationship: x.relationship ? { ...x.relationship, status: newStatus } : null }
+        : x);
+      const remaining = next.filter((x) => !x.read).length;
+      window.dispatchEvent(new CustomEvent("novae:notifications-read", { detail: { remaining } }));
+      return next;
+    });
+    const res = await fetch(`/api/relationships/${n.relationship.id}/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    if (!res.ok) {
+      setNotifs((prev) => prev.map((x) => x.id === n.id
+        ? { ...x, relationship: x.relationship ? { ...x.relationship, status: "pending" } : null }
+        : x));
+    }
+    fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: [n.id] }) });
+  };
+
   const unreadCount = notifs.filter((n) => !n.read).length;
 
+  // categories that actually have notifications, in display order
+  const presentCategories = CATEGORY_ORDER.filter((c) => notifs.some((n) => categoryOf(n.type) === c));
+
+  const visible = filter === "all" ? notifs : notifs.filter((n) => categoryOf(n.type) === filter);
+  const sections = CATEGORY_ORDER
+    .filter((c) => filter === "all" || filter === c)
+    .map((c) => ({ category: c, items: visible.filter((n) => categoryOf(n.type) === c) }))
+    .filter((s) => s.items.length > 0);
+
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    padding: "6px 14px", borderRadius: 999, cursor: "pointer",
+    border: `1px solid ${active ? "var(--novae-btn-primary)" : "var(--novae-outline-all)"}`,
+    background: active ? "var(--novae-btn-primary)" : "none",
+    color: active ? "#fff" : "var(--novae-text-secondary)",
+    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: active ? 600 : 400,
+    whiteSpace: "nowrap",
+  });
+
   return (
-    <div style={{ padding: "40px 24px 80px", display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ padding: "40px 24px 80px", display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <div>
@@ -262,10 +249,7 @@ export function NotificationsClient({ notifications: initial }: { notifications:
         </div>
         {unreadCount > 0 && (
           <button
-            onClick={() => {
-              const ids = notifs.filter((n) => !n.read).map((n) => n.id);
-              markRead(ids);
-            }}
+            onClick={() => markRead(notifs.filter((n) => !n.read).map((n) => n.id))}
             style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
           >
             Mark all read
@@ -273,14 +257,35 @@ export function NotificationsClient({ notifications: initial }: { notifications:
         )}
       </div>
 
-      {/* Groups */}
-      {groups.length === 0 ? (
+      {/* Filter chips */}
+      {presentCategories.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => setFilter("all")} style={chipStyle(filter === "all")}>All</button>
+          {presentCategories.map((c) => (
+            <button key={c} onClick={() => setFilter(c)} style={chipStyle(filter === c)}>
+              {CATEGORY_META[c].icon} {CATEGORY_META[c].label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Sections grouped by type */}
+      {sections.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>✦</div>
           <p style={{ margin: 0 }}>No notifications yet. Follow some creators to get started!</p>
         </div>
       ) : (
-        groups.map((ag) => <ActorCard key={ag.actor.id} ag={ag} onMarkRead={markRead} />)
+        sections.map(({ category, items }) => (
+          <div key={category} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-secondary)" }}>
+              <span>{CATEGORY_META[category].icon}</span>
+              {CATEGORY_META[category].label}
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 400, color: "var(--novae-text-secondary)" }}>{items.length}</span>
+            </h2>
+            {items.map((n) => <NotificationRow key={n.id} n={n} onMarkRead={markRead} onRespond={respond} />)}
+          </div>
+        ))
       )}
     </div>
   );

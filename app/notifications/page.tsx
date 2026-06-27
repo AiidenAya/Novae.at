@@ -17,8 +17,17 @@ export default async function NotificationsPage() {
       actor: { select: { id: true, username: true, name: true, avatar: true } },
       character: { select: { id: true, numId: true, slug: true, name: true, avatarUrl: true } },
       artwork: { select: { id: true, thumbnailUrl: true, imageUrl: true, title: true } },
+      relationship: {
+        select: {
+          id: true, type: true, status: true,
+          characterA: { select: { numId: true, slug: true, name: true, avatarUrl: true } },
+          characterB: { select: { numId: true, slug: true, name: true, avatarUrl: true } },
+        },
+      },
     },
   });
 
-  return <NotificationsClient notifications={notifications} />;
+  const serialized = notifications.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() }));
+
+  return <NotificationsClient notifications={serialized} />;
 }

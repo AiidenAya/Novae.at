@@ -40,6 +40,7 @@ model User {
   invitesCreated   InviteCode[]      @relation("CreatedInvites")
   invitesUsed      InviteCode[]      @relation("UsedInvites")
   characterFolders CharacterFolder[]
+  favoriteFolders  FavoriteFolder[]
   notificationsReceived Notification[] @relation("ReceivedNotifications")
   notificationsSent     Notification[] @relation("SentNotifications")
 }
@@ -112,6 +113,15 @@ model CharacterFolder {
   characters Character[]
 }
 
+model FavoriteFolder {
+  id         String     @id @default(cuid())
+  name       String
+  createdAt  DateTime   @default(now())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites  Favorite[]
+}
+
 model Character {
   id                 String   @id @default(cuid())
   numId              Int      @unique @default(autoincrement())
@@ -139,6 +149,7 @@ model Character {
   custom             String?
   voiceClaimUrl      String?
   playlistUrl        String?
+  spotifyPlaylistUrl String?
   summary            String?
   biography          String?
   sections           String?
@@ -262,13 +273,20 @@ model Relationship {
   typeB       String?
   description String?
 
+  // "accepted" (own char / external) | "pending" | "declined" (cross-user, awaiting the other owner)
+  status        String @default("accepted")
+  requestedById String?
+
   characterAId String
   characterA   Character @relation("CharacterA", fields: [characterAId], references: [id], onDelete: Cascade)
 
-  characterBId String
-  characterB   Character @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+  // either a site character or an external one (name + image)
+  characterBId       String?
+  characterB         Character? @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+  externalName       String?
+  externalImageUrl   String?
 
-  @@unique([characterAId, characterBId])
+  notifications Notification[]
 }
 
 model InviteCode {
@@ -288,7 +306,7 @@ model InviteCode {
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // "new_character" | "new_artwork" | "new_follower" | "new_favorite"
+  type      String   // "new_character" | "new_artwork" | "new_follower" | "new_favorite" | "rel_request" | "rel_accepted" | "rel_declined"
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -303,6 +321,9 @@ model Notification {
 
   artworkId String?
   artwork   Artwork? @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  relationshipId String?
+  relationship   Relationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
 }
 
 model Comment {
@@ -340,6 +361,9 @@ model Favorite {
 
   artworkId String?
   artwork   Artwork? @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  folderId String?
+  folder   FavoriteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@unique([userId, characterId])
   @@unique([userId, artworkId])

@@ -114,6 +114,7 @@ function IconLogout() {
 
 const LIBRARY_ITEMS  = [
   { label: "Characters", href: "/library/characters" },
+  { label: "Favorites", href: "/library/favorites" },
 ];
 
 const BROWSE_ITEMS = [
@@ -329,6 +330,17 @@ export default function Navbar() {
     }).catch(() => {});
   }, [session?.user?.id]);
 
+  // Live-sync the unread badge when notifications are read elsewhere (e.g. /notifications page)
+  useEffect(() => {
+    function onRead(e: Event) {
+      const detail = (e as CustomEvent).detail as { remaining?: number } | undefined;
+      if (detail && typeof detail.remaining === "number") setUnreadCount(detail.remaining);
+      else setUnreadCount(0);
+    }
+    window.addEventListener("novae:notifications-read", onRead);
+    return () => window.removeEventListener("novae:notifications-read", onRead);
+  }, []);
+
   // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -369,6 +381,7 @@ export default function Navbar() {
       <div className={`nav-mobile-menu${mobileOpen ? " open" : ""}`} onClick={() => setMobileOpen(false)}>
         <Link href="/" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconHome />{t.navHome}</Link>
         <Link href="/library/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navLibrary}</Link>
+        <Link href="/library/favorites" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />Favorites</Link>
         <Link href="/browse" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconSearch />{t.navBrowse}</Link>
         <Link href="/community" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconGroup />{t.navCommunity}</Link>
         <div style={{ height: 1, background: "var(--novae-outline-all)", margin: "8px 0" }} />
