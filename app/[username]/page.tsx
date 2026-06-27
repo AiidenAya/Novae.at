@@ -63,6 +63,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       }))
     : false;
 
+  const roleBadges = user?.roles.length
+    ? await prisma.role.findMany({
+        where: { name: { in: user.roles }, icon: { not: null } },
+        select: { name: true, icon: true, description: true },
+      }).then((rows) =>
+        user.roles
+          .map((name) => rows.find((r) => r.name === name))
+          .filter((r): r is NonNullable<typeof r> => !!r)
+          .map((r) => ({ name: r.name, icon: r.icon!, description: r.description }))
+      )
+    : [];
+
   const dbStats = user
     ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
     : null;
@@ -123,6 +135,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       featuredFriends={featuredFriends}
       isOwner={isOwner}
       isAdmin={user?.roles.includes("admin") ?? false}
+      roleBadges={roleBadges}
       initialIsFollowing={isFollowing}
       profileUsername={username}
     />
