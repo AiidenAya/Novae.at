@@ -14,7 +14,7 @@ type DbComment = {
   id: string;
   text: string;
   createdAt: string;
-  author: { username: string | null; avatar: string | null };
+  author: { username: string | null; name: string | null; avatar: string | null };
   replies?: DbComment[];
 };
 
@@ -41,11 +41,11 @@ function Comment({ comment, canDelete, onDelete, onReply }: { comment: DbComment
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)" }}>
       <div style={{ display: "flex", gap: "var(--novae-space-md)", alignItems: "flex-start" }}>
-        <Avatar src={comment.author.avatar} size={40} name={comment.author.username ?? "?"} />
+        <Avatar src={comment.author.avatar} size={40} name={comment.author.name ?? comment.author.username ?? "?"} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--novae-space-xs)" }}>
           <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center" }}>
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{comment.author.username ?? "?"}</span>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{comment.author.name ?? comment.author.username ?? "?"}</span>
               <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{date}</span>
             </div>
             {canDelete && (
