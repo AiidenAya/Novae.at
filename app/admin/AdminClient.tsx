@@ -128,7 +128,7 @@ function CreateRoleModal({ onClose, onCreated }: {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--novae-bg-main)" }} onClick={onClose}>
       <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }} onClick={e => e.stopPropagation()}>
         <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
           Créer un rôle
@@ -204,7 +204,7 @@ function EditUserModal({ user, availableRoles, onClose, onSaved }: {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--novae-bg-main)" }} onClick={onClose}>
       <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }} onClick={e => e.stopPropagation()}>
         <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
           Modifier l'utilisateur

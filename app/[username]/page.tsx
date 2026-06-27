@@ -45,6 +45,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           select: {
             id: true,
             imageUrl: true,
+            thumbnailUrl: true,
             title: true,
             characters: { select: { id: true, numId: true, slug: true, name: true } },
           },
@@ -53,7 +54,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     }),
   ]);
 
-  const isOwner = !!(sessionResult?.user) && sessionResult.user.id === user?.id;
+  const currentUserId = sessionResult?.user?.id ?? null;
+  const isOwner = !!currentUserId && currentUserId === user?.id;
+
+  const isFollowing = !isOwner && !!currentUserId && !!user
+    ? !!(await prisma.follow.findUnique({
+        where: { followerId_followingId: { followerId: currentUserId, followingId: user.id } },
+      }))
+    : false;
 
   const dbStats = user
     ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
@@ -98,6 +106,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const dbArtworks = (user?.artworks ?? []).map((a) => ({
     id: a.id,
     imageUrl: a.imageUrl,
+    thumbnailUrl: a.thumbnailUrl ?? null,
     title: a.title ?? null,
     characters: a.characters.map((c) => ({ id: c.id, numId: c.numId, slug: c.slug, name: c.name })),
   }));
@@ -114,6 +123,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       featuredFriends={featuredFriends}
       isOwner={isOwner}
       isAdmin={user?.roles.includes("admin") ?? false}
+      initialIsFollowing={isFollowing}
+      profileUsername={username}
     />
   );
 }

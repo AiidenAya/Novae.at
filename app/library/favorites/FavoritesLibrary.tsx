@@ -1,76 +1,49 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
-type Char = {
+type Fav = {
   id: string;
   numId: number;
   slug: string;
   name: string;
   avatarUrl: string | null;
+  cover: string | null;
+  username: string | null;
   folderId: string | null;
-  artworks: { imageUrl: string }[];
-  tags: { tag: { id: string; name: string } }[];
-  favorites: unknown[];
 };
 
 type Folder = { id: string; name: string };
 
-function DraggableCard({
-  char,
+function FavCard({
+  fav,
   folders,
-  onDelete,
-  onMove,
-}: {
-  char: Char;
-  folders: Folder[];
-  onDelete: (id: string) => void;
-  onMove: (charId: string, folderId: string | null) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: char.id });
-  const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.4 : 1, touchAction: "none" };
-  return (
-    <div ref={setNodeRef} style={style}>
-      <CharacterCard char={char} folders={folders} onDelete={onDelete} onMove={onMove} dragHandleProps={{ ...attributes, ...listeners }} />
-    </div>
-  );
-}
-
-function CharacterCard({
-  char,
-  folders,
-  onDelete,
+  onUnfavorite,
   onMove,
   dragHandleProps,
 }: {
-  char: Char;
+  fav: Fav;
   folders: Folder[];
-  onDelete: (id: string) => void;
+  onUnfavorite: (id: string) => void;
   onMove: (charId: string, folderId: string | null) => void;
   dragHandleProps?: Record<string, unknown>;
 }) {
-  const cover = char.avatarUrl ?? char.artworks[0]?.imageUrl ?? null;
   const [showMenu, setShowMenu] = useState(false);
 
   return (
     <div style={{ position: "relative" }}>
-      <Link href={`/library/characters/${char.numId}-${char.slug}`} style={{ textDecoration: "none" }}>
+      <Link href={`/library/characters/${fav.numId}-${fav.slug}`} style={{ textDecoration: "none" }}>
         <div className="character-card">
           <div style={{ width: "100%", aspectRatio: "1", backgroundColor: "var(--novae-bg-main)", position: "relative" }}>
-            {/* Drag handle — covers the image area */}
             {dragHandleProps && (
-              <div
-                {...dragHandleProps}
-                style={{ position: "absolute", inset: 0, zIndex: 5, cursor: "grab" }}
-              />
+              <div {...dragHandleProps} style={{ position: "absolute", inset: 0, zIndex: 5, cursor: "grab" }} />
             )}
-            {cover ? (
-              <Image src={cover} alt={char.name} fill sizes="220px" className="object-cover" />
+            {fav.cover ? (
+              <Image src={fav.cover} alt={fav.name} fill sizes="220px" className="object-cover" />
             ) : (
               <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity={0.3}>
@@ -81,20 +54,13 @@ function CharacterCard({
           </div>
           <div style={{ padding: "12px 14px" }}>
             <p style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {char.name}
+              {fav.name}
             </p>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-              {char.tags.map(({ tag }) => (
-                <span key={tag.id} style={{ padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", border: "0.5px solid var(--novae-outline-tag)", background: "var(--novae-bg-tag)", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-tag)" }}>
-                  #{tag.name}
-                </span>
-              ))}
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <span style={{ fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-                {char.favorites.length} ♥
-              </span>
-            </div>
+            {fav.username && (
+              <p style={{ margin: "4px 0 0", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+                by @{fav.username}
+              </p>
+            )}
           </div>
         </div>
       </Link>
@@ -117,9 +83,9 @@ function CharacterCard({
                 style={{ position: "absolute", top: 32, right: 0, zIndex: 50, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden", minWidth: 160, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}
                 onMouseLeave={() => setShowMenu(false)}
               >
-                {char.folderId && (
+                {fav.folderId && (
                   <button
-                    onClick={(e) => { e.preventDefault(); onMove(char.id, null); setShowMenu(false); }}
+                    onClick={(e) => { e.preventDefault(); onMove(fav.id, null); setShowMenu(false); }}
                     style={{ width: "100%", textAlign: "left", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}
                   >
                     Remove from folder
@@ -128,8 +94,8 @@ function CharacterCard({
                 {folders.map((f) => (
                   <button
                     key={f.id}
-                    onClick={(e) => { e.preventDefault(); onMove(char.id, f.id); setShowMenu(false); }}
-                    style={{ width: "100%", textAlign: "left", padding: "9px 14px", background: char.folderId === f.id ? "rgba(105,61,169,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: char.folderId === f.id ? "var(--novae-text-link)" : "var(--novae-text-primary)" }}
+                    onClick={(e) => { e.preventDefault(); onMove(fav.id, f.id); setShowMenu(false); }}
+                    style={{ width: "100%", textAlign: "left", padding: "9px 14px", background: fav.folderId === f.id ? "rgba(105,61,169,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: fav.folderId === f.id ? "var(--novae-text-link)" : "var(--novae-text-primary)" }}
                   >
                     {f.name}
                   </button>
@@ -139,86 +105,50 @@ function CharacterCard({
           </div>
         )}
         <button
-          onClick={(e) => { e.preventDefault(); onDelete(char.id); }}
-          title="Delete character"
-          style={{ width: 28, height: 28, borderRadius: "var(--novae-radius-sm)", background: "rgba(12,15,22,0.75)", border: "1px solid var(--novae-outline-all)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--novae-text-secondary)", backdropFilter: "blur(4px)" }}
+          onClick={(e) => { e.preventDefault(); onUnfavorite(fav.id); }}
+          title="Remove from favorites"
+          style={{ width: 28, height: 28, borderRadius: "var(--novae-radius-sm)", background: "rgba(12,15,22,0.75)", border: "1px solid var(--novae-outline-all)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#e05252", backdropFilter: "blur(4px)" }}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-          </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
       </div>
     </div>
   );
 }
 
-function DroppableFolder({
-  folder,
-  isOver,
-  children,
-}: {
-  folder: Folder;
-  isOver: boolean;
-  children: React.ReactNode;
-}) {
-  const { setNodeRef } = useDroppable({ id: `folder-${folder.id}` });
+function DraggableFavCard(props: Parameters<typeof FavCard>[0]) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.fav.id });
+  const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.4 : 1, touchAction: "none" };
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        borderRadius: "var(--novae-radius-md)",
-        border: `2px dashed ${isOver ? "var(--novae-text-link)" : "transparent"}`,
-        transition: "border-color 0.15s",
-        padding: isOver ? 8 : 0,
-      }}
-    >
+    <div ref={setNodeRef} style={style}>
+      <FavCard {...props} dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
+function DroppableZone({ id, isOver, children }: { id: string; isOver: boolean; children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} style={{ borderRadius: "var(--novae-radius-md)", border: `2px dashed ${isOver ? "var(--novae-text-link)" : "transparent"}`, transition: "border-color 0.15s", padding: isOver ? 8 : 0 }}>
       {children}
     </div>
   );
 }
 
-function DroppableUngrouped({ isOver, children }: { isOver: boolean; children: React.ReactNode }) {
-  const { setNodeRef } = useDroppable({ id: "ungrouped" });
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        borderRadius: "var(--novae-radius-md)",
-        border: `2px dashed ${isOver ? "var(--novae-text-link)" : "transparent"}`,
-        transition: "border-color 0.15s",
-        padding: isOver ? 8 : 0,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CharGrid({ chars, folders, onDelete, onMove, draggable }: { chars: Char[]; folders: Folder[]; onDelete: (id: string) => void; onMove: (charId: string, folderId: string | null) => void; draggable?: boolean }) {
-  if (chars.length === 0) return null;
+function FavGrid({ favs, folders, onUnfavorite, onMove }: { favs: Fav[]; folders: Folder[]; onUnfavorite: (id: string) => void; onMove: (charId: string, folderId: string | null) => void }) {
+  if (favs.length === 0) return null;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
-      {chars.map((char) =>
-        draggable ? (
-          <DraggableCard key={char.id} char={char} folders={folders} onDelete={onDelete} onMove={onMove} />
-        ) : (
-          <CharacterCard key={char.id} char={char} folders={folders} onDelete={onDelete} onMove={onMove} />
-        )
-      )}
+      {favs.map((fav) => <DraggableFavCard key={fav.id} fav={fav} folders={folders} onUnfavorite={onUnfavorite} onMove={onMove} />)}
     </div>
   );
 }
 
-export default function CharacterLibrary({ characters, folders: initialFolders }: { characters: Char[]; folders: Folder[] }) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
-  const [localChars, setLocalChars] = useState(characters);
+export default function FavoritesLibrary({ favorites, folders: initialFolders }: { favorites: Fav[]; folders: Folder[] }) {
+  const [favs, setFavs] = useState(favorites);
   const [folders, setFolders] = useState(initialFolders);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [folderPending, setFolderPending] = useState(false);
@@ -226,44 +156,32 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  async function handleDelete() {
-    if (!confirmId) return;
-    setDeleteConfirmPending(true);
-    const res = await fetch(`/api/characters/${confirmId}`, { method: "DELETE" });
-    if (res.ok) {
-      setLocalChars((cs) => cs.filter((c) => c.id !== confirmId));
-      setConfirmId(null);
-      startTransition(() => router.refresh());
-    }
-    setDeleteConfirmPending(false);
+  async function handleUnfavorite(charId: string) {
+    setFavs((cs) => cs.filter((c) => c.id !== charId));
+    await fetch(`/api/characters/${charId}/favorite`, { method: "POST" });
   }
 
   async function handleMove(charId: string, folderId: string | null) {
+    const fav = favs.find((c) => c.id === charId);
     if (folderId) {
-      await fetch(`/api/character-folders/${folderId}/assign`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      await fetch(`/api/favorite-folders/${folderId}/assign`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId: charId }),
       });
-    } else {
-      const char = localChars.find((c) => c.id === charId);
-      if (char?.folderId) {
-        await fetch(`/api/character-folders/${char.folderId}/assign`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ characterId: charId, remove: true }),
-        });
-      }
+    } else if (fav?.folderId) {
+      await fetch(`/api/favorite-folders/${fav.folderId}/assign`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: charId, remove: true }),
+      });
     }
-    setLocalChars((cs) => cs.map((c) => c.id === charId ? { ...c, folderId } : c));
+    setFavs((cs) => cs.map((c) => c.id === charId ? { ...c, folderId } : c));
   }
 
   async function handleCreateFolder() {
     if (!folderName.trim()) return;
     setFolderPending(true);
-    const res = await fetch("/api/character-folders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch("/api/favorite-folders", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: folderName.trim() }),
     });
     if (res.ok) {
@@ -276,13 +194,12 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
   }
 
   async function handleDeleteFolder(folderId: string) {
-    await fetch("/api/character-folders", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+    await fetch("/api/favorite-folders", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: folderId }),
     });
     setFolders((prev) => prev.filter((f) => f.id !== folderId));
-    setLocalChars((cs) => cs.map((c) => c.folderId === folderId ? { ...c, folderId: null } : c));
+    setFavs((cs) => cs.map((c) => c.folderId === folderId ? { ...c, folderId: null } : c));
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -292,40 +209,16 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
     if (!over) return;
     const charId = active.id as string;
     const dropId = over.id as string;
-    if (dropId === "ungrouped") {
-      handleMove(charId, null);
-    } else if (dropId.startsWith("folder-")) {
-      const folderId = dropId.replace("folder-", "");
-      handleMove(charId, folderId);
-    }
+    if (dropId === "ungrouped") handleMove(charId, null);
+    else if (dropId.startsWith("folder-")) handleMove(charId, dropId.replace("folder-", ""));
   }
 
-  const ungrouped = localChars.filter((c) => !c.folderId);
-  const confirmChar = localChars.find((c) => c.id === confirmId);
-  const activeChar = localChars.find((c) => c.id === activeId);
+  const ungrouped = favs.filter((c) => !c.folderId);
+  const activeFav = favs.find((c) => c.id === activeId);
   const hasFolders = folders.length > 0;
 
   return (
     <>
-      {confirmChar && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--novae-bg-main)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setConfirmId(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 360, display: "flex", flexDirection: "column", gap: 20 }}>
-            <div>
-              <p style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 8px" }}>Delete character?</p>
-              <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0, lineHeight: 1.5 }}>
-                <strong style={{ color: "var(--novae-text-primary)" }}>{confirmChar.name}</strong> and all their artwork will be permanently deleted.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setConfirmId(null)} disabled={deleteConfirmPending} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 20px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)" }}>Cancel</button>
-              <button onClick={handleDelete} disabled={deleteConfirmPending} style={{ background: "#c0392b", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 20px", cursor: deleteConfirmPending ? "not-allowed" : "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "#fff", opacity: deleteConfirmPending ? 0.6 : 1 }}>
-                {deleteConfirmPending ? "Deleting…" : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Toolbar */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
         {creatingFolder ? (
@@ -359,14 +252,12 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
         )}
       </div>
 
-      {localChars.length === 0 && folders.length === 0 ? (
+      {favs.length === 0 && folders.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "80px 0", color: "var(--novae-text-secondary)" }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" opacity={0.4}>
-            <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-          </svg>
-          <p style={{ margin: 0, fontSize: "var(--novae-text-lg)" }}>No characters yet.</p>
-          <Link href="/library/new/character" style={{ color: "var(--novae-btn-primary)", fontSize: "var(--novae-text-sm)", textDecoration: "none", fontWeight: 600 }}>
-            Create your first character →
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" opacity={0.4}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <p style={{ margin: 0, fontSize: "var(--novae-text-lg)" }}>No favorites yet.</p>
+          <Link href="/browse/characters" style={{ color: "var(--novae-btn-primary)", fontSize: "var(--novae-text-sm)", textDecoration: "none", fontWeight: 600 }}>
+            Discover characters →
           </Link>
         </div>
       ) : (
@@ -379,11 +270,11 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
             {folders.map((folder) => {
-              const folderChars = localChars.filter((c) => c.folderId === folder.id);
+              const folderFavs = favs.filter((c) => c.folderId === folder.id);
               const isCollapsed = collapsed[folder.id];
               const isOver = overId === `folder-${folder.id}`;
               return (
-                <DroppableFolder key={folder.id} folder={folder} isOver={isOver}>
+                <DroppableZone key={folder.id} id={`folder-${folder.id}`} isOver={isOver}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                     <button
                       onClick={() => setCollapsed((s) => ({ ...s, [folder.id]: !s[folder.id] }))}
@@ -392,11 +283,11 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s", color: "var(--novae-text-secondary)" }}>
                         <polyline points="6 9 12 15 18 9"/>
                       </svg>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: isOver ? "var(--novae-text-link)" : "var(--novae-text-link)" }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--novae-text-link)" }}>
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                       </svg>
                       <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{folder.name}</span>
-                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{folderChars.length}</span>
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{folderFavs.length}</span>
                     </button>
                     <button
                       onClick={() => handleDeleteFolder(folder.id)}
@@ -409,35 +300,35 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
                     </button>
                   </div>
                   {!isCollapsed && (
-                    folderChars.length === 0 ? (
+                    folderFavs.length === 0 ? (
                       <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: isOver ? "var(--novae-text-link)" : "var(--novae-text-secondary)", margin: 0, paddingLeft: 4 }}>
-                        {isOver ? "Drop here to add to this folder" : "Empty — drag a character here or use the folder icon on each card."}
+                        {isOver ? "Drop here to add to this folder" : "Empty — drag a favorite here or use the folder icon on each card."}
                       </p>
                     ) : (
-                      <CharGrid chars={folderChars} folders={folders} onDelete={setConfirmId} onMove={handleMove} draggable />
+                      <FavGrid favs={folderFavs} folders={folders} onUnfavorite={handleUnfavorite} onMove={handleMove} />
                     )
                   )}
-                </DroppableFolder>
+                </DroppableZone>
               );
             })}
 
             {(ungrouped.length > 0 || (hasFolders && activeId)) && (
-              <DroppableUngrouped isOver={overId === "ungrouped"}>
+              <DroppableZone id="ungrouped" isOver={overId === "ungrouped"}>
                 {hasFolders && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                     <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-secondary)" }}>Ungrouped</span>
                     <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{ungrouped.length}</span>
                   </div>
                 )}
-                <CharGrid chars={ungrouped} folders={folders} onDelete={setConfirmId} onMove={handleMove} draggable />
-              </DroppableUngrouped>
+                <FavGrid favs={ungrouped} folders={folders} onUnfavorite={handleUnfavorite} onMove={handleMove} />
+              </DroppableZone>
             )}
           </div>
 
           <DragOverlay>
-            {activeChar && (
+            {activeFav && (
               <div style={{ width: 220, opacity: 0.9, transform: "rotate(2deg)", pointerEvents: "none" }}>
-                <CharacterCard char={activeChar} folders={[]} onDelete={() => {}} onMove={() => {}} />
+                <FavCard fav={activeFav} folders={[]} onUnfavorite={() => {}} onMove={() => {}} />
               </div>
             )}
           </DragOverlay>

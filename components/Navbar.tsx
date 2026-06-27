@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
+import { thumbUrl } from "@/lib/thumb";
 import { useTheme } from "@/lib/use-theme";
 import { useT } from "@/lib/locale-context";
 
@@ -113,6 +114,7 @@ function IconLogout() {
 
 const LIBRARY_ITEMS  = [
   { label: "Characters", href: "/library/characters" },
+  { label: "Favorites", href: "/library/favorites" },
 ];
 
 const BROWSE_ITEMS = [
@@ -266,7 +268,7 @@ function TicketButton() {
       </button>
 
       {open && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "30vh", background: "rgba(0,0,0,0.5)" }} onClick={() => setOpen(false)}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "30vh", background: "var(--novae-bg-main)" }} onClick={() => setOpen(false)}>
           <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 460, display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Signaler un bug</h2>
@@ -310,19 +312,34 @@ function TicketButton() {
 export default function Navbar() {
   const pathname = usePathname();
   const router   = useRouter();
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
 
   const [open, setOpen] = useState<DropdownKey>(null);
   const [dbAvatar, setDbAvatar] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const ref = useRef<HTMLElement>(null);
   const { isDark, toggle: toggleTheme } = useTheme();
   const { t, locale, toggle: toggleLocale } = useT();
 
   // Fetch avatar from DB whenever session changes (bypasses session cache)
   useEffect(() => {
-    if (!session?.user) { setDbAvatar(null); return; }
+    if (!session?.user) { setDbAvatar(null); setUnreadCount(0); return; }
     fetch("/api/me").then(r => r.json()).then(d => setDbAvatar(d.avatar ?? null)).catch(() => {});
+    fetch("/api/notifications").then(r => r.json()).then((d: {read: boolean}[]) => {
+      if (Array.isArray(d)) setUnreadCount(d.filter((n) => !n.read).length);
+    }).catch(() => {});
   }, [session?.user?.id]);
+
+  // Live-sync the unread badge when notifications are read elsewhere (e.g. /notifications page)
+  useEffect(() => {
+    function onRead(e: Event) {
+      const detail = (e as CustomEvent).detail as { remaining?: number } | undefined;
+      if (detail && typeof detail.remaining === "number") setUnreadCount(detail.remaining);
+      else setUnreadCount(0);
+    }
+    window.addEventListener("novae:notifications-read", onRead);
+    return () => window.removeEventListener("novae:notifications-read", onRead);
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -364,6 +381,7 @@ export default function Navbar() {
       <div className={`nav-mobile-menu${mobileOpen ? " open" : ""}`} onClick={() => setMobileOpen(false)}>
         <Link href="/" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconHome />{t.navHome}</Link>
         <Link href="/library/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navLibrary}</Link>
+        <Link href="/library/favorites" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />Favorites</Link>
         <Link href="/browse" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconSearch />{t.navBrowse}</Link>
         <Link href="/community" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconGroup />{t.navCommunity}</Link>
         <div style={{ height: 1, background: "var(--novae-outline-all)", margin: "8px 0" }} />
@@ -461,7 +479,9 @@ export default function Navbar() {
           )}
         </button>
 
-        {session ? (
+        {isPending ? (
+          <div style={{ width: 120, height: 40 }} />
+        ) : session ? (
           <>
             {/* Ticket button */}
             <TicketButton />
@@ -488,16 +508,34 @@ export default function Navbar() {
                 onClick={() => toggle("profile")}
                 className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
               >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={username ?? ""} className="size-10 rounded-full object-cover" />
-                ) : (
-                  <div
-                    className="size-10 rounded-full flex items-center justify-center text-sm font-medium shrink-0"
-                    style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-primary)" }}
-                  >
-                    {(username ?? "?")[0].toUpperCase()}
-                  </div>
-                )}
+                {/* Avatar with unread dot */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  {avatarUrl ? (
+                    <img src={thumbUrl(avatarUrl, 80) ?? avatarUrl} alt={username ?? ""} className="size-10 rounded-full object-cover" />
+                  ) : (
+                    <div
+                      className="size-10 rounded-full flex items-center justify-center text-sm font-medium"
+                      style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-primary)" }}
+                    >
+                      {(username ?? "?")[0].toUpperCase()}
+                    </div>
+                  )}
+                  {unreadCount > 0 && (
+                    <span style={{
+                      position: "absolute", top: -2, right: -2,
+                      minWidth: 18, height: 18,
+                      background: "#e53e3e",
+                      border: "2px solid var(--novae-bg-card)",
+                      borderRadius: 999,
+                      fontSize: 10, fontWeight: 700, color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: "0 3px",
+                      fontFamily: "var(--font-dm-sans)",
+                    }}>
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </div>
                 <span
                   className="font-medium"
                   style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)" }}
@@ -532,12 +570,21 @@ export default function Navbar() {
                   </div>
 
                   {/* Notifications */}
-                  <div className="flex items-center w-full gap-2" style={{ opacity: 0.4, pointerEvents: "none" }}>
-                    <div className="flex items-center gap-2" style={{ color: "var(--novae-text-secondary)" }}>
-                      <span className="w-[22px] flex justify-center"><IconBell /></span>
-                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-secondary)" }}>Notifications</span>
-                    </div>
-                  </div>
+                  <Link
+                    href="/notifications"
+                    className="flex items-center gap-2 transition-opacity hover:opacity-70"
+                    style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}
+                  >
+                    <span className="w-[22px] flex justify-center" style={{ color: "var(--novae-text-secondary)", position: "relative" }}>
+                      <IconBell />
+                      {unreadCount > 0 && (
+                        <span style={{ position: "absolute", top: -4, right: -4, minWidth: 14, height: 14, background: "var(--novae-btn-primary)", borderRadius: 999, fontSize: 9, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                    <span>Notifications</span>
+                  </Link>
 
                   <Divider />
 

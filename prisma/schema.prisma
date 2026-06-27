@@ -40,6 +40,9 @@ model User {
   invitesCreated   InviteCode[]      @relation("CreatedInvites")
   invitesUsed      InviteCode[]      @relation("UsedInvites")
   characterFolders CharacterFolder[]
+  favoriteFolders  FavoriteFolder[]
+  notificationsReceived Notification[] @relation("ReceivedNotifications")
+  notificationsSent     Notification[] @relation("SentNotifications")
 }
 
 model Follow {
@@ -110,6 +113,15 @@ model CharacterFolder {
   characters Character[]
 }
 
+model FavoriteFolder {
+  id         String     @id @default(cuid())
+  name       String
+  createdAt  DateTime   @default(now())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites  Favorite[]
+}
+
 model Character {
   id                 String   @id @default(cuid())
   numId              Int      @unique @default(autoincrement())
@@ -137,6 +149,7 @@ model Character {
   custom             String?
   voiceClaimUrl      String?
   playlistUrl        String?
+  spotifyPlaylistUrl String?
   summary            String?
   biography          String?
   sections           String?
@@ -159,6 +172,7 @@ model Character {
   relationshipsA Relationship[] @relation("CharacterA")
   relationshipsB Relationship[] @relation("CharacterB")
   favorites     Favorite[]
+  notifications Notification[]
 }
 
 model Species {
@@ -176,11 +190,12 @@ model Species {
 }
 
 model Artwork {
-  id        String   @id @default(cuid())
-  title     String?
-  imageUrl  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  title        String?
+  imageUrl     String
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -189,6 +204,7 @@ model Artwork {
 
   galleryImages GalleryImage[]
   favorites     Favorite[]
+  notifications Notification[]
 }
 
 model Gallery {
@@ -257,13 +273,20 @@ model Relationship {
   typeB       String?
   description String?
 
+  // "accepted" (own char / external) | "pending" | "declined" (cross-user, awaiting the other owner)
+  status        String @default("accepted")
+  requestedById String?
+
   characterAId String
   characterA   Character @relation("CharacterA", fields: [characterAId], references: [id], onDelete: Cascade)
 
-  characterBId String
-  characterB   Character @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+  // either a site character or an external one (name + image)
+  characterBId       String?
+  characterB         Character? @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+  externalName       String?
+  externalImageUrl   String?
 
-  @@unique([characterAId, characterBId])
+  notifications Notification[]
 }
 
 model InviteCode {
@@ -279,6 +302,28 @@ model InviteCode {
 
   usedById    String?
   usedBy      User?     @relation("UsedInvites",    fields: [usedById],    references: [id], onDelete: SetNull)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // "new_character" | "new_artwork" | "new_follower" | "new_favorite" | "rel_request" | "rel_accepted" | "rel_declined"
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  recipientId String
+  recipient   User   @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  actorId String
+  actor   User   @relation("SentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+
+  characterId String?
+  character   Character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  artworkId String?
+  artwork   Artwork? @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  relationshipId String?
+  relationship   Relationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
 }
 
 model Comment {
@@ -316,6 +361,9 @@ model Favorite {
 
   artworkId String?
   artwork   Artwork? @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  folderId String?
+  folder   FavoriteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@unique([userId, characterId])
   @@unique([userId, artworkId])

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyFollowers } from "@/lib/notifications";
 
 export async function DELETE(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { imageUrl, title, characterIds } = await req.json();
+  const { imageUrl, thumbnailUrl, title, characterIds } = await req.json();
   if (!imageUrl) return NextResponse.json({ error: "imageUrl required" }, { status: 400 });
 
   const ids: string[] = Array.isArray(characterIds) ? characterIds : [];
@@ -70,12 +71,18 @@ export async function POST(req: NextRequest) {
   const artwork = await prisma.artwork.create({
     data: {
       imageUrl,
+      thumbnailUrl: thumbnailUrl ?? null,
       title: title ?? null,
       userId: session.user.id,
       characters: ids.length > 0 ? { connect: ids.map((id) => ({ id })) } : undefined,
     },
     include: { characters: { select: { id: true, name: true, numId: true, slug: true } } },
   });
+
+  notifyFollowers(session.user.id, "new_artwork", {
+    characterId: ids[0] ?? undefined,
+    artworkId: artwork.id,
+  }).catch(() => {});
 
   return NextResponse.json(artwork, { status: 201 });
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import ImageCropModal from "@/components/ImageCropModal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ interface ImageEntry {
   artistValue: string;
   artistLabel: string;
   characters: CharacterOption[];
+  thumbnailFile: File | null;
+  thumbnailPreview: string | null;
 }
 
 // ── Character Picker Modal (multi-select) ────────────────────────────────────
@@ -45,7 +48,7 @@ function CharacterPickerModal({
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--novae-bg-main)", display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={onClose}
     >
       <div
@@ -160,7 +163,7 @@ function ArtistModal({
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--novae-bg-main)", display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={onClose}
     >
       <div
@@ -249,6 +252,7 @@ export default function NewMultiImagePage() {
   const [uploading, setUploading] = useState(false);
   const [artistModal, setArtistModal] = useState<number | null>(null);
   const [charModal, setCharModal] = useState<number | null>(null);
+  const [cropModal, setCropModal] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { startUpload } = useUploadThing("characterImage");
@@ -266,6 +270,8 @@ export default function NewMultiImagePage() {
       artistValue: "",
       artistLabel: "",
       characters: [],
+      thumbnailFile: null,
+      thumbnailPreview: null,
     }));
     setEntries((prev) => [...prev, ...newEntries]);
   }, []);
@@ -285,6 +291,14 @@ export default function NewMultiImagePage() {
 
   const updateArtist = (i: number, artistType: ImageEntry["artistType"], artistValue: string, artistLabel: string) => {
     setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, artistType, artistValue, artistLabel } : e));
+  };
+
+  const setThumbnail = (i: number, file: File | null, preview: string | null) => {
+    setEntries((prev) => prev.map((e, idx) => {
+      if (idx !== i) return e;
+      if (e.thumbnailPreview) URL.revokeObjectURL(e.thumbnailPreview);
+      return { ...e, thumbnailFile: file, thumbnailPreview: preview };
+    }));
   };
 
   const toggleCharacter = (i: number, c: CharacterOption) => {
@@ -309,6 +323,17 @@ export default function NewMultiImagePage() {
       const uploaded = await startUpload(entries.map((e) => e.file));
       if (!uploaded?.length) return;
 
+      // Upload thumbnails (only entries that have one), then map back by index
+      const thumbTargets = entries.map((e, i) => ({ e, i })).filter((x) => x.e.thumbnailFile);
+      const thumbUrls: Record<number, string> = {};
+      if (thumbTargets.length > 0) {
+        const upThumbs = await startUpload(thumbTargets.map((x) => x.e.thumbnailFile!));
+        thumbTargets.forEach((x, k) => {
+          const url = upThumbs?.[k]?.ufsUrl;
+          if (url) thumbUrls[x.i] = url;
+        });
+      }
+
       // One POST per image — all characters connected at once
       const charactersSeen = new Map<string, CharacterOption>();
 
@@ -332,6 +357,7 @@ export default function NewMultiImagePage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               imageUrl,
+              thumbnailUrl: thumbUrls[i] ?? null,
               title: artistRaw,
               characterIds: entry.characters.map((c) => c.id),
             }),
@@ -476,6 +502,32 @@ export default function NewMultiImagePage() {
                       : `${entry.characters.length} characters`}
                 </button>
 
+                {/* Thumbnail button */}
+                <button
+                  onClick={() => setCropModal(i)}
+                  style={{
+                    padding: "6px 14px",
+                    background: entry.thumbnailPreview ? "rgba(105,61,169,0.1)" : "none",
+                    border: "1px solid var(--novae-outline-all)",
+                    borderRadius: "var(--novae-radius-sm)",
+                    color: entry.thumbnailPreview ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
+                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                    fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
+                    display: "flex", alignItems: "center", gap: 6,
+                  }}
+                >
+                  {entry.thumbnailPreview ? (
+                    <span style={{ width: 16, height: 16, borderRadius: 3, overflow: "hidden", flexShrink: 0, display: "block" }}>
+                      <img src={entry.thumbnailPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </span>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  )}
+                  {entry.thumbnailPreview ? "Thumbnail" : "Crop thumbnail"}
+                </button>
+
                 {/* Remove */}
                 <button
                   onClick={() => removeEntry(i)}
@@ -531,6 +583,21 @@ export default function NewMultiImagePage() {
           selected={entries[charModal].characters}
           onToggle={(c) => toggleCharacter(charModal, c)}
           onClose={() => setCharModal(null)}
+        />
+      )}
+
+      {/* Thumbnail crop modal */}
+      {cropModal !== null && entries[cropModal] && (
+        <ImageCropModal
+          src={entries[cropModal].preview}
+          filename={entries[cropModal].file.name}
+          originalFile={entries[cropModal].file}
+          aspect={1}
+          onConfirm={(file, preview) => {
+            setThumbnail(cropModal, file, preview);
+            setCropModal(null);
+          }}
+          onCancel={() => setCropModal(null)}
         />
       )}
     </div>

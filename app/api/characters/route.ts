@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyFollowers } from "@/lib/notifications";
 
 function toSlug(name: string): string {
   return name
@@ -30,14 +31,28 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search")?.trim();
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "100"), 100);
   const exclude = searchParams.get("exclude");
+  const scope = searchParams.get("scope"); // "own" (default) | "all"
+  const userId = searchParams.get("userId"); // filter to a specific user's characters
+
+  const ownId = session.user.id;
+  const where: Record<string, unknown> = {};
+  if (userId) {
+    // characters of a specific user — own ones unrestricted, others must be public
+    where.userId = userId;
+    if (userId !== ownId) where.isPublic = true;
+  } else if (scope === "all") {
+    where.isPublic = true;
+  } else {
+    where.userId = ownId;
+  }
 
   const characters = await prisma.character.findMany({
     where: {
-      userId: session.user.id,
+      ...where,
       ...(search && { name: { contains: search, mode: "insensitive" } }),
       ...(exclude && { id: { not: exclude } }),
     },
-    select: { id: true, name: true, avatarUrl: true, numId: true, slug: true },
+    select: { id: true, name: true, avatarUrl: true, numId: true, slug: true, user: { select: { username: true } } },
     orderBy: { name: "asc" },
     take: limit,
   });
@@ -65,6 +80,9 @@ export async function POST(req: NextRequest) {
       writerCredit: isWriter !== false ? null : (writerCredit ?? null),
     },
   });
+
+  // fire-and-forget: notify followers
+  notifyFollowers(session.user.id, "new_character", { characterId: character.id }).catch(() => {});
 
   return NextResponse.json(character, { status: 201 });
 }

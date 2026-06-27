@@ -14,34 +14,45 @@ export default async function CharacterPage({ params }: Props) {
   const numId = parseCharacterParam(param);
   if (isNaN(numId)) notFound();
 
-  const [session, character] = await Promise.all([
-    auth.api.getSession({ headers: await headers() }).catch(() => null),
-    prisma.character.findUnique({
-      where: { numId },
-      include: {
-        user:    { select: { username: true } },
-        artworks: { orderBy: { createdAt: "desc" }, include: { characters: { select: { id: true, name: true, numId: true, slug: true } } } },
-        tags:          { include: { tag: true } },
-        colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
-        favorites: true,
-          relationshipsA: { include: { characterB: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true } } } },
-          relationshipsB: { include: { characterA: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true } } } },
-          galleries: { include: { images: { orderBy: { order: "asc" }, select: { id: true, artworkId: true, order: true } } }, orderBy: { name: "asc" } },
-      },
-    }),
-  ]);
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
+  const currentUserId = session?.user?.id ?? null;
+
+  const character = await prisma.character.findUnique({
+    where: { numId },
+    include: {
+      user:    { select: { username: true } },
+      artworks: { orderBy: { createdAt: "desc" }, include: { characters: { select: { id: true, name: true, numId: true, slug: true } } } },
+      tags:          { include: { tag: true } },
+      colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
+      favorites: { select: { id: true, userId: true } },
+        relationshipsA: { include: { characterB: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, user: { select: { username: true } } } } } },
+        relationshipsB: { include: { characterA: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, user: { select: { username: true } } } } } },
+        galleries: { include: { images: { orderBy: { order: "asc" }, select: { id: true, artworkId: true, order: true } } }, orderBy: { name: "asc" } },
+    },
+  });
 
   if (!character) notFound();
 
-  const isOwner = session?.user?.id === character.userId;
+  const isOwner = currentUserId === character.userId;
 
   if (!character.isPublic && !isOwner) notFound();
 
+  const initialFavorited = !!currentUserId && character.favorites.some((f) => f.userId === currentUserId);
+
+  // hide unaccepted relationships: incoming (B side) only when accepted;
+  // outgoing (A side) pending only visible to the owner
+  const filteredCharacter = {
+    ...character,
+    relationshipsA: character.relationshipsA.filter((r) => r.status === "accepted" || isOwner),
+    relationshipsB: character.relationshipsB.filter((r) => r.status === "accepted"),
+  };
+
   return (
     <CharacterPageClient
-      character={character}
+      character={filteredCharacter}
       isOwner={isOwner}
-      currentUserId={session?.user?.id ?? null}
+      currentUserId={currentUserId}
+      initialFavorited={initialFavorited}
     />
   );
 }
