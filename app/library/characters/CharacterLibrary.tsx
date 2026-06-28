@@ -433,9 +433,17 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
                 {openFolder.isPublic ? "Public" : "Hidden"}
               </button>
             )}
+            {viewChars.length > 0 && (
+              <button
+                onClick={() => { setSelectMode((v) => !v); if (selectMode) setSelected(new Set()); }}
+                style={{ ...btnStyle, marginLeft: "auto", color: selectMode ? "var(--novae-text-link)" : "var(--novae-text-secondary)", borderColor: selectMode ? "var(--novae-text-link)" : "var(--novae-outline-all)" }}
+              >
+                {selectMode ? "Cancel selection" : "Select"}
+              </button>
+            )}
             <button
               onClick={() => handleDeleteFolder(openFolderId)}
-              style={{ ...btnStyle, marginLeft: "auto" }}
+              style={{ ...btnStyle, marginLeft: viewChars.length > 0 ? 0 : "auto" }}
               title="Delete folder"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
