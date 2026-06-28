@@ -37,7 +37,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
           orderBy: { createdAt: "desc" },
         },
         characterFolders: {
-          orderBy: { createdAt: "asc" },
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
           select: { id: true, name: true, isPublic: true },
         },
         artworks: {

@@ -21,7 +21,7 @@ export default async function CharactersLibraryPage() {
     }),
     prisma.characterFolder.findMany({
       where: { userId: session.user.id },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
       select: { id: true, name: true, isPublic: true },
     }),
   ]);

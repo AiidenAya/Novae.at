@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 type Char = {
@@ -116,7 +117,7 @@ function CharCard({
 }
 
 function DraggableCharCard(props: React.ComponentProps<typeof CharCard>) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.char.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.char.id, data: { type: "character" } });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.4 : 1, touchAction: "none" }}>
       <CharCard {...props} dragHandleProps={{ ...attributes, ...listeners }} />
@@ -124,19 +125,22 @@ function DraggableCharCard(props: React.ComponentProps<typeof CharCard>) {
   );
 }
 
-// ── Folder card (droppable) ──────────────────────────────────────────────────
+// ── Folder card (sortable + droppable for chars) ────────────────────────────
 
-function DroppableFolderCard({
-  folder, chars, isOver, onOpen, onToggleVisibility, onDelete,
+function SortableFolderCard({
+  folder, chars, isCharOver, onOpen, onToggleVisibility, onDelete,
 }: {
   folder: Folder;
   chars: Char[];
-  isOver: boolean;
+  isCharOver: boolean;
   onOpen: () => void;
   onToggleVisibility: () => void;
   onDelete: () => void;
 }) {
-  const { setNodeRef } = useDroppable({ id: `folder-${folder.id}` });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `folder-${folder.id}`,
+    data: { type: "folder" },
+  });
   const cover = chars[0]?.avatarUrl ?? chars[0]?.artworks[0]?.imageUrl ?? null;
   const [hover, setHover] = useState(false);
 
@@ -146,9 +150,11 @@ function DroppableFolderCard({
       onClick={onOpen}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{ position: "relative", cursor: "pointer" }}
+      style={{ position: "relative", cursor: "pointer", transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1, touchAction: "none" }}
+      {...attributes}
+      {...listeners}
     >
-      <div className="character-card" style={{ outline: isOver ? "2px solid var(--novae-text-link)" : undefined, outlineOffset: 2, transition: "outline 0.1s" }}>
+      <div className="character-card" style={{ outline: isCharOver ? "2px solid var(--novae-text-link)" : undefined, outlineOffset: 2, transition: "outline 0.1s" }}>
         <div style={{ width: "100%", aspectRatio: "1", backgroundColor: "var(--novae-bg-main)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {cover && (
             <Image src={cover} alt={folder.name} fill sizes="220px" className="object-cover" style={{ opacity: 0.4 }} />
@@ -165,7 +171,7 @@ function DroppableFolderCard({
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "10px", color: "#e0a030" }}>Hidden</span>
             </div>
           )}
-          {isOver && (
+          {isCharOver && (
             <div style={{ position: "absolute", inset: 0, background: "rgba(105,61,169,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3, borderRadius: "inherit" }}>
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-link)", fontWeight: 600 }}>Drop here</span>
             </div>
@@ -276,6 +282,7 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
   const [folderPending, setFolderPending] = useState(false);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<"character" | "folder" | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -359,15 +366,33 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
     });
   }
 
+  async function persistFolderOrder(orderedFolders: Folder[]) {
+    await fetch("/api/character-folders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: orderedFolders.map((f, i) => ({ id: f.id, order: i })) }),
+    });
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
+    setActiveType(null);
     setOverId(null);
     if (!over) return;
-    const charId = active.id as string;
-    const dropId = over.id as string;
-    if (dropId.startsWith("folder-")) {
-      handleMove(charId, dropId.replace("folder-", ""));
+    const type = active.data.current?.type as string;
+    const activeIdStr = active.id as string;
+    const overIdStr = over.id as string;
+    if (type === "folder") {
+      const oldIdx = folders.findIndex((f) => `folder-${f.id}` === activeIdStr);
+      const newIdx = folders.findIndex((f) => `folder-${f.id}` === overIdStr);
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        const reordered = arrayMove(folders, oldIdx, newIdx);
+        setFolders(reordered);
+        persistFolderOrder(reordered);
+      }
+    } else if (type === "character" && overIdStr.startsWith("folder-")) {
+      handleMove(activeIdStr, overIdStr.replace("folder-", ""));
     }
   }
 
@@ -391,7 +416,8 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
     ? localChars.filter((c) => c.folderId === openFolderId)
     : localChars.filter((c) => !c.folderId);
   const confirmChar = localChars.find((c) => c.id === confirmId);
-  const activeChar = localChars.find((c) => c.id === activeId);
+  const activeChar = activeType === "character" ? localChars.find((c) => c.id === activeId) : undefined;
+  const activeFolder = activeType === "folder" ? folders.find((f) => `folder-${f.id}` === activeId) : undefined;
   const otherFolders = folders.filter((f) => f.id !== openFolderId);
 
   const btnStyle: React.CSSProperties = {
@@ -559,26 +585,28 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
         /* ── Top-level grid: folder cards + ungrouped chars ── */
         <DndContext
           sensors={sensors}
-          onDragStart={(e) => setActiveId(e.active.id as string)}
+          onDragStart={(e) => { setActiveId(e.active.id as string); setActiveType(e.active.data.current?.type ?? null); }}
           onDragOver={(e) => setOverId(e.over?.id as string ?? null)}
           onDragEnd={handleDragEnd}
-          onDragCancel={() => { setActiveId(null); setOverId(null); }}
+          onDragCancel={() => { setActiveId(null); setActiveType(null); setOverId(null); }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             {folders.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
-                {folders.map((folder) => (
-                  <DroppableFolderCard
-                    key={folder.id}
-                    folder={folder}
-                    chars={localChars.filter((c) => c.folderId === folder.id)}
-                    isOver={overId === `folder-${folder.id}`}
-                    onOpen={() => setOpenFolderId(folder.id)}
-                    onToggleVisibility={() => handleToggleFolderVisibility(folder.id)}
-                    onDelete={() => handleDeleteFolder(folder.id)}
-                  />
-                ))}
-              </div>
+              <SortableContext items={folders.map((f) => `folder-${f.id}`)} strategy={rectSortingStrategy}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+                  {folders.map((folder) => (
+                    <SortableFolderCard
+                      key={folder.id}
+                      folder={folder}
+                      chars={localChars.filter((c) => c.folderId === folder.id)}
+                      isCharOver={activeType === "character" && overId === `folder-${folder.id}`}
+                      onOpen={() => setOpenFolderId(folder.id)}
+                      onToggleVisibility={() => handleToggleFolderVisibility(folder.id)}
+                      onDelete={() => handleDeleteFolder(folder.id)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
             )}
             {folders.length > 0 && viewChars.length > 0 && (
               <hr style={{ border: "none", borderTop: "1px solid var(--novae-outline-all)", margin: 0 }} />
@@ -608,9 +636,21 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
           </div>
 
           <DragOverlay>
-            {activeChar && (
+            {activeType === "character" && activeChar && (
               <div style={{ width: 220, opacity: 0.9, transform: "rotate(2deg)", pointerEvents: "none" }}>
                 <CharCard char={activeChar} onDelete={() => {}} />
+              </div>
+            )}
+            {activeType === "folder" && activeFolder && (
+              <div style={{ width: 220, opacity: 0.85, transform: "rotate(1.5deg)", pointerEvents: "none" }}>
+                <SortableFolderCard
+                  folder={activeFolder}
+                  chars={localChars.filter((c) => c.folderId === activeFolder.id)}
+                  isCharOver={false}
+                  onOpen={() => {}}
+                  onToggleVisibility={() => {}}
+                  onDelete={() => {}}
+                />
               </div>
             )}
           </DragOverlay>
