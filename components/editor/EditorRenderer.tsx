@@ -29,7 +29,7 @@ function renderBlock(block: Block, i: number) {
       const raw = (block.data.items ?? []) as (string | { content: string })[];
       const items = raw.map((item) => (typeof item === "string" ? item : item.content));
       return (
-        <Tag key={i} style={{ margin: "0 0 6px", paddingLeft: 20 }}>
+        <Tag key={i} style={{ margin: "0 0 6px", paddingLeft: 20, listStyleType: ordered ? "decimal" : "disc" }}>
           {items.map((item, j) => (
             <li key={j} dangerouslySetInnerHTML={{ __html: item }} style={{ lineHeight: "1.65" }} />
           ))}
