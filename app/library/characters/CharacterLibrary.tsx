@@ -564,35 +564,46 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
           onDragEnd={handleDragEnd}
           onDragCancel={() => { setActiveId(null); setOverId(null); }}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
-            {folders.map((folder) => (
-              <DroppableFolderCard
-                key={folder.id}
-                folder={folder}
-                chars={localChars.filter((c) => c.folderId === folder.id)}
-                isOver={overId === `folder-${folder.id}`}
-                onOpen={() => setOpenFolderId(folder.id)}
-                onToggleVisibility={() => handleToggleFolderVisibility(folder.id)}
-                onDelete={() => handleDeleteFolder(folder.id)}
-              />
-            ))}
-            {viewChars.map((char) =>
-              selectMode ? (
-                <CharCard
-                  key={char.id}
-                  char={char}
-                  selected={selected.has(char.id)}
-                  selectMode
-                  onSelect={() => toggleSelect(char.id)}
-                  onDelete={setConfirmId}
-                />
-              ) : (
-                <DraggableCharCard
-                  key={char.id}
-                  char={char}
-                  onDelete={setConfirmId}
-                />
-              )
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            {folders.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+                {folders.map((folder) => (
+                  <DroppableFolderCard
+                    key={folder.id}
+                    folder={folder}
+                    chars={localChars.filter((c) => c.folderId === folder.id)}
+                    isOver={overId === `folder-${folder.id}`}
+                    onOpen={() => setOpenFolderId(folder.id)}
+                    onToggleVisibility={() => handleToggleFolderVisibility(folder.id)}
+                    onDelete={() => handleDeleteFolder(folder.id)}
+                  />
+                ))}
+              </div>
+            )}
+            {folders.length > 0 && viewChars.length > 0 && (
+              <hr style={{ border: "none", borderTop: "1px solid var(--novae-outline-all)", margin: 0 }} />
+            )}
+            {viewChars.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+                {viewChars.map((char) =>
+                  selectMode ? (
+                    <CharCard
+                      key={char.id}
+                      char={char}
+                      selected={selected.has(char.id)}
+                      selectMode
+                      onSelect={() => toggleSelect(char.id)}
+                      onDelete={setConfirmId}
+                    />
+                  ) : (
+                    <DraggableCharCard
+                      key={char.id}
+                      char={char}
+                      onDelete={setConfirmId}
+                    />
+                  )
+                )}
+              </div>
             )}
           </div>
 
