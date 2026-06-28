@@ -1020,7 +1020,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: "#141820", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }}
+            style={{ background: "#141820", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 32, width: "min(420px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 20 }}
           >
             <h2 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
               Edit credits
@@ -1335,7 +1335,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               border: "1px solid var(--novae-outline-all)",
               borderRadius: "var(--novae-radius-lg)",
               padding: 32,
-              width: 420,
+              width: "min(420px, calc(100vw - 32px))",
               display: "flex", flexDirection: "column", gap: 20,
             }}
           >
@@ -1442,7 +1442,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           <div className="char-header-row flex items-center justify-between gap-4 w-full">
             {/* Avatar */}
             <div
-              className="relative shrink-0 rounded-[var(--novae-radius-lg)] overflow-hidden"
+              className="char-header-avatar relative shrink-0 rounded-[var(--novae-radius-lg)] overflow-hidden"
               style={{
                 width: 280, height: 280,
                 backgroundColor: "var(--novae-bg-card)",
@@ -1473,9 +1473,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             </div>
 
             {/* Name + meta */}
-            <div className="flex flex-col flex-1 min-w-0 min-h-[280px] items-end justify-between pl-6 pr-2 py-2">
+            <div className="char-header-meta flex flex-col flex-1 min-w-0 min-h-[280px] items-end justify-between pl-6 pr-2 py-2">
               {/* Action buttons */}
-              <div className="flex gap-3 items-center shrink-0">
+              <div className="char-header-actions flex gap-3 items-center shrink-0">
                 {!isOwner && currentUserId && (
                   <button
                     onClick={toggleFavorite}
@@ -1611,7 +1611,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               </div>
 
               {/* Name + quote + meta */}
-              <div className="flex flex-col gap-3 w-full">
+              <div className="char-header-bio flex flex-col gap-3 w-full">
                 {/* Name row */}
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   {editing ? (
@@ -1629,6 +1629,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     />
                   ) : (
                     <h1
+                      className="char-header-name"
                       style={{
                         fontFamily: "var(--font-space-grotesk)",
                         fontSize: "var(--novae-text-5xl)",
@@ -1658,111 +1659,115 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   )
                 )}
 
-                {/* Meta row */}
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap" as const,
-                    gap: "24px",
-                    paddingTop: 20,
-                    borderTop: "1px solid var(--novae-outline-all)",
-                    marginTop: 12,
-                  }}
-                >
-                  <MetaItem label="Owner" value={`@${character.user.username}`} href={`/${character.user.username}`} />
-                  {/* Designer — view mode */}
-                  {!editing && (() => {
-                    if (character.isDesigner) {
-                      return <MetaItem label="Designer" value={`@${character.user.username}`} href={`/${character.user.username}`} />;
-                    }
-                    if (!character.designerCredit) return null;
-                    if (character.designerCredit.startsWith("@")) {
-                      const u = character.designerCredit.slice(1);
-                      return <MetaItem label="Designer" value={`@${u}`} href={`/${u}`} />;
-                    }
-                    const m = character.designerCredit.match(/^\[(.+)\]\((.+)\)$/);
-                    if (m) return <MetaItem label="Designer" value={m[1]} href={m[2]} />;
-                    return <MetaItem label="Designer" value={character.designerCredit} />;
-                  })()}
-                  {/* Designer — edit mode */}
-                  {editing && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Designer
-                      </span>
-                      <div style={{ display: "flex", borderRadius: "var(--novae-radius-sm)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-                        {([
-                          { key: "me",      label: "Me" },
-                          { key: "onsite",  label: "Novae" },
-                          { key: "offsite", label: "Outside website" },
-                        ] as const).map(({ key, label }) => {
-                          const active = key === "me" ? isDesigner : (!isDesigner && creditType === key);
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => {
-                                if (key === "me") { setIsDesigner(true); }
-                                else { setIsDesigner(false); setCreditType(key); setCreditValue(""); setCreditLabel(""); }
-                              }}
-                              style={{
-                                flex: 1, padding: "5px 0",
-                                background: active ? "var(--novae-btn-primary)" : "none",
-                                border: "none",
-                                color: active ? "#fff" : "var(--novae-text-secondary)",
-                                fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
-                                fontWeight: active ? 600 : 400, cursor: "pointer",
-                              }}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {!isDesigner && (
-                        <>
-                          {creditType === "offsite" && (
-                            <input
-                              value={creditLabel}
-                              onChange={(e) => setCreditLabel(e.target.value)}
-                              placeholder="Nom du designer"
-                              style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                            />
-                          )}
-                          {creditType === "onsite" && (
-                            <button
-                              type="button"
-                              onClick={() => setCreditValue(character.user.username ?? "")}
-                              style={{ alignSelf: "flex-start", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
-                            >
-                              Me (@{character.user.username})
-                            </button>
-                          )}
-                          <input
-                            value={creditValue}
-                            onChange={(e) => setCreditValue(e.target.value)}
-                            placeholder={creditType === "onsite" ? "username" : "https://..."}
-                            style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
-                  <MetaItem
-                    label="Created"
-                    value={new Intl.DateTimeFormat("fr-FR").format(new Date(character.createdAt))}
-                  />
-                </div>
               </div>
             </div>
           </div>
 
+          {/* Meta row — owner / designer / created */}
+          <div
+            className="char-meta-row"
+            style={{
+              display: "flex",
+              flexWrap: "wrap" as const,
+              gap: "24px",
+              paddingTop: 16,
+              borderTop: "1px solid var(--novae-outline-all)",
+            }}
+          >
+            <MetaItem label="Owner" value={`@${character.user.username}`} href={`/${character.user.username}`} />
+            {/* Designer — view mode */}
+            {!editing && (() => {
+              if (character.isDesigner) {
+                return <MetaItem label="Designer" value={`@${character.user.username}`} href={`/${character.user.username}`} />;
+              }
+              if (!character.designerCredit) return null;
+              if (character.designerCredit.startsWith("@")) {
+                const u = character.designerCredit.slice(1);
+                return <MetaItem label="Designer" value={`@${u}`} href={`/${u}`} />;
+              }
+              const m = character.designerCredit.match(/^\[(.+)\]\((.+)\)$/);
+              if (m) return <MetaItem label="Designer" value={m[1]} href={m[2]} />;
+              return <MetaItem label="Designer" value={character.designerCredit} />;
+            })()}
+            {/* Designer — edit mode */}
+            {editing && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Designer
+                </span>
+                <div style={{ display: "flex", borderRadius: "var(--novae-radius-sm)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
+                  {([
+                    { key: "me",      label: "Me" },
+                    { key: "onsite",  label: "Novae" },
+                    { key: "offsite", label: "Outside website" },
+                  ] as const).map(({ key, label }) => {
+                    const active = key === "me" ? isDesigner : (!isDesigner && creditType === key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          if (key === "me") { setIsDesigner(true); }
+                          else { setIsDesigner(false); setCreditType(key); setCreditValue(""); setCreditLabel(""); }
+                        }}
+                        style={{
+                          flex: 1, padding: "5px 0",
+                          background: active ? "var(--novae-btn-primary)" : "none",
+                          border: "none",
+                          color: active ? "#fff" : "var(--novae-text-secondary)",
+                          fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                          fontWeight: active ? 600 : 400, cursor: "pointer",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!isDesigner && (
+                  <>
+                    {creditType === "offsite" && (
+                      <input
+                        value={creditLabel}
+                        onChange={(e) => setCreditLabel(e.target.value)}
+                        placeholder="Nom du designer"
+                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                      />
+                    )}
+                    {creditType === "onsite" && (
+                      <button
+                        type="button"
+                        onClick={() => setCreditValue(character.user.username ?? "")}
+                        style={{ alignSelf: "flex-start", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                      >
+                        Me (@{character.user.username})
+                      </button>
+                    )}
+                    <input
+                      value={creditValue}
+                      onChange={(e) => setCreditValue(e.target.value)}
+                      placeholder={creditType === "onsite" ? "username" : "https://..."}
+                      style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+            <MetaItem
+              label="Created"
+              value={new Intl.DateTimeFormat("fr-FR").format(new Date(character.createdAt))}
+            />
+          </div>
+
           {/* Tabs */}
           <div
+            className="char-tabs"
             style={{
               display: "flex",
               gap: 0,
               borderBottom: "1px solid var(--novae-outline-all)",
+              overflowX: "auto",
+              scrollbarWidth: "none",
             }}
           >
             {TABS.map((tab) => (
@@ -1771,9 +1776,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                 onClick={() => setActiveTab(tab.key)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "12px 20px",
+                  padding: "12px 16px",
                   background: "none",
                   border: "none",
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
                   borderBottom: activeTab === tab.key ? "2px solid var(--novae-btn-primary)" : "2px solid transparent",
                   color: activeTab === tab.key ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
                   fontFamily: "var(--font-dm-sans)",

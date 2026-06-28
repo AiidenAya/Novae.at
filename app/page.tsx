@@ -139,7 +139,7 @@ export default async function Home() {
   const { latestChars, randomChars, randomUsers } = await getData();
 
   return (
-    <div style={{ padding: "40px 24px 80px", display: "flex", flexDirection: "column", gap: 56 }}>
+    <div className="home-content" style={{ padding: "40px 16px 80px", display: "flex", flexDirection: "column", gap: 40 }}>
 
       {/* Hero */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -162,7 +162,7 @@ export default async function Home() {
         </div>
         {latestChars.length === 0
           ? <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>
-          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
+          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
               {latestChars.map((c) => <CharCard key={c.id} char={c} />)}
             </div>
         }
@@ -173,7 +173,7 @@ export default async function Home() {
         <SectionHeading>Discover characters</SectionHeading>
         {randomChars.length === 0
           ? <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>
-          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
+          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
               {randomChars.map((c) => <CharCard key={c.id} char={c} />)}
             </div>
         }
@@ -184,7 +184,7 @@ export default async function Home() {
         <SectionHeading>Discover creators</SectionHeading>
         {randomUsers.length === 0
           ? <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No creators yet.</p>
-          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
               {randomUsers.map((u) => <UserCard key={u.id} user={u} />)}
             </div>
         }

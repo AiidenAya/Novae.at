@@ -438,7 +438,7 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
       {/* Delete confirm modal */}
       {confirmChar && (
         <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setConfirmId(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 360, display: "flex", flexDirection: "column", gap: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(360px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 20 }}>
             <div>
               <p style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 8px" }}>Delete character?</p>
               <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0, lineHeight: 1.5 }}>
@@ -568,7 +568,7 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
             This folder is empty.
           </p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 20 }}>
             {viewChars.map((char) => (
               <CharCard
                 key={char.id}
@@ -593,7 +593,7 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
           <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             {folders.length > 0 && (
               <SortableContext items={folders.map((f) => `folder-${f.id}`)} strategy={rectSortingStrategy}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 20 }}>
                   {folders.map((folder) => (
                     <SortableFolderCard
                       key={folder.id}
@@ -612,7 +612,7 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
               <hr style={{ border: "none", borderTop: "1px solid var(--novae-outline-all)", margin: 0 }} />
             )}
             {viewChars.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 20 }}>
                 {viewChars.map((char) =>
                   selectMode ? (
                     <CharCard

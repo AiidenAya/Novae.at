@@ -12,9 +12,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
 
   return (
-    <div style={{ display: "flex", minHeight: "100%", padding: "48px 32px", gap: 40, maxWidth: 1100, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+    <div className="settings-layout" style={{ display: "flex", minHeight: "100%", padding: "48px 32px", gap: 40, maxWidth: 1100, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
       {/* Sidebar */}
-      <aside style={{ width: 200, flexShrink: 0 }}>
+      <aside className="settings-sidebar" style={{ width: 200, flexShrink: 0 }}>
         <p style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 400, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.35em", margin: "0 0 12px 0" }}>
           Settings
         </p>
