@@ -8,7 +8,7 @@ async function getData() {
   const shuffle = <T,>(arr: T[]) => arr.map((v) => ({ v, k: Math.random() })).sort((a, b) => a.k - b.k).map((x) => x.v);
   const [latestChars, allChars, allUsers] = await Promise.all([
     prisma.character.findMany({
-      where: { isPublic: true },
+      where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
       orderBy: { createdAt: "desc" },
       take: 8,
       select: {
@@ -18,7 +18,7 @@ async function getData() {
       },
     }),
     prisma.character.findMany({
-      where: { isPublic: true },
+      where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
       orderBy: { createdAt: "asc" },
       take: 40,
       select: {
