@@ -26,7 +26,8 @@ function renderBlock(block: Block, i: number) {
     case "list": {
       const ordered = block.data.style === "ordered";
       const Tag = ordered ? "ol" : "ul";
-      const items = (block.data.items as string[]) ?? [];
+      const raw = (block.data.items ?? []) as (string | { content: string })[];
+      const items = raw.map((item) => (typeof item === "string" ? item : item.content));
       return (
         <Tag key={i} style={{ margin: "0 0 6px", paddingLeft: 20 }}>
           {items.map((item, j) => (
