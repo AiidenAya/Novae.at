@@ -21,6 +21,7 @@ export default async function CharacterPage({ params }: Props) {
     where: { numId },
     include: {
       user:    { select: { username: true } },
+      folder:  { select: { isPublic: true } },
       artworks: { orderBy: { createdAt: "desc" }, include: { characters: { select: { id: true, name: true, numId: true, slug: true } } } },
       tags:          { include: { tag: true } },
       colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
@@ -35,7 +36,8 @@ export default async function CharacterPage({ params }: Props) {
 
   const isOwner = currentUserId === character.userId;
 
-  if (!character.isPublic && !isOwner) notFound();
+  const folderHidden = character.folder !== null && !character.folder.isPublic;
+  if ((!character.isPublic || folderHidden) && !isOwner) notFound();
 
   const initialFavorited = !!currentUserId && character.favorites.some((f) => f.userId === currentUserId);
 
