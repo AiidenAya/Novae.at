@@ -168,7 +168,7 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
 
       {/* Emoji picker popover */}
       {emojiOpen && (
-        <div style={{ position: "absolute", top: 36, left: 0, zIndex: 200, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 10, display: "flex", flexWrap: "wrap", gap: 4, width: 260, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+        <div style={{ position: "absolute", top: 36, left: 0, zIndex: 200, background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 10, display: "flex", flexWrap: "wrap", gap: 4, width: 260, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
           {EMOJI_LIST.map((emoji) => (
             <button
               key={emoji}
