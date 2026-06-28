@@ -35,17 +35,8 @@ function renderBlock(block: Block, i: number) {
         </Tag>
       );
     }
-    case "quote":
-      return (
-        <blockquote key={i} style={{ borderLeft: "3px solid var(--novae-btn-primary)", paddingLeft: 12, margin: "0 0 6px", color: "var(--novae-text-secondary)", fontStyle: "italic" }}>
-          <div dangerouslySetInnerHTML={{ __html: block.data.text as string }} />
-          {block.data.caption ? (
-            <cite style={{ fontSize: "0.85em", fontStyle: "normal", color: "var(--novae-text-secondary)" }}>
-              — {block.data.caption as string}
-            </cite>
-          ) : null}
-        </blockquote>
-      );
+    case "delimiter":
+      return <hr key={i} style={{ border: "none", borderTop: "1px solid var(--novae-outline-all)", margin: "10px 0" }} />;
     default:
       return null;
   }
