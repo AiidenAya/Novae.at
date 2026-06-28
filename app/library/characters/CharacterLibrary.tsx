@@ -205,6 +205,58 @@ function DroppableFolderCard({
   );
 }
 
+// ── Selection bar ────────────────────────────────────────────────────────────
+
+function SelectionBar({
+  count, inFolder, folders, onMoveSelected, onCancel, btnStyle,
+}: {
+  count: number;
+  inFolder: boolean;
+  folders: Folder[];
+  onMoveSelected: (folderId: string | null) => void;
+  onCancel: () => void;
+  btnStyle: React.CSSProperties;
+}) {
+  const [targetId, setTargetId] = useState<string>("");
+
+  return (
+    <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 100, display: "flex", alignItems: "center", gap: 10, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}>
+      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)", whiteSpace: "nowrap" }}>
+        {count} selected
+      </span>
+      <div style={{ width: 1, height: 16, background: "var(--novae-outline-all)" }} />
+      {inFolder && (
+        <button onClick={() => onMoveSelected(null)} style={{ ...btnStyle, color: "var(--novae-text-primary)" }}>
+          Remove from folder
+        </button>
+      )}
+      {folders.length > 0 && (
+        <>
+          <select
+            value={targetId}
+            onChange={(e) => setTargetId(e.target.value)}
+            style={{ background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "6px 10px", color: targetId ? "var(--novae-text-primary)" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", outline: "none", cursor: "pointer" }}
+          >
+            <option value="">Move to folder…</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => { if (targetId) { onMoveSelected(targetId); setTargetId(""); } }}
+            disabled={!targetId}
+            style={{ ...btnStyle, background: targetId ? "var(--novae-btn-primary)" : undefined, color: targetId ? "#fff" : "var(--novae-text-secondary)", borderColor: targetId ? "transparent" : "var(--novae-outline-all)", opacity: targetId ? 1 : 0.5, cursor: targetId ? "pointer" : "not-allowed" }}
+          >
+            Move
+          </button>
+        </>
+      )}
+      <div style={{ width: 1, height: 16, background: "var(--novae-outline-all)" }} />
+      <button onClick={onCancel} style={{ ...btnStyle }}>Cancel</button>
+    </div>
+  );
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export default function CharacterLibrary({ characters, folders: initialFolders }: { characters: Char[]; folders: Folder[] }) {
@@ -379,32 +431,14 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
 
       {/* Floating selection bar */}
       {selectMode && selected.size > 0 && (
-        <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 100, display: "flex", alignItems: "center", gap: 10, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}>
-          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)", whiteSpace: "nowrap" }}>
-            {selected.size} selected
-          </span>
-          <div style={{ width: 1, height: 16, background: "var(--novae-outline-all)" }} />
-          {openFolderId && (
-            <button
-              onClick={() => handleMoveSelected(null)}
-              style={{ ...btnStyle, color: "var(--novae-text-primary)" }}
-            >
-              Remove from folder
-            </button>
-          )}
-          {otherFolders.length > 0 && (
-            <>
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", whiteSpace: "nowrap" }}>Move to:</span>
-              {otherFolders.map((f) => (
-                <button key={f.id} onClick={() => handleMoveSelected(f.id)} style={{ ...btnStyle, color: "var(--novae-text-link)", borderColor: "var(--novae-text-link)" }}>
-                  {f.name}
-                </button>
-              ))}
-            </>
-          )}
-          <div style={{ width: 1, height: 16, background: "var(--novae-outline-all)" }} />
-          <button onClick={exitSelectMode} style={{ ...btnStyle }}>Cancel</button>
-        </div>
+        <SelectionBar
+          count={selected.size}
+          inFolder={!!openFolderId}
+          folders={otherFolders}
+          onMoveSelected={handleMoveSelected}
+          onCancel={exitSelectMode}
+          btnStyle={btnStyle}
+        />
       )}
 
       {/* Toolbar */}
