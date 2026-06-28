@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ROLE_ICONS, ROLE_ICON_KEYS, RoleIcon } from "@/lib/role-icons";
+import { useDeleteUser } from "./_hooks";
 
 type RoleRecord = { id: string; name: string; description: string | null; icon: string | null; createdAt: string };
 
@@ -436,7 +437,9 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
   const [deleting, setDeleting] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState<CodeFilter>("all");
   const [editingUser, setEditingUser] = useState<RecentUser | null>(null);
-  const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const { deleteUser, deletingId: deletingUser } = useDeleteUser((id) =>
+    setUsers((prev) => prev.filter((u) => u.id !== id))
+  );
   const [showCreateRole, setShowCreateRole] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const [deletingRole, setDeletingRole] = useState<string | null>(null);
@@ -496,13 +499,6 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
     });
     setRoles(prev => prev.filter(r => r.id !== id));
     setDeletingRole(null);
-  }
-
-  async function deleteUser(id: string) {
-    setDeletingUser(id);
-    await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    setDeletingUser(null);
   }
 
   function copy(code: string) {
@@ -718,7 +714,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                           </svg>
                         </button>
-                        <button onClick={() => { if (confirm(`Supprimer @${u.username ?? u.email} ?`)) deleteUser(u.id); }} title="Supprimer"
+                        <button onClick={() => deleteUser(u.id, `@${u.username ?? u.email}`)} title="Supprimer"
                           disabled={deletingUser === u.id}
                           style={{ background: "none", border: "none", cursor: "pointer", color: "#ff6b7a", padding: 4, display: "flex", alignItems: "center", opacity: deletingUser === u.id ? 0.4 : 1 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
