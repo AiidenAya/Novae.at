@@ -11,14 +11,13 @@ interface Props {
 }
 
 const TOOLBAR_ITEMS = [
-  { label: "B",  title: "Gras",         inline: "bold" },
-  { label: "I",  title: "Italique",     inline: "italic" },
-  { label: "S",  title: "Barré",        inline: "strikeThrough" },
+  { label: "B",  title: "Gras",            inline: "bold" },
+  { label: "I",  title: "Italique",        inline: "italic" },
+  { label: "S",  title: "Barré",           inline: "strikeThrough" },
   null,
-  { label: "H2", title: "Titre",        block: "header",  data: { text: "", level: 2 } },
-  { label: "•",  title: "Liste",        block: "list",    data: { style: "unordered", items: [""] } },
-  { label: "1.", title: "Liste numérotée", block: "list", data: { style: "ordered",   items: [""] } },
-  { label: "❝",  title: "Citation",     block: "quote",   data: { text: "", caption: "" } },
+  { label: "•",  title: "Liste",           block: "list",      data: { style: "unordered", items: [""] } },
+  { label: "1.", title: "Liste numérotée", block: "list",      data: { style: "ordered",   items: [""] } },
+  { label: "—",  title: "Séparateur",      block: "delimiter", data: {} },
 ] as const;
 
 export default function EditorField({ value, onChange, placeholder, minHeight = 100 }: Props) {
@@ -38,10 +37,9 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
 
     let destroyed = false;
     (async () => {
-      const EditorJS = (await import("@editorjs/editorjs")).default;
-      const Header   = (await import("@editorjs/header")).default;
-      const List     = (await import("@editorjs/list")).default;
-      const Quote    = (await import("@editorjs/quote")).default;
+      const EditorJS    = (await import("@editorjs/editorjs")).default;
+      const List        = (await import("@editorjs/list")).default;
+      const Delimiter   = (await import("@editorjs/delimiter")).default;
 
       if (destroyed || !holderRef.current) return;
 
@@ -51,9 +49,8 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
         data: parsed as any,
         inlineToolbar: false,
         tools: {
-          header: { class: Header as any, config: { levels: [2, 3, 4], defaultLevel: 2 } },
-          list:   { class: List   as any, config: { defaultStyle: "unordered", availableStyles: { unordered: { label: "Unordered", normalizeData: false }, ordered: { label: "Ordered", normalizeData: false } } } },
-          quote:  { class: Quote  as any },
+          list:      { class: List      as any, config: { defaultStyle: "unordered", availableStyles: { unordered: { label: "Unordered", normalizeData: false }, ordered: { label: "Ordered", normalizeData: false } } } },
+          delimiter: { class: Delimiter as any },
         },
         onChange: async () => {
           if (!editorRef.current) return;
