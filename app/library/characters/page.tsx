@@ -22,7 +22,7 @@ export default async function CharactersLibraryPage() {
     prisma.characterFolder.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, isPublic: true },
     }),
   ]);
 

@@ -38,7 +38,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         },
         characterFolders: {
           orderBy: { createdAt: "asc" },
-          select: { id: true, name: true },
+          select: { id: true, name: true, isPublic: true },
         },
         artworks: {
           orderBy: { createdAt: "desc" },
@@ -79,18 +79,34 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
     : null;
 
-  const dbCharacters = (user?.characters ?? []).map((c) => ({
-    id: c.id,
-    numId: c.numId,
-    slug: c.slug,
-    name: c.name,
-    hearts: c._count.favorites,
-    images: c._count.artworks,
-    coverImage: c.avatarUrl ?? null,
-    folderId: c.folderId ?? null,
-  }));
+  // When not the owner, filter out hidden folders and characters inside them
+  const visibleFolderIds = new Set(
+    (user?.characterFolders ?? [])
+      .filter((f) => isOwner || f.isPublic)
+      .map((f) => f.id)
+  );
+  const hiddenFolderIds = new Set(
+    (user?.characterFolders ?? [])
+      .filter((f) => !isOwner && !f.isPublic)
+      .map((f) => f.id)
+  );
 
-  const dbFolders = (user?.characterFolders ?? []).map((f) => ({ id: f.id, name: f.name }));
+  const dbCharacters = (user?.characters ?? [])
+    .filter((c) => !c.folderId || !hiddenFolderIds.has(c.folderId))
+    .map((c) => ({
+      id: c.id,
+      numId: c.numId,
+      slug: c.slug,
+      name: c.name,
+      hearts: c._count.favorites,
+      images: c._count.artworks,
+      coverImage: c.avatarUrl ?? null,
+      folderId: c.folderId && visibleFolderIds.has(c.folderId) ? c.folderId : null,
+    }));
+
+  const dbFolders = (user?.characterFolders ?? [])
+    .filter((f) => isOwner || f.isPublic)
+    .map((f) => ({ id: f.id, name: f.name }));
 
   const featuredFriends = user?.featuredFriendUsernames?.length
     ? await prisma.user.findMany({

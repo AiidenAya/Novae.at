@@ -107,6 +107,7 @@ model Verification {
 model CharacterFolder {
   id         String      @id @default(cuid())
   name       String
+  isPublic   Boolean     @default(true)
   createdAt  DateTime    @default(now())
   userId     String
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)

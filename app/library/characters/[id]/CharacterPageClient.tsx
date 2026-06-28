@@ -444,6 +444,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [summary, setSummary] = useState(character.summary ?? "");
   const [biography, setBiography] = useState(character.biography ?? "");
   const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl ?? "");
+  const [isPublic, setIsPublic] = useState(character.isPublic);
 
   // Tags
   const [tags, setTags] = useState<Tag[]>(character.tags);
@@ -693,7 +694,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           voiceClaimUrl,
           playlistUrl: tracks.length > 0 ? JSON.stringify(tracks) : null,
           spotifyPlaylistUrl: spotifyPlaylistUrl.trim() || null,
-          summary, biography, avatarUrl,
+          summary, biography, avatarUrl, isPublic,
           isDesigner,
           designerCredit: isDesigner ? null : (creditValue.trim()
             ? creditType === "onsite" ? `@${creditValue.trim()}` : `[${creditLabel.trim()}](${creditValue.trim()})`
@@ -722,7 +723,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, customContainers, voiceClaimUrl, tracks, summary, biography, avatarUrl, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
+  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, customContainers, voiceClaimUrl, tracks, summary, biography, avatarUrl, isPublic, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(character.name);
@@ -752,6 +753,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     setAvatarUrl(character.avatarUrl ?? "");
     setSummary(character.summary ?? "");
     setBiography(character.biography ?? "");
+    setIsPublic(character.isPublic);
     setSwatches(initialSwatches);
     setEditing(false);
   };
@@ -1498,6 +1500,38 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
                 {isOwner && !editing && (
                   <>
+                    <button
+                      onClick={async () => {
+                        const next = !isPublic;
+                        setIsPublic(next);
+                        await fetch(`/api/characters/${character.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ isPublic: next }),
+                        });
+                        router.refresh();
+                      }}
+                      style={{
+                        display: "flex", gap: 6, alignItems: "center",
+                        padding: "10px 16px",
+                        background: isPublic ? "var(--novae-btn-secondary)" : "rgba(220,150,0,0.12)",
+                        border: `1px solid ${isPublic ? "var(--novae-outline-all)" : "rgba(220,150,0,0.4)"}`,
+                        borderRadius: "var(--novae-radius-md)",
+                        color: isPublic ? "var(--novae-text-btn)" : "#e0a030",
+                        fontFamily: "var(--font-dm-sans)",
+                        fontSize: "var(--novae-text-lg)",
+                        cursor: "pointer",
+                        fontWeight: 500,
+                      }}
+                      title={isPublic ? "Visible to everyone — click to hide" : "Hidden from public — click to show"}
+                    >
+                      {isPublic ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      )}
+                      {isPublic ? "Public" : "Hidden"}
+                    </button>
                     <button
                       onClick={() => artworkFileRef.current?.click()}
                       disabled={uploadingImage}
