@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { thumbUrl } from "@/lib/thumb";
 import { Card, IconHeart } from "../_shared";
 import type { Artwork } from "../_mock-data";
+import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
 
 type LightboxEntry = { url: string; artist: string | null; characters: Artwork["characters"] };
 type CharStub = { id: string; name: string; numId: number; slug: string };
@@ -98,12 +99,15 @@ function ArtworkCard({
         style={{ width: "100%", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "rgba(105,61,169,0.1)", position: "relative", cursor: "zoom-in" }}
         className="artwork-card-wrap"
       >
-        {artwork.thumbnailUrl
-          ? <img src={thumbUrl(artwork.thumbnailUrl, 400) ?? artwork.thumbnailUrl} alt={artwork.title} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block", pointerEvents: "none" }} />
-          : artwork.image
-            ? <img src={thumbUrl(artwork.image, 640) ?? artwork.image} alt={artwork.title} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
-            : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
-        }
+        <SensitiveImageWrapper sensitiveType={artwork.sensitiveType ?? null}>
+          {artwork.thumbnailUrl
+            ? <img src={thumbUrl(artwork.thumbnailUrl, 400) ?? artwork.thumbnailUrl} alt={artwork.title} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+            : artwork.image
+              ? <img src={thumbUrl(artwork.image, 640) ?? artwork.image} alt={artwork.title} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
+              : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
+          }
+        </SensitiveImageWrapper>
+        <SensitiveBadge sensitiveType={artwork.sensitiveType ?? null} />
         {artwork.characters.length > 0 && (
           <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
             {artwork.characters.map((c) => (
@@ -171,6 +175,7 @@ export default function ArtworksTab({
   const [creditsCharSearch, setCreditsCharSearch] = useState("");
   const [creditsCharResults, setCreditsCharResults] = useState<CharStub[]>([]);
   const [creditsCharLoading, setCreditsCharLoading] = useState(false);
+  const [creditsSensitiveType, setCreditsSensitiveType] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this image?")) return;
@@ -203,6 +208,7 @@ export default function ArtworksTab({
         .filter((c): c is CharStub => typeof c.id === "string")
         .map((c) => ({ id: c.id, name: c.name, numId: c.numId, slug: c.slug }))
     );
+    setCreditsSensitiveType(artwork.sensitiveType ?? null);
     setCreditsCharSearch("");
     setCreditsCharResults([]);
     setEditingId(String(artwork.id));
@@ -233,11 +239,11 @@ export default function ArtworksTab({
     const res = await fetch("/api/artworks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ artworkId: editingId, title: newTitle, characterIds: creditsCharacters.map((c) => c.id) }),
+      body: JSON.stringify({ artworkId: editingId, title: newTitle, characterIds: creditsCharacters.map((c) => c.id), sensitiveType: creditsSensitiveType }),
     });
     if (res.ok) {
       setArtworks((prev) => prev.map((a) =>
-        String(a.id) === editingId ? { ...a, title: newTitle, characters: creditsCharacters } : a
+        String(a.id) === editingId ? { ...a, title: newTitle, characters: creditsCharacters, sensitiveType: creditsSensitiveType } : a
       ));
     }
     setEditingId(null);
@@ -348,6 +354,36 @@ export default function ArtworksTab({
                   </div>
                 )}
                 {creditsCharLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--novae-text-secondary)" }}>…</span>}
+              </div>
+            </div>
+
+            {/* Sensitive type picker */}
+            <div>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                Contenu sensible
+              </span>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {([null, "nudity", "gore"] as const).map((val) => {
+                  const label = val === null ? "Aucun" : val === "nudity" ? "Nudité / fan service" : "Gore";
+                  const active = creditsSensitiveType === val;
+                  return (
+                    <button
+                      key={String(val)}
+                      onClick={() => setCreditsSensitiveType(val)}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: "var(--novae-radius-sm)",
+                        border: `1px solid ${active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-outline-all)"}`,
+                        background: active && val !== null ? "rgba(192,32,90,0.12)" : active ? "var(--novae-bg-tag)" : "none",
+                        color: active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-text-secondary)",
+                        fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                        fontWeight: active ? 600 : 400, cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

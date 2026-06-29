@@ -47,6 +47,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             imageUrl: true,
             thumbnailUrl: true,
             title: true,
+            sensitiveType: true,
             characters: { select: { id: true, numId: true, slug: true, name: true } },
           },
         },
@@ -136,6 +137,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     imageUrl: a.imageUrl,
     thumbnailUrl: a.thumbnailUrl ?? null,
     title: a.title ?? null,
+    sensitiveType: a.sensitiveType ?? null,
     characters: a.characters.map((c) => ({ id: c.id, numId: c.numId, slug: c.slug, name: c.name })),
   }));
 

@@ -12,12 +12,13 @@ const EditorRenderer = dynamic(() => import("@/components/editor/EditorRenderer"
 import { useUploadThing } from "@/lib/uploadthing-client";
 import { thumbUrl } from "@/lib/thumb";
 import ImageCropModal from "@/components/ImageCropModal";
+import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 type Swatch = { id?: string; hex: string; label: string | null };
 type Tag    = { tagId: string; tag: { id: string; name: string } };
-type Artwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; characters: { id: string; name: string; numId: number; slug: string }[] };
+type Artwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; sensitiveType: string | null; characters: { id: string; name: string; numId: number; slug: string }[] };
 
 interface CharacterData {
   id: string;
@@ -327,13 +328,16 @@ function DraggableArtworkTile({
   };
   return (
     <div ref={setNodeRef} style={tileStyle} {...dragProps} onClick={() => !isDragging && setLightbox({ url: artwork.imageUrl, artist: artwork.title })}>
-      {hasThumbnail ? (
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          <Image src={artwork.thumbnailUrl!} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" />
-        </div>
-      ) : (
-        <img src={thumbUrl(artwork.imageUrl, 640) ?? artwork.imageUrl} alt={artwork.title ?? ""} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
-      )}
+      <SensitiveImageWrapper sensitiveType={artwork.sensitiveType} className="absolute inset-0">
+        {hasThumbnail ? (
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <Image src={artwork.thumbnailUrl!} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" />
+          </div>
+        ) : (
+          <img src={thumbUrl(artwork.imageUrl, 640) ?? artwork.imageUrl} alt={artwork.title ?? ""} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
+        )}
+      </SensitiveImageWrapper>
+      <SensitiveBadge sensitiveType={artwork.sensitiveType} side="left" />
       {isOwner && (
         <div className="artwork-actions" style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 4, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
           {galleries.length > 0 && (
@@ -617,6 +621,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [pendingCreatorType, setPendingCreatorType] = useState<"me" | "onsite" | "offsite">("me");
   const [pendingCreator, setPendingCreator] = useState("");
   const [pendingCreatorLabel, setPendingCreatorLabel] = useState("");
+  const [pendingSensitiveType, setPendingSensitiveType] = useState<string | null>(null);
 
   // Informations: which fields are visible
   const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean; fieldType?: "gender" }[] = [
@@ -666,6 +671,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [creditsCharSearch, setCreditsCharSearch] = useState("");
   const [creditsCharResults, setCreditsCharResults] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
   const [creditsCharLoading, setCreditsCharLoading] = useState(false);
+  const [creditsSensitiveType, setCreditsSensitiveType] = useState<string | null>(null);
   // Thumbnail editing inside edit-credits modal
   const [editThumbCropSrc, setEditThumbCropSrc] = useState<{ src: string; file: File } | null>(null);
   const [editThumbFile, setEditThumbFile] = useState<File | null>(null);
@@ -787,7 +793,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
   // ── Artwork upload ────────────────────────────────────────────────────────
 
-  const uploadArtwork = async (files: File[], isAvatar = false, creator?: string, creatorType?: "onsite" | "offsite", thumbnailFile?: File | null) => {
+  const uploadArtwork = async (files: File[], isAvatar = false, creator?: string, creatorType?: "onsite" | "offsite", thumbnailFile?: File | null, sensitiveType?: string | null) => {
     setUploadingImage(true);
     try {
       const uploaded = isAvatar
@@ -821,6 +827,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               imageUrl: file.ufsUrl,
               thumbnailUrl,
               title: creator || file.name.replace(/\.[^.]+$/, ""),
+              sensitiveType: sensitiveType ?? null,
             }),
           });
           if (res.ok) {
@@ -868,6 +875,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       setCreditsLabel("");
     }
     setCreditsCharacters(artwork.characters ?? []);
+    setCreditsSensitiveType(artwork.sensitiveType ?? null);
     setCreditsCharSearch("");
     setCreditsCharResults([]);
     setEditThumbFile(null);
@@ -907,7 +915,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       newThumbnailUrl = uploaded?.[0]?.ufsUrl ?? null;
     }
 
-    const body: Record<string, unknown> = { title: newTitle, characterIds: creditsCharacters.map((c) => c.id) };
+    const body: Record<string, unknown> = { title: newTitle, characterIds: creditsCharacters.map((c) => c.id), sensitiveType: creditsSensitiveType };
     if (newThumbnailUrl !== undefined) body.thumbnailUrl = newThumbnailUrl;
 
     await fetch(`/api/characters/${character.id}/artworks/${editingCredits.id}`, {
@@ -916,7 +924,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       body: JSON.stringify(body),
     });
     setArtworks((prev) => prev.map((a) => a.id === editingCredits.id
-      ? { ...a, title: newTitle, characters: creditsCharacters, thumbnailUrl: newThumbnailUrl !== undefined ? newThumbnailUrl : a.thumbnailUrl }
+      ? { ...a, title: newTitle, characters: creditsCharacters, thumbnailUrl: newThumbnailUrl !== undefined ? newThumbnailUrl : a.thumbnailUrl, sensitiveType: creditsSensitiveType }
       : a,
     ));
     setEditingCredits(null);
@@ -1180,6 +1188,36 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               </div>
             </div>
 
+            {/* Sensitive content picker */}
+            <div>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                Contenu sensible
+              </span>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {([null, "nudity", "gore"] as const).map((val) => {
+                  const label = val === null ? "Aucun" : val === "nudity" ? "Nudité / fan service" : "Gore";
+                  const active = creditsSensitiveType === val;
+                  return (
+                    <button
+                      key={String(val)}
+                      onClick={() => setCreditsSensitiveType(val)}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: "var(--novae-radius-sm)",
+                        border: `1px solid ${active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-outline-all)"}`,
+                        background: active && val !== null ? "rgba(192,32,90,0.12)" : active ? "var(--novae-bg-tag)" : "none",
+                        color: active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-text-secondary)",
+                        fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                        fontWeight: active ? 600 : 400, cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div style={{ display: "flex", gap: 12 }}>
               <button onClick={() => setEditingCredits(null)} style={{ flex: 1, padding: "10px 0", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", cursor: "pointer" }}>Cancel</button>
               <button onClick={saveCredits} style={{ flex: 1, padding: "10px 0", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}>Save</button>
@@ -1391,16 +1429,46 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     const creator = buildCreatorCredit();
                     if (creator === null) return;
                     setPendingFiles(null);
-                    uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite", pendingIsAvatar ? null : artworkThumbnailFile);
+                    uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite", pendingIsAvatar ? null : artworkThumbnailFile, pendingSensitiveType);
                   }
                 }}
                 style={{ ...inputStyle, fontSize: "var(--novae-text-base)" }}
               />
             )}
 
+            {/* Sensitive type picker */}
+            <div>
+              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                Contenu sensible
+              </span>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {([null, "nudity", "gore"] as const).map((val) => {
+                  const label = val === null ? "Aucun" : val === "nudity" ? "Nudité / fan service" : "Gore";
+                  const active = pendingSensitiveType === val;
+                  return (
+                    <button
+                      key={String(val)}
+                      onClick={() => setPendingSensitiveType(val)}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: "var(--novae-radius-sm)",
+                        border: `1px solid ${active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-outline-all)"}`,
+                        background: active && val !== null ? "rgba(192,32,90,0.12)" : active ? "var(--novae-bg-tag)" : "none",
+                        color: active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-text-secondary)",
+                        fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                        fontWeight: active ? 600 : 400, cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div style={{ display: "flex", gap: 12 }}>
               <button
-                onClick={() => { setPendingFiles(null); setArtworkThumbnailFile(null); }}
+                onClick={() => { setPendingFiles(null); setArtworkThumbnailFile(null); setPendingSensitiveType(null); }}
                 style={{
                   flex: 1, padding: "10px 0",
                   background: "none",
@@ -1417,7 +1485,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   const creator = buildCreatorCredit();
                   if (creator === null) return;
                   setPendingFiles(null);
-                  uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite", pendingIsAvatar ? null : artworkThumbnailFile);
+                  uploadArtwork(pendingFiles!, pendingIsAvatar, creator, pendingCreatorType === "offsite" ? "offsite" : "onsite", pendingIsAvatar ? null : artworkThumbnailFile, pendingSensitiveType);
                 }}
                 style={{
                   flex: 1, padding: "10px 0",
@@ -2084,7 +2152,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                           cursor: "zoom-in",
                         }}
                       >
-                        <Image src={artwork.thumbnailUrl ?? artwork.imageUrl} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" style={{ pointerEvents: "none" }} />
+                        <SensitiveImageWrapper sensitiveType={artwork.sensitiveType} className="absolute inset-0">
+                          <Image src={artwork.thumbnailUrl ?? artwork.imageUrl} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" style={{ pointerEvents: "none" }} />
+                        </SensitiveImageWrapper>
+                        <SensitiveBadge sensitiveType={artwork.sensitiveType} side="left" />
                         {isOwner && (
                           <div className="artwork-actions" style={{ position: "absolute", top: 4, right: 4, display: "flex", gap: 3, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
                             <button onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit">

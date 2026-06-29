@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { Artwork, Gallery, GalleryImage } from "@/lib/generated/prisma";
+import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
 
 type GalleryWithImages = Gallery & {
   images: (GalleryImage & { artwork: Artwork })[];
@@ -8,6 +9,24 @@ type GalleryWithImages = Gallery & {
 interface CharacterGalleryProps {
   galleries: GalleryWithImages[];
   artworks: Artwork[];
+}
+
+function ArtworkTile({ artwork }: { artwork: Artwork }) {
+  const src = artwork.thumbnailUrl ?? artwork.imageUrl;
+  return (
+    <div className="relative aspect-square rounded-md overflow-hidden bg-muted">
+      <SensitiveImageWrapper sensitiveType={artwork.sensitiveType} className="absolute inset-0">
+        <Image
+          src={src}
+          alt={artwork.title ?? "Artwork"}
+          fill
+          className="object-cover"
+          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+        />
+      </SensitiveImageWrapper>
+      <SensitiveBadge sensitiveType={artwork.sensitiveType} />
+    </div>
+  );
 }
 
 export default function CharacterGallery({ galleries, artworks }: CharacterGalleryProps) {
@@ -24,15 +43,7 @@ export default function CharacterGallery({ galleries, artworks }: CharacterGalle
             {gallery.images
               .sort((a, b) => a.order - b.order)
               .map(({ artwork }) => (
-                <div key={artwork.id} className="relative aspect-square rounded-md overflow-hidden bg-muted">
-                  <Image
-                    src={artwork.imageUrl}
-                    alt={artwork.title ?? "Artwork"}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-                  />
-                </div>
+                <ArtworkTile key={artwork.id} artwork={artwork} />
               ))}
           </div>
         </section>
@@ -43,15 +54,7 @@ export default function CharacterGallery({ galleries, artworks }: CharacterGalle
           <h2 className="text-lg font-semibold mb-3">Tous les artworks</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {artworks.map((artwork) => (
-              <div key={artwork.id} className="relative aspect-square rounded-md overflow-hidden bg-muted">
-                <Image
-                  src={artwork.imageUrl}
-                  alt={artwork.title ?? "Artwork"}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-                />
-              </div>
+              <ArtworkTile key={artwork.id} artwork={artwork} />
             ))}
           </div>
         </section>

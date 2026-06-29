@@ -25,6 +25,7 @@ interface ImageEntry {
   characters: CharacterOption[];
   thumbnailFile: File | null;
   thumbnailPreview: string | null;
+  sensitiveType: string | null;
 }
 
 // ── Character Picker Modal (multi-select) ────────────────────────────────────
@@ -272,6 +273,7 @@ export default function NewMultiImagePage() {
       characters: [],
       thumbnailFile: null,
       thumbnailPreview: null,
+      sensitiveType: null,
     }));
     setEntries((prev) => [...prev, ...newEntries]);
   }, []);
@@ -360,6 +362,7 @@ export default function NewMultiImagePage() {
               thumbnailUrl: thumbUrls[i] ?? null,
               title: artistRaw,
               characterIds: entry.characters.map((c) => c.id),
+              sensitiveType: entry.sensitiveType,
             }),
           });
         })
@@ -527,6 +530,33 @@ export default function NewMultiImagePage() {
                   )}
                   {entry.thumbnailPreview ? "Thumbnail" : "Crop thumbnail"}
                 </button>
+
+                {/* Sensitive type buttons */}
+                {(["nudity", "gore"] as const).map((val) => {
+                  const active = entry.sensitiveType === val;
+                  return (
+                    <button
+                      key={val}
+                      onClick={() => setEntries((prev) => prev.map((e, j) => j === i ? { ...e, sensitiveType: active ? null : val } : e))}
+                      title={val === "nudity" ? "Nudité / fan service" : "Contenu gore"}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
+                        background: active ? "rgba(192,32,90,0.12)" : "none",
+                        border: `1px solid ${active ? "var(--novae-accent-main, #c0205a)" : "var(--novae-outline-all)"}`,
+                        borderRadius: "var(--novae-radius-sm)",
+                        color: active ? "var(--novae-accent-main, #c0205a)" : "var(--novae-text-secondary)",
+                        fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                        fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                      {val === "nudity" ? "Nudité" : "Gore"}
+                    </button>
+                  );
+                })}
 
                 {/* Remove */}
                 <button

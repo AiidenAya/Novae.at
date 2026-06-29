@@ -15,12 +15,13 @@ export async function PATCH(
   if (!artwork || !artwork.characters.some((c) => c.id === id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (artwork.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title, characterIds, thumbnailUrl } = await req.json();
+  const { title, characterIds, thumbnailUrl, sensitiveType } = await req.json();
   const updated = await prisma.artwork.update({
     where: { id: artworkId },
     data: {
       title,
       ...(thumbnailUrl !== undefined && { thumbnailUrl: thumbnailUrl ?? null }),
+      ...(sensitiveType !== undefined && { sensitiveType: sensitiveType === "gore" || sensitiveType === "nudity" ? sensitiveType : null }),
       ...(Array.isArray(characterIds) && {
         characters: { set: characterIds.map((cid: string) => ({ id: cid })) },
       }),

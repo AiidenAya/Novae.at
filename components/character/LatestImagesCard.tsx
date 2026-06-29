@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import SectionCard from "./SectionCard";
+import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
 import type { Artwork } from "@/lib/generated/prisma";
 
 interface LatestImagesCardProps {
@@ -67,18 +68,25 @@ export default function LatestImagesCard({ artworks, characterId }: LatestImages
         ) : (
           <div className="flex gap-2 items-start w-full overflow-hidden">
             {preview.map((artwork) => (
-              <button
+              <div
                 key={artwork.id}
-                onClick={() => setLightbox(artwork)}
-                className="rounded-[var(--novae-radius-md)] overflow-hidden shrink-0 aspect-square flex-1 transition-opacity hover:opacity-80 cursor-zoom-in"
+                className="relative rounded-[var(--novae-radius-md)] overflow-hidden shrink-0 aspect-square flex-1"
                 style={{ backgroundColor: "var(--novae-bg-card)" }}
               >
-                <img
-                  src={artwork.imageUrl}
-                  alt={artwork.title ?? "Artwork"}
-                  className="w-full h-full object-cover"
-                />
-              </button>
+                <SensitiveImageWrapper sensitiveType={artwork.sensitiveType} className="absolute inset-0">
+                  <button
+                    onClick={() => setLightbox(artwork)}
+                    className="w-full h-full transition-opacity hover:opacity-80 cursor-zoom-in"
+                  >
+                    <img
+                      src={artwork.imageUrl}
+                      alt={artwork.title ?? "Artwork"}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                </SensitiveImageWrapper>
+                <SensitiveBadge sensitiveType={artwork.sensitiveType} />
+              </div>
             ))}
           </div>
         )}

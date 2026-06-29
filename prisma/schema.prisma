@@ -196,6 +196,7 @@ model Artwork {
   title        String?
   imageUrl     String
   thumbnailUrl String?
+  sensitiveType String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
