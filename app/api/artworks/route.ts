@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { artworkId, title, characterIds } = await req.json();
+  const { artworkId, title, characterIds, sensitiveType } = await req.json();
   if (!artworkId) return NextResponse.json({ error: "artworkId required" }, { status: 400 });
 
   const artwork = await prisma.artwork.findUnique({ where: { id: artworkId } });
@@ -31,9 +31,9 @@ export async function PATCH(req: NextRequest) {
   if (artwork.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const data: Record<string, unknown> = { title: title ?? null };
+  if (sensitiveType === "gore" || sensitiveType === "nudity" || sensitiveType === null) data.sensitiveType = sensitiveType ?? null;
 
   if (Array.isArray(characterIds)) {
-    // Verify all characters belong to this user
     if (characterIds.length > 0) {
       const chars = await prisma.character.findMany({ where: { id: { in: characterIds } }, select: { userId: true } });
       if (chars.some((c) => c.userId !== session.user.id)) {
@@ -55,12 +55,11 @@ export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { imageUrl, thumbnailUrl, title, characterIds } = await req.json();
+  const { imageUrl, thumbnailUrl, title, characterIds, sensitiveType } = await req.json();
   if (!imageUrl) return NextResponse.json({ error: "imageUrl required" }, { status: 400 });
 
   const ids: string[] = Array.isArray(characterIds) ? characterIds : [];
 
-  // Verify all characters belong to this user
   if (ids.length > 0) {
     const chars = await prisma.character.findMany({ where: { id: { in: ids } }, select: { userId: true } });
     if (chars.some((c) => c.userId !== session.user.id)) {
@@ -73,6 +72,7 @@ export async function POST(req: NextRequest) {
       imageUrl,
       thumbnailUrl: thumbnailUrl ?? null,
       title: title ?? null,
+      sensitiveType: sensitiveType === "gore" || sensitiveType === "nudity" ? sensitiveType : null,
       userId: session.user.id,
       characters: ids.length > 0 ? { connect: ids.map((id) => ({ id })) } : undefined,
     },

@@ -262,7 +262,7 @@ function TicketButton() {
             onClick={() => setOpen(false)}
           />
           <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "30vh", pointerEvents: "none" }}>
-            <div style={{ pointerEvents: "all", background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 460, display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
+            <div style={{ pointerEvents: "all", background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(460px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Signaler un bug</h2>
                 <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex" }}>
@@ -394,7 +394,7 @@ export default function Navbar() {
 
       <header
         ref={ref}
-        className="relative z-50 w-full h-[72px] flex items-center justify-between px-8 border-b"
+        className="relative z-50 w-full h-[72px] flex items-center justify-between px-4 md:px-8 border-b"
         style={{
           backgroundColor: "var(--novae-bg-card)",
           borderColor: "var(--novae-outline-all)",
@@ -403,11 +403,11 @@ export default function Navbar() {
       >
 
       {/* Left — Logo + nav */}
-      <div className="flex items-center self-stretch gap-8">
+      <div className="flex items-center self-stretch gap-4 md:gap-8">
         <Logo />
         <div className="nav-links w-px h-10 shrink-0" style={{ backgroundColor: "var(--novae-outline-all)" }} />
 
-        <nav className="nav-links items-center self-stretch gap-8">
+        <nav className="nav-links items-center self-stretch gap-6 xl:gap-8">
           {/* Home */}
           <Link
             href="/"

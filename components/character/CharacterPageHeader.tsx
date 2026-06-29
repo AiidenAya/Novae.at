@@ -137,7 +137,7 @@ export default function CharacterPageHeader({
     <div className="flex items-center justify-between gap-4 lg:gap-6 w-full">
       {/* Main image */}
       <div
-        className="relative shrink-0 rounded-[var(--novae-radius-lg)] overflow-hidden size-[220px] md:size-[280px] lg:size-[360px]"
+        className="char-header-avatar relative shrink-0 rounded-[var(--novae-radius-lg)] overflow-hidden size-[220px] md:size-[280px] lg:size-[360px]"
       >
         {imageUrl ? (
           <Image src={imageUrl} alt={name} fill className="object-cover" />
@@ -152,7 +152,7 @@ export default function CharacterPageHeader({
       </div>
 
       {/* Details */}
-      <div className="flex flex-col flex-1 min-w-0 min-h-[220px] md:min-h-[280px] lg:min-h-[350px] items-end justify-between pl-3 lg:pl-6 pr-2 lg:pr-4 py-2">
+      <div className="char-header-meta flex flex-col flex-1 min-w-0 min-h-[220px] md:min-h-[280px] lg:min-h-[350px] items-end justify-between pl-3 lg:pl-6 pr-2 lg:pr-4 py-2">
         {/* Edit buttons — owner only */}
         {isOwner && (
           <div className="flex gap-[10px] items-center shrink-0">

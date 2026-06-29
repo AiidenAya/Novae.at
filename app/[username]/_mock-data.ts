@@ -30,6 +30,7 @@ export type Artwork = {
   title: string;
   image: string | null;
   thumbnailUrl?: string | null;
+  sensitiveType?: string | null;
   hearts: number;
   characters: { id?: string; numId: number; slug: string; name: string; avatar?: string | null; owner?: string }[];
   aspectRatio?: string;
