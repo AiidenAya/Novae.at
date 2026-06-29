@@ -3,6 +3,7 @@
 import { useEffect, useRef, useId, useState } from "react";
 import type EditorJS from "@editorjs/editorjs";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { useT } from "@/lib/locale-context";
 
 const EMOJI_LIST = [
   "😀","😂","🥹","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤔","🫠","🫡","😴",
@@ -12,13 +13,13 @@ const EMOJI_LIST = [
 ];
 
 const TOOLBAR_ITEMS = [
-  { label: "B",   title: "Bold",            inline: "bold" },
-  { label: "I",   title: "Italic",          inline: "italic" },
-  { label: "S",   title: "Strikethrough",   inline: "strikeThrough" },
+  { label: "B",   title: "Gras",            inline: "bold" },
+  { label: "I",   title: "Italique",        inline: "italic" },
+  { label: "S",   title: "Barré",           inline: "strikeThrough" },
   null,
-  { label: "•",   title: "List",            block: "list",      data: { style: "unordered", items: [""] } },
-  { label: "1.",  title: "Numbered list",   block: "list",      data: { style: "ordered",   items: [""] } },
-  { label: "—",   title: "Divider",         block: "delimiter", data: {} },
+  { label: "•",   title: "Liste",           block: "list",      data: { style: "unordered", items: [""] } },
+  { label: "1.",  title: "Liste numérotée", block: "list",      data: { style: "ordered",   items: [""] } },
+  { label: "—",   title: "Séparateur",      block: "delimiter", data: {} },
   { label: "🖼️",  title: "Image",           block: "image",     data: {} },
   { label: "😊",  title: "Emoji",           special: "emoji" },
 ] as const;
@@ -39,6 +40,9 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
 
   const { startUpload } = useUploadThing("editorImage");
   const uploadRef = useRef(startUpload);
+  
+  const { t, locale, toggle: toggleLocale } = useT();
+  
   uploadRef.current = startUpload;
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
 
       editorRef.current = new EditorJS({
         holder: holderRef.current,
-        placeholder: placeholder ?? "Write something…",
+        placeholder: placeholder ?? t.prompt,
         data: parsed as any,
         inlineToolbar: false,
         tools: {
