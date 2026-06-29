@@ -58,23 +58,41 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const currentUserId = sessionResult?.user?.id ?? null;
   const isOwner = !!currentUserId && currentUserId === user?.id;
 
-  const isFollowing = !isOwner && !!currentUserId && !!user
-    ? !!(await prisma.follow.findUnique({
-        where: { followerId_followingId: { followerId: currentUserId, followingId: user.id } },
-      }))
-    : false;
+  // Run all secondary queries in parallel
+  const [isFollowingResult, roleBadgesResult, featuredFriends] = await Promise.all([
+    !isOwner && !!currentUserId && !!user
+      ? prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: currentUserId, followingId: user.id } },
+        }).then(Boolean)
+      : Promise.resolve(false),
 
-  const roleBadges = user?.roles.length
-    ? await prisma.role.findMany({
-        where: { name: { in: user.roles }, icon: { not: null } },
-        select: { name: true, icon: true, description: true },
-      }).then((rows) =>
-        user.roles
-          .map((name) => rows.find((r) => r.name === name))
-          .filter((r): r is NonNullable<typeof r> => !!r)
-          .map((r) => ({ name: r.name, icon: r.icon!, description: r.description }))
-      )
-    : [];
+    user?.roles.length
+      ? prisma.role.findMany({
+          where: { name: { in: user.roles }, icon: { not: null } },
+          select: { name: true, icon: true, description: true },
+        }).then((rows) =>
+          user.roles
+            .map((name) => rows.find((r) => r.name === name))
+            .filter((r): r is NonNullable<typeof r> => !!r)
+            .map((r) => ({ name: r.name, icon: r.icon!, description: r.description }))
+        )
+      : Promise.resolve([] as { name: string; icon: string; description: string | null }[]),
+
+    user?.featuredFriendUsernames?.length
+      ? prisma.user.findMany({
+          where: { username: { in: user.featuredFriendUsernames } },
+          select: { username: true, name: true, avatar: true },
+        }).then((rows) =>
+          user.featuredFriendUsernames
+            .map((u) => rows.find((r) => r.username === u))
+            .filter(Boolean)
+            .map((r) => ({ username: r!.username!, avatar: r!.avatar ?? null }))
+        )
+      : Promise.resolve([] as { username: string; avatar: string | null }[]),
+  ]);
+
+  const isFollowing = isFollowingResult;
+  const roleBadges = roleBadgesResult;
 
   const dbStats = user
     ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
@@ -108,18 +126,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const dbFolders = (user?.characterFolders ?? [])
     .filter((f) => isOwner || f.isPublic)
     .map((f) => ({ id: f.id, name: f.name }));
-
-  const featuredFriends = user?.featuredFriendUsernames?.length
-    ? await prisma.user.findMany({
-        where: { username: { in: user.featuredFriendUsernames } },
-        select: { username: true, name: true, avatar: true },
-      }).then((rows) =>
-        user.featuredFriendUsernames
-          .map((u) => rows.find((r) => r.username === u))
-          .filter(Boolean)
-          .map((r) => ({ username: r!.username!, avatar: r!.avatar ?? null }))
-      )
-    : [];
 
   const dbProfile = user
     ? {
