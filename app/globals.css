@@ -288,3 +288,26 @@ div:hover > .artwork-actions {
   /* Sidebar cards — single column on mobile */
   .char-body-side > * { flex: 1 1 100% !important; min-width: 0 !important; }
 }
+/* Role icon tooltip */
+.role-icon-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: var(--novae-bg-card);
+  border: 1px solid var(--novae-outline-all);
+  color: var(--novae-text-primary);
+  font-family: var(--font-dm-sans, sans-serif);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 100;
+}
+.role-icon-tooltip:hover::after {
+  opacity: 1;
+}

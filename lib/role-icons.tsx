@@ -103,19 +103,25 @@ export function RoleIcon({
   color?: string;
 }) {
   if (!isRoleIconKey(name)) return null;
-  
+  const label = title ?? ROLE_ICONS[name].label;
+
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill={color}
-      role="img"
-      aria-label={title ?? name}
-      style={{ userSelect: "none", WebkitUserSelect: "none" }}
+    <span
+      data-tooltip={label}
+      style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
+      className="role-icon-tooltip"
     >
-      {title ? <title>{title}</title> : null}
-      {ROLE_ICONS[name].paths}
-    </svg>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill={color}
+        role="img"
+        aria-label={label}
+        style={{ userSelect: "none", WebkitUserSelect: "none" }}
+      >
+        {ROLE_ICONS[name].paths}
+      </svg>
+    </span>
   );
 }
