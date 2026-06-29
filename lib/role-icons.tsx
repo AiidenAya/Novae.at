@@ -12,7 +12,8 @@ export type RoleIconKey =
   | "heart"
   | "bolt"
   | "leaf"
-  | "flame";
+  | "flame"
+  | "novae"; 
 
 export const ROLE_ICONS: Record<RoleIconKey, { label: string; paths: React.ReactNode }> = {
   crown: {
@@ -67,6 +68,21 @@ export const ROLE_ICONS: Record<RoleIconKey, { label: string; paths: React.React
     label: "Flamme",
     paths: <path d="M12 2c3 4 6 6 6 10a6 6 0 0 1-12 0c0-1.8.7-3.2 1.8-4.4C8.6 9 9 10 9 11c1-1 2-3 1-6 1 1 2 2 2 3z" />,
   },
+  novae: { 
+    label: "Novae Team",
+    paths: (
+      <text
+        x="12"
+        y="16.5"
+        fontFamily="sans-serif"
+        fontSize="17"
+        fontWeight="bold"
+        textAnchor="middle"
+      >
+        æ
+      </text>
+    ),
+  },
 };
 
 export const ROLE_ICON_KEYS = Object.keys(ROLE_ICONS) as RoleIconKey[];
@@ -87,15 +103,16 @@ export function RoleIcon({
   color?: string;
 }) {
   if (!isRoleIconKey(name)) return null;
+  
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       fill={color}
-      stroke="none"
       role="img"
       aria-label={title ?? name}
+      style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
       {title ? <title>{title}</title> : null}
       {ROLE_ICONS[name].paths}
