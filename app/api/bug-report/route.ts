@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       "X-GitHub-Api-Version": "2022-11-28",
     },
     body: JSON.stringify({
-      title: title?.trim() ?? `[Bug] signalé par @${username}`,
+      title: title?.trim() ?? `[Bug] reported by @${username}`,
       body: `**Reported by:** @${username}\n\n${body?.trim() ?? ""}`,
       labels: ["bug", "user-report"],
     }),

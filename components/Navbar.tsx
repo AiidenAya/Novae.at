@@ -225,11 +225,11 @@ function TicketButton() {
     const res = await fetch("/api/bug-report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `[Bug] signalé par @${username}`, body }),
+      body: JSON.stringify({ title: `[Bug] reported by @${username}`, body }),
     });
     const data = await res.json();
     if (res.ok) setSent(data);
-    else setError(data.error ?? "Erreur");
+    else setError(data.error ?? "Error");
     setSending(false);
   }
 
@@ -246,7 +246,7 @@ function TicketButton() {
       <button
         onClick={() => { setOpen(true); reset(); }}
         className="nav-links items-center justify-center"
-        title="Signaler un bug"
+        title="Report a bug"
         style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 12px", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center" }}
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -264,7 +264,7 @@ function TicketButton() {
           <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "30vh", pointerEvents: "none" }}>
             <div style={{ pointerEvents: "all", background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(460px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Signaler un bug</h2>
+                <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Report a bug</h2>
                 <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex" }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -273,21 +273,21 @@ function TicketButton() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", padding: "16px 0" }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#48c78e" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                   <p style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-primary)", margin: 0, textAlign: "center" }}>
-                    Issue <a href={sent.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)" }}>#{sent.number}</a> créée avec succès.
+                    Issue <a href={sent.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)" }}>#{sent.number}</a> created successfully.
                   </p>
-                  <button onClick={() => setOpen(false)} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>Fermer</button>
+                  <button onClick={() => setOpen(false)} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>Close</button>
                 </div>
               ) : (
                 <>
                   {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
-                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="Décris le problème, les étapes pour le reproduire..." style={inp} />
+                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="Describe the problem, the steps to reproduce it..." style={inp} />
                   </div>
                   <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                    <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Annuler</button>
+                    <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Cancel</button>
                     <button onClick={send} disabled={sending} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: sending ? "not-allowed" : "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: sending ? 0.6 : 1 }}>
-                      {sending ? "Envoi…" : "Envoyer"}
+                      {sending ? "Sending…" : "Send"}
                     </button>
                   </div>
                 </>

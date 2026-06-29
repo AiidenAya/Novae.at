@@ -10,7 +10,7 @@ interface CharacterColorPaletteProps {
 
 export default function CharacterColorPalette({ palettes }: CharacterColorPaletteProps) {
   if (palettes.length === 0) {
-    return <p className="text-muted-foreground italic">Aucune palette définie.</p>;
+    return <p className="text-muted-foreground italic">No palette defined.</p>;
   }
 
   return (

@@ -12,7 +12,7 @@ interface StatsSidebarProps {
   relations: number;
   /** character.favorites.length */
   favorites: number;
-  /** story entries count — à venir */
+  /** story entries count — coming soon */
   entries: number;
 }
 

@@ -27,7 +27,7 @@ export function SensitiveBadge({ sensitiveType, side = "right" }: SensitiveBadge
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   if (!sensitiveType) return null;
 
-  const label = sensitiveType === "gore" ? "Contenu gore" : "Nudité / fan service";
+  const label = sensitiveType === "gore" ? "Gore content" : "Nudity / fan service";
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();

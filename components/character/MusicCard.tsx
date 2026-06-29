@@ -12,7 +12,7 @@ export interface MusicEntry {
 }
 
 interface MusicCardProps {
-  /** music entries — modèle à créer en V2 */
+  /** music entries — model to be created in V2 */
   tracks: MusicEntry[];
 }
 

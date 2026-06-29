@@ -1191,11 +1191,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             {/* Sensitive content picker */}
             <div>
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
-                Contenu sensible
+                Sensitive content
               </span>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {([null, "nudity", "gore"] as const).map((val) => {
-                  const label = val === null ? "Aucun" : val === "nudity" ? "Nudité / fan service" : "Gore";
+                  const label = val === null ? "None" : val === "nudity" ? "Nudity / fan service" : "Gore";
                   const active = creditsSensitiveType === val;
                   return (
                     <button
@@ -1439,11 +1439,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             {/* Sensitive type picker */}
             <div>
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
-                Contenu sensible
+                Sensitive content
               </span>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {([null, "nudity", "gore"] as const).map((val) => {
-                  const label = val === null ? "Aucun" : val === "nudity" ? "Nudité / fan service" : "Gore";
+                  const label = val === null ? "None" : val === "nudity" ? "Nudity / fan service" : "Gore";
                   const active = pendingSensitiveType === val;
                   return (
                     <button
@@ -1823,7 +1823,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             )}
             <MetaItem
               label="Created"
-              value={new Intl.DateTimeFormat("fr-FR").format(new Date(character.createdAt))}
+              value={new Intl.DateTimeFormat("en-GB").format(new Date(character.createdAt))}
             />
           </div>
 

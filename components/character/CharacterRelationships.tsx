@@ -16,7 +16,7 @@ export default function CharacterRelationships({
   relationships,
 }: CharacterRelationshipsProps) {
   if (relationships.length === 0) {
-    return <p className="text-muted-foreground italic">Aucune relation définie.</p>;
+    return <p className="text-muted-foreground italic">No relationships defined.</p>;
   }
 
   return (

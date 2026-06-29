@@ -538,7 +538,7 @@ export default function NewMultiImagePage() {
                     <button
                       key={val}
                       onClick={() => setEntries((prev) => prev.map((e, j) => j === i ? { ...e, sensitiveType: active ? null : val } : e))}
-                      title={val === "nudity" ? "Nudité / fan service" : "Contenu gore"}
+                      title={val === "nudity" ? "Nudity / fan service" : "Gore content"}
                       style={{
                         display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
                         background: active ? "rgba(192,32,90,0.12)" : "none",
@@ -553,7 +553,7 @@ export default function NewMultiImagePage() {
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                       </svg>
-                      {val === "nudity" ? "Nudité" : "Gore"}
+                      {val === "nudity" ? "Nudity" : "Gore"}
                     </button>
                   );
                 })}

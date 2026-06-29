@@ -25,7 +25,7 @@ function ReplyEditor({ onPost, onCancel }: { onPost: (content: string) => void; 
 
   return (
     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
-      <EditorField value={value} onChange={setValue} placeholder="Écris une réponse…" minHeight={60} />
+      <EditorField value={value} onChange={setValue} placeholder="Write a reply…" minHeight={60} />
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button onClick={onCancel} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "6px 16px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Cancel</button>
         <button onClick={() => { if (value) { onPost(value); setValue(""); } }} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "6px 16px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500 }}>Post</button>
@@ -36,7 +36,7 @@ function ReplyEditor({ onPost, onCancel }: { onPost: (content: string) => void; 
 
 function Comment({ comment, canDelete, onDelete, onReply }: { comment: DbComment; canDelete?: boolean; onDelete?: () => void; onReply?: (html: string) => void }) {
   const [replying, setReplying] = useState(false);
-  const date = new Date(comment.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", " ·");
+  const date = new Date(comment.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", " ·");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)" }}>
