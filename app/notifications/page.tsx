@@ -16,7 +16,7 @@ export default async function NotificationsPage() {
       id: true, type: true, read: true, createdAt: true,
       actor: { select: { id: true, username: true, name: true, avatar: true } },
       character: { select: { id: true, numId: true, slug: true, name: true, avatarUrl: true } },
-      artwork: { select: { id: true, thumbnailUrl: true, imageUrl: true, title: true } },
+      artwork: { select: { id: true, thumbnailUrl: true, imageUrl: true, title: true, sensitiveType: true } },
       relationship: {
         select: {
           id: true, type: true, status: true,

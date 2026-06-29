@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { thumbUrl } from "@/lib/thumb";
+import SensitiveImageWrapper from "@/components/SensitiveImageWrapper";
 import { useT } from "@/lib/locale-context";
 import type { T } from "@/lib/use-locale";
 
@@ -11,7 +12,7 @@ type Tr = { readonly [K in keyof T]: string };
 
 type NotifActor    = { id: string; username: string | null; name: string | null; avatar: string | null };
 type NotifCharacter = { id: string; numId: number; slug: string; name: string; avatarUrl: string | null };
-type NotifArtwork  = { id: string; thumbnailUrl: string | null; imageUrl: string; title: string | null };
+type NotifArtwork  = { id: string; thumbnailUrl: string | null; imageUrl: string; title: string | null; sensitiveType: string | null };
 type NotifRelChar  = { numId: number; slug: string; name: string; avatarUrl: string | null };
 type NotifRelationship = { id: string; type: string; status: string; characterA: NotifRelChar | null; characterB: NotifRelChar | null };
 
@@ -95,8 +96,10 @@ function NotificationRow({ n, onMarkRead, onRespond }: { n: Notification; onMark
     const src = n.artwork?.thumbnailUrl ?? n.artwork?.imageUrl;
     const href = n.character ? `/library/characters/${n.character.numId}-${n.character.slug}` : "#";
     if (src) thumb = (
-      <Link href={href} style={{ display: "block", width: 48, height: 48, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0 }}>
-        <img src={thumbUrl(src, 96) ?? src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      <Link href={href} style={{ display: "block", width: 48, height: 48, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0, position: "relative" }}>
+        <SensitiveImageWrapper sensitiveType={n.artwork?.sensitiveType ?? null}>
+          <img src={thumbUrl(src, 96) ?? src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        </SensitiveImageWrapper>
       </Link>
     );
   } else if (n.type === "new_follower") {
