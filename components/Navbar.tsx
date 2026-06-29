@@ -192,16 +192,28 @@ function Badge({ count }: { count: number }) {
 
 function Logo() {
   return (
-    <Link href="/" aria-label="Novae home" className="flex items-center shrink-0">
-      <svg height="36" viewBox="0 0 638.39 258.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path fill="currentColor" d="M167.03,234.69c1.1,6.16-6.2,10.25-10.88,6.08-5.28-4.7-10.66-9.53-13.52-12.23-13.51-12.75-35.25-31.09-52.98-52.13-36.71-43.57-33.65-40.63-28.76-2.69,2.37,18.34-2.12,46.89-8.09,56.76-3.6,5.94-15.98,13.79-22.4,16.42-7.5,3.07-30.4,11.19-30.4,11.19,0,0,26.39-17.03,37.61-75.74,5.84-30.57-6.14-66.58-9.69-92.89-.04-.28-.06-.56-.08-.85-.58-7.82-4.8-24.6-7.9-38.4-1.35-6,6.37-9.67,10.18-4.85,5.48,6.95,11.22,14.39,13.96,18.5,9.6,14.42,24.33,41.23,34.25,55.43,10.77,15.42,37.2,47.24,48.6,62.19,1.29,1.69,9.97,14.65,7.94,3.01-9.74-55.81-5.07-141.85,30.49-171.51,18.77-15.66,43.87-22.87,81.34,11.89,15.83,14.69,28.7,57.92,28.7,57.92,0,0-45.97-69.01-81.78-58.79-33.25,18.16-36.38,65.27-36.38,65.27,0,0-1.65,59.97-.32,78.44,1.06,14.77,6.46,46.54,10.1,66.97Z"/>
-        <path fill="currentColor" d="M239.77,230.2c-66.83,19.32-80.26-101.9-12.21-104.94,54.88,5.6,62.58,85.76,12.21,104.94ZM244.07,204.37c19.08-19.5,15.13-62.26-13.76-62.37-45.43-.16-21.9,98.8,13.76,62.37Z"/>
-        <path fill="currentColor" d="M320.3,240.73c-4.31.05-8.28-2.31-10.29-6.12-3.74-7.07-9.64-19.05-12.83-29.74-3.25-10.91-18.05-72.53-18.05-72.53l20.6,8.1s18.76,107.05,36.48,69.24c5.18-11.06,25.33-69.49,25.33-69.49l22.96-8.43c-5.82,15.76-26.68,70.91-26.68,70.91l-14.41,31.24c-1.86,4.03-5.88,6.64-10.32,6.68l-12.78.14Z"/>
-        <path fill="#693da9" d="M395.96,128.75s20.08-18.73,39.61-17.91c15.82.66,28.17,11.24,30.97,29.66,6.05,26.34,9.77,64.04,38.43,75.5,47.03,14.83,82.92-40.53,100.66-77.25.39,27.26-10.1,56.67-31.25,74.25-30.82,30.39-87.22,30.57-105.96-13.18-10.57-23.84-6.46-59.43-30.7-71.94-16.18-8.35-41.77.87-41.77.87Z"/>
-        <path fill="currentColor" d="M451.16,203.95c1.11-1.54,1.95-3.14,2.6-4.63.83-1.93,3.65-1.7,4.1.35.57,2.61.94,5.47.59,7.78-2.68,17.54-43.74,47.57-64.25,1.01-.03-.06-.05-.12-.08-.19-10.49-28.23,36.35-71.08,56.18-35.47,0,.01.01.02.02.04.94,1.71-.72,3.67-2.58,3.08-2.37-.75-5.31-1.45-8.16-1.47-61.18-.58-20.52,74.22,11.58,29.51Z"/>
-        <path fill="#693da9" d="M591.5,71.99c4.73-6.38,8.03-30.72,8.03-30.72,0,0,6.71,22.33,12.65,26.74,5.32,3.96,26.22,3.97,26.22,3.97,0,0-18.67,15.13-22.96,21.77-3.59,5.57-8.69,25.04-8.69,25.04,0,0-9.36-19.73-15.03-23.95-5.25-3.9-19.37-5.32-25.01-7.62,0,0,20.47-9.4,24.8-15.24Z"/>
-        <path fill="currentColor" d="M483.32,136.42c-1.11,1.54-1.95,3.14-2.6,4.63-.83,1.93-3.65,1.7-4.1-.35-.57-2.61-.94-5.47-.59-7.78,2.68-17.54,43.74-47.57,64.25-1.01.03.06.05.12.08.19,10.49,28.23-36.35,71.08-56.18,35.47,0-.01-.01-.02-.02-.04-.94-1.71.72-3.67,2.58-3.08,2.37.75,5.31,1.45,8.16,1.47,61.18.58,20.52-74.22-11.58-29.51Z"/>
-      </svg>
+    <Link href="/" aria-label="Novae home" className="flex items-start gap-0 shrink-0">
+      <span
+        className="font-bold leading-none"
+        style={{
+          fontFamily: "var(--font-space-grotesk)",
+          fontSize: 28,
+          color: "var(--novae-text-primary)",
+          letterSpacing: "-1px",
+        }}
+      >
+        Novae
+      </span>
+      <span
+        style={{
+          color: "var(--novae-btn-primary)",
+          fontSize: 12,
+          lineHeight: 1,
+          marginTop: 2,
+        }}
+      >
+        ✦
+      </span>
     </Link>
   );
 }
@@ -215,6 +227,7 @@ function TicketButton() {
   const [sending, setSending] = useState(false);
   const [sent, setSent]   = useState<{ url: string; number: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t, locale, toggle: toggleLocale } = useT();
 
   function reset() { setBody(""); setSent(null); setError(null); }
 
@@ -225,11 +238,11 @@ function TicketButton() {
     const res = await fetch("/api/bug-report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `[Bug] reported by @${username}`, body }),
+      body: JSON.stringify({ title: `[Bug] signalé par @${username}`, body }),
     });
     const data = await res.json();
     if (res.ok) setSent(data);
-    else setError(data.error ?? "Error");
+    else setError(data.error ?? "Erreur");
     setSending(false);
   }
 
@@ -246,7 +259,7 @@ function TicketButton() {
       <button
         onClick={() => { setOpen(true); reset(); }}
         className="nav-links items-center justify-center"
-        title="Report a bug"
+        title={t.reportTitle}
         style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 12px", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center" }}
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -262,9 +275,9 @@ function TicketButton() {
             onClick={() => setOpen(false)}
           />
           <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "30vh", pointerEvents: "none" }}>
-            <div style={{ pointerEvents: "all", background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(460px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
+            <div style={{ pointerEvents: "all", background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: 460, display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Report a bug</h2>
+                <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>{t.reportTitle}</h2>
                 <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex" }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -273,21 +286,21 @@ function TicketButton() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", padding: "16px 0" }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#48c78e" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                   <p style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-primary)", margin: 0, textAlign: "center" }}>
-                    Issue <a href={sent.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)" }}>#{sent.number}</a> created successfully.
+                    Issue <a href={sent.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)" }}>#{sent.number}</a> créée avec succès.
                   </p>
-                  <button onClick={() => setOpen(false)} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>Close</button>
+                  <button onClick={() => setOpen(false)} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>Fermer</button>
                 </div>
               ) : (
                 <>
                   {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
-                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="Describe the problem, the steps to reproduce it..." style={inp} />
+                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder={t.reportPlaceholder} style={inp} />
                   </div>
                   <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                    <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Cancel</button>
+                    <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>{t.cancel}</button>
                     <button onClick={send} disabled={sending} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: sending ? "not-allowed" : "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: sending ? 0.6 : 1 }}>
-                      {sending ? "Sending…" : "Send"}
+                      {sending ? t.sending : t.send}
                     </button>
                   </div>
                 </>
@@ -394,7 +407,7 @@ export default function Navbar() {
 
       <header
         ref={ref}
-        className="relative z-50 w-full h-[72px] flex items-center justify-between px-4 md:px-8 border-b"
+        className="relative z-50 w-full h-[72px] flex items-center justify-between px-8 border-b"
         style={{
           backgroundColor: "var(--novae-bg-card)",
           borderColor: "var(--novae-outline-all)",
@@ -403,11 +416,11 @@ export default function Navbar() {
       >
 
       {/* Left — Logo + nav */}
-      <div className="flex items-center self-stretch gap-4 md:gap-8">
+      <div className="flex items-center self-stretch gap-8">
         <Logo />
         <div className="nav-links w-px h-10 shrink-0" style={{ backgroundColor: "var(--novae-outline-all)" }} />
 
-        <nav className="nav-links items-center self-stretch gap-6 xl:gap-8">
+        <nav className="nav-links items-center self-stretch gap-8">
           {/* Home */}
           <Link
             href="/"
