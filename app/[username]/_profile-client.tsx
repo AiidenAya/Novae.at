@@ -10,6 +10,8 @@ import {
 } from "./_shared";
 import { thumbUrl } from "@/lib/thumb";
 import { RoleIcon } from "@/lib/role-icons";
+import { useT } from "@/lib/locale-context";
+
 import ImageCropModal from "@/components/ImageCropModal";
 import { MOCK_PROFILE, MOCK_ARTWORKS, ALL_MOCK_CHARACTERS, ALL_MOCK_WORLDS, MOCK_CHARACTER_FOLDERS, MOCK_WORLD_FOLDERS } from "./_mock-data";
 import type { Profile } from "./_mock-data";
@@ -101,6 +103,7 @@ function Sidebar({
   };
 
   const socials = isEditing ? editState.socials : profile.socials;
+  const { t, locale, toggle: toggleLocale } = useT();
 
   const DEFAULT_HANDLE = "@username";
   function isSet(handle: string, name?: string) {
@@ -118,7 +121,7 @@ function Sidebar({
   return (
     <div className="profile-sidebar">
       <Card style={{ padding: "var(--novae-space-2xl)" }}>
-        <SectionTitle>Statistics</SectionTitle>
+        <SectionTitle>{t.profileStats}</SectionTitle>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           {Object.entries(stats).map(([key, val]) => (
             <div key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--novae-space-xs)" }}>
@@ -130,7 +133,7 @@ function Sidebar({
       </Card>
 
       {(isEditing || visibleSocials.length > 0) && <Card style={{ padding: "var(--novae-space-2xl)" }}>
-        <SectionTitle>Socials</SectionTitle>
+        <SectionTitle>{t.profileSocials}</SectionTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-md)" }}>
           {visibleSocials.map((s) => (
             <div key={s.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
@@ -157,9 +160,9 @@ function Sidebar({
       </Card>}
 
       <Card style={{ padding: "var(--novae-space-2xl)" }}>
-        <SectionTitle>Latest Forum Post</SectionTitle>
+        <SectionTitle>{t.profileLastestPost}</SectionTitle>
         <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-secondary)", margin: 0, fontStyle: "italic" }}>
-          No posts yet.
+          {t.profileNoPost}
         </p>
       </Card>
     </div>
@@ -221,6 +224,8 @@ function ProfileHeader({
 
   const coverImage  = isEditing ? editState.coverImage  : profile.coverImage;
   const avatarImage = isEditing ? editState.avatarImage : profile.avatarImage;
+  
+  const { t, locale, toggle: toggleLocale } = useT();
 
   function handleFileSelect(key: "coverImage" | "avatarImage", file: File | undefined) {
     if (!file) return;
@@ -388,12 +393,12 @@ function ProfileHeader({
 
       {/* Biography */}
       <Card>
-        <SectionTitle>Biography</SectionTitle>
+        <SectionTitle>{t.profileBio}</SectionTitle>
         {isEditing ? (
           <EditorField
             value={editState.bio ?? ""}
             onChange={(val) => setEditState((p) => ({ ...p, bio: val }))}
-            placeholder="Parle de toi…"
+            placeholder={t.profileAboutYou}
             minHeight={150}
           />
         ) : (
@@ -443,7 +448,7 @@ function makeEditState(p: Profile): EditState {
 
 type DbCharacter = { id?: string; numId?: number; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
 type DbFolder = { id: string; name: string };
-type DbArtwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; sensitiveType: string | null; characters: { id: string; numId: number; slug: string; name: string }[] };
+type DbArtwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; characters: { id: string; numId: number; slug: string; name: string }[] };
 type DbProfile = {
   name: string | null;
   bio: string | null;
@@ -596,7 +601,7 @@ export function ProfileClient({
           {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
           {activeTab === "worlds"     && <WorldsTab     folders={[]} isEditing={isEditing} />}
           {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isAdmin={isAdmin} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
-          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, thumbnailUrl: a.thumbnailUrl ?? null, sensitiveType: a.sensitiveType ?? null, hearts: 0, characters: a.characters }))} isOwner={isOwner} username={username} />}
+          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, thumbnailUrl: a.thumbnailUrl ?? null, hearts: 0, characters: a.characters }))} isOwner={isOwner} username={username} />}
         </div>
         <Sidebar
           profile={profile}
