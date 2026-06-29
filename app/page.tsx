@@ -1,46 +1,24 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { thumbUrl } from "@/lib/thumb";
 
 export const revalidate = 60;
 
-async function getData() {
-  const shuffle = <T,>(arr: T[]) => arr.map((v) => ({ v, k: Math.random() })).sort((a, b) => a.k - b.k).map((x) => x.v);
-  const [latestChars, allChars, allUsers] = await Promise.all([
-    prisma.character.findMany({
-      where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      select: {
-        id: true, numId: true, slug: true, name: true, avatarUrl: true,
-        _count: { select: { artworks: true, favorites: true } },
-        user: { select: { username: true, name: true } },
-      },
-    }),
-    prisma.character.findMany({
-      where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
-      orderBy: { createdAt: "asc" },
-      take: 40,
-      select: {
-        id: true, numId: true, slug: true, name: true, avatarUrl: true,
-        _count: { select: { artworks: true, favorites: true } },
-        user: { select: { username: true, name: true } },
-      },
-    }),
-    prisma.user.findMany({
-      where: { username: { not: null }, characters: { some: { isPublic: true } } },
-      take: 30,
-      select: {
-        id: true, username: true, name: true, avatar: true,
-        _count: { select: { characters: true, artworks: true, followers: true } },
-      },
-    }),
-  ]);
-  const latestIds = new Set(latestChars.map((c) => c.id));
-  const randomChars = shuffle(allChars.filter((c) => !latestIds.has(c.id))).slice(0, 7);
-  const randomUsers = shuffle(allUsers).slice(0, 5);
-  return { latestChars, randomChars, randomUsers };
-}
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type CharacterData = {
+  id: string; numId: number; slug: string; name: string; avatarUrl: string | null;
+  _count: { artworks: number; favorites: number };
+  user: { username: string | null; name: string | null };
+};
+
+type UserData = {
+  id: string; username: string | null; name: string | null; avatar: string | null;
+  _count: { characters: number; artworks: number; followers: number };
+};
+
+// ── Static UI ────────────────────────────────────────────────────────────────
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -53,19 +31,52 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-type CharacterData = {
-  id: string; numId: number; slug: string; name: string; avatarUrl: string | null;
-  _count: { artworks: number; favorites: number };
-  user: { username: string | null; name: string | null };
-};
+function CardSkeleton() {
+  return (
+    <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden", opacity: 0.5 }}>
+      <div style={{ aspectRatio: "1/1", background: "rgba(105,61,169,0.1)" }} />
+      <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ height: 12, width: "70%", background: "var(--novae-outline-all)", borderRadius: 4 }} />
+        <div style={{ height: 10, width: "50%", background: "var(--novae-outline-all)", borderRadius: 4 }} />
+      </div>
+    </div>
+  );
+}
 
-function CharCard({ char }: { char: CharacterData }) {
+function CharGridSkeleton() {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+      {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
+    </div>
+  );
+}
+
+function UserGridSkeleton() {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 16, height: 80, opacity: 0.5 }} />
+      ))}
+    </div>
+  );
+}
+
+// ── Cards ────────────────────────────────────────────────────────────────────
+
+function CharCard({ char, priority = false }: { char: CharacterData; priority?: boolean }) {
   return (
     <Link href={`/library/characters/${char.numId}-${char.slug}`} style={{ textDecoration: "none", display: "block" }}>
       <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
-        <div style={{ aspectRatio: "1/1", background: "rgba(105,61,169,0.1)", overflow: "hidden" }}>
+        <div style={{ position: "relative", aspectRatio: "1/1", background: "rgba(105,61,169,0.1)" }}>
           {char.avatarUrl
-            ? <img src={thumbUrl(char.avatarUrl, 320) ?? char.avatarUrl} alt={char.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ? <Image
+                src={char.avatarUrl}
+                alt={char.name}
+                fill
+                sizes="(max-width: 768px) 45vw, 200px"
+                style={{ objectFit: "cover" }}
+                priority={priority}
+              />
             : <div style={{ width: "100%", height: "100%", backgroundImage: "repeating-conic-gradient(rgba(136,136,136,0.12) 0% 25%, transparent 0% 50%)", backgroundSize: "20px 20px" }} />
           }
         </div>
@@ -92,19 +103,14 @@ function CharCard({ char }: { char: CharacterData }) {
   );
 }
 
-type UserData = {
-  id: string; username: string | null; name: string | null; avatar: string | null;
-  _count: { characters: number; artworks: number; followers: number };
-};
-
 function UserCard({ user }: { user: UserData }) {
   if (!user.username) return null;
   return (
     <Link href={`/${user.username}`} style={{ textDecoration: "none", display: "block" }}>
       <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-        <div style={{ width: 48, height: 48, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)", flexShrink: 0 }}>
+        <div style={{ position: "relative", width: 48, height: 48, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)", flexShrink: 0 }}>
           {user.avatar
-            ? <img src={thumbUrl(user.avatar, 96) ?? user.avatar} alt={user.name ?? user.username} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ? <Image src={user.avatar} alt={user.name ?? user.username} fill sizes="48px" style={{ objectFit: "cover" }} />
             : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-space-grotesk)", fontWeight: 700, fontSize: 20, color: "var(--novae-text-link)" }}>
                 {(user.name ?? user.username)?.[0]?.toUpperCase() ?? "?"}
               </div>
@@ -117,7 +123,6 @@ function UserCard({ user }: { user: UserData }) {
           <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
             @{user.username}
           </span>
-
           <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
             <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
               {user._count.characters} chars
@@ -135,13 +140,83 @@ function UserCard({ user }: { user: UserData }) {
   );
 }
 
-export default async function Home() {
-  const { latestChars, randomChars, randomUsers } = await getData();
+// ── Async data sections ───────────────────────────────────────────────────────
 
+async function LatestSection() {
+  const chars = await prisma.character.findMany({
+    where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+    select: {
+      id: true, numId: true, slug: true, name: true, avatarUrl: true,
+      _count: { select: { artworks: true, favorites: true } },
+      user: { select: { username: true, name: true } },
+    },
+  });
+
+  if (chars.length === 0) {
+    return <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>;
+  }
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+      {chars.map((c, i) => <CharCard key={c.id} char={c} priority={i < 4} />)}
+    </div>
+  );
+}
+
+async function DiscoverCharsSection() {
+  const shuffle = <T,>(arr: T[]) => arr.map((v) => ({ v, k: Math.random() })).sort((a, b) => a.k - b.k).map((x) => x.v);
+  const chars = await prisma.character.findMany({
+    where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
+    orderBy: { createdAt: "asc" },
+    take: 40,
+    select: {
+      id: true, numId: true, slug: true, name: true, avatarUrl: true,
+      _count: { select: { artworks: true, favorites: true } },
+      user: { select: { username: true, name: true } },
+    },
+  });
+  const randomChars = shuffle(chars).slice(0, 7);
+
+  if (randomChars.length === 0) {
+    return <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>;
+  }
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+      {randomChars.map((c) => <CharCard key={c.id} char={c} />)}
+    </div>
+  );
+}
+
+async function DiscoverUsersSection() {
+  const shuffle = <T,>(arr: T[]) => arr.map((v) => ({ v, k: Math.random() })).sort((a, b) => a.k - b.k).map((x) => x.v);
+  const users = await prisma.user.findMany({
+    where: { username: { not: null }, characters: { some: { isPublic: true } } },
+    take: 30,
+    select: {
+      id: true, username: true, name: true, avatar: true,
+      _count: { select: { characters: true, artworks: true, followers: true } },
+    },
+  });
+  const randomUsers = shuffle(users).slice(0, 5);
+
+  if (randomUsers.length === 0) {
+    return <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No creators yet.</p>;
+  }
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+      {randomUsers.map((u) => <UserCard key={u.id} user={u} />)}
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default function Home() {
   return (
     <div className="home-content" style={{ padding: "40px 16px 80px", display: "flex", flexDirection: "column", gap: 40 }}>
 
-      {/* Hero */}
+      {/* Hero — renders immediately, no data needed */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <h1 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 800, color: "var(--novae-text-primary)", lineHeight: 1.15 }}>
           Welcome to{" "}
@@ -160,34 +235,25 @@ export default async function Home() {
             Browse all →
           </Link>
         </div>
-        {latestChars.length === 0
-          ? <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>
-          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
-              {latestChars.map((c) => <CharCard key={c.id} char={c} />)}
-            </div>
-        }
+        <Suspense fallback={<CharGridSkeleton />}>
+          <LatestSection />
+        </Suspense>
       </section>
 
       {/* Discover characters */}
       <section>
         <SectionHeading>Discover characters</SectionHeading>
-        {randomChars.length === 0
-          ? <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>
-          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
-              {randomChars.map((c) => <CharCard key={c.id} char={c} />)}
-            </div>
-        }
+        <Suspense fallback={<CharGridSkeleton />}>
+          <DiscoverCharsSection />
+        </Suspense>
       </section>
 
       {/* Discover creators */}
       <section>
         <SectionHeading>Discover creators</SectionHeading>
-        {randomUsers.length === 0
-          ? <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No creators yet.</p>
-          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-              {randomUsers.map((u) => <UserCard key={u.id} user={u} />)}
-            </div>
-        }
+        <Suspense fallback={<UserGridSkeleton />}>
+          <DiscoverUsersSection />
+        </Suspense>
       </section>
 
     </div>
