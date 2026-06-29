@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Agentation } from "agentation";
 import Navbar from "@/components/Navbar";
 import { ThemeScript } from "@/components/ThemeScript";
@@ -54,6 +55,7 @@ export default function RootLayout({
           </main>
         </LocaleProvider>
         {process.env.NODE_ENV === "development" && <Agentation />}
+        <SpeedInsights />
       </body>
     </html>
   );
