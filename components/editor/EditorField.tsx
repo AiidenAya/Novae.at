@@ -3,6 +3,7 @@
 import { useEffect, useRef, useId, useState } from "react";
 import type EditorJS from "@editorjs/editorjs";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { useT } from "@/lib/locale-context";
 
 const EMOJI_LIST = [
   "😀","😂","🥹","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤔","🫠","🫡","😴",
@@ -39,6 +40,9 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
 
   const { startUpload } = useUploadThing("editorImage");
   const uploadRef = useRef(startUpload);
+  
+  const { t, locale, toggle: toggleLocale } = useT();
+  
   uploadRef.current = startUpload;
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
 
       editorRef.current = new EditorJS({
         holder: holderRef.current,
-        placeholder: placeholder ?? "Écris quelque chose…",
+        placeholder: placeholder ?? t.prompt,
         data: parsed as any,
         inlineToolbar: false,
         tools: {
