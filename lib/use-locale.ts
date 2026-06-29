@@ -7,6 +7,7 @@ export const translations = {
     //Generic
     cancel: "Cancel",
     confirm: "Confirm",
+    close: "Close",
     send: "Send",
     sending: "Sending…",
     prompt: "Write something…",
@@ -102,6 +103,7 @@ export const translations = {
     //Generic
     cancel: "Annuler",
     confirm: "Confirmer",
+    close: "Fermer",
     send: "Envoyer",
     sending: "Envoi…",
     prompt: "Écris quelque chose…",
