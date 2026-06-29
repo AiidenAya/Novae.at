@@ -1,7 +1,7 @@
 import SectionCard from "./SectionCard";
 
 interface VoiceClaimCardProps {
-  /** YouTube or Vimeo URL — à venir (champ à ajouter au modèle) */
+  /** YouTube or Vimeo URL — coming soon (field to be added to the model) */
   videoUrl?: string | null;
 }
 

@@ -11,7 +11,7 @@ export interface StoryEntry {
 }
 
 interface StoryCardProps {
-  /** story entries — modèle à créer en V2 */
+  /** story entries — model to be created in V2 */
   entries: StoryEntry[];
 }
 
@@ -81,7 +81,7 @@ export default function StoryCard({ entries }: StoryCardProps) {
                   color: "var(--novae-text-secondary)",
                 }}
               >
-                {new Intl.DateTimeFormat("fr-FR").format(entry.date)}
+                {new Intl.DateTimeFormat("en-GB").format(entry.date)}
               </p>
             </div>
           </div>

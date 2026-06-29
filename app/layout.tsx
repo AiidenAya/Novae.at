@@ -29,7 +29,7 @@ const spaceGrotesk = localFont({
 
 export const metadata: Metadata = {
   title: "Novae",
-  description: "Gérez et partagez vos personnages OC",
+  description: "Manage and share your OC characters",
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="fr"
+      lang="en"
       className={`${dmSans.variable} ${spaceGrotesk.variable} antialiased`}
       suppressHydrationWarning
     >

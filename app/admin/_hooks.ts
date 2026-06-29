@@ -6,7 +6,7 @@ export function useDeleteUser(onDeleted: (id: string) => void) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function deleteUser(id: string, label: string) {
-    if (!confirm(`Supprimer ${label} ?`)) return;
+    if (!confirm(`Delete ${label}?`)) return;
     setDeletingId(id);
     const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
     if (res.ok) onDeleted(id);

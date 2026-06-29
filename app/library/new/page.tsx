@@ -89,7 +89,7 @@ export default function NewPage() {
             >
               {c.disabled && (
                 <span style={{ position: "absolute", top: 10, right: 10, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "2px 8px" }}>
-                  Bientôt
+                  Coming soon
                 </span>
               )}
               <div style={{ color: "var(--novae-text-link)", padding: 12, backgroundColor: "rgba(105,61,169,0.12)", borderRadius: "var(--novae-radius-sm)" }}>

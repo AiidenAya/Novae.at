@@ -4,7 +4,7 @@ import Link from "next/link";
 
 type IconProps = { className?: string; style?: React.CSSProperties };
 
-// Inline SVG icons — couleur héritée via currentColor
+// Inline SVG icons — color inherited via currentColor
 function IconBook({ className, style }: IconProps) {
   return (
     <svg className={className} style={style} width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -81,7 +81,7 @@ interface CharacterPageHeaderProps {
   name: string;
   /** character.description — displayed as quote */
   quote: string | null;
-  /** character.imageUrl — main reference image (à venir) */
+  /** character.imageUrl — main reference image (coming soon) */
   imageUrl: string | null;
   /** character.user.username */
   ownerUsername: string;
@@ -129,7 +129,7 @@ export default function CharacterPageHeader({
     {
       icon: <IconCalendar className="shrink-0" style={{ color: "var(--novae-text-secondary)" }} />,
       label: "Created the",
-      value: new Intl.DateTimeFormat("fr-FR").format(createdAt),
+      value: new Intl.DateTimeFormat("en-GB").format(createdAt),
     },
   ];
 

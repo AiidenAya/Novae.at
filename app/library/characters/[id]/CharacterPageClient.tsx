@@ -624,8 +624,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [pendingSensitiveType, setPendingSensitiveType] = useState<string | null>(null);
 
   // Informations: which fields are visible
-  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean; fieldType?: "gender" }[] = [
-    { key: "gender",      label: "Genre",       state: gender,      setter: setGender,      dbVal: character.gender,      fieldType: "gender" },
+  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean }[] = [
+    { key: "gender",      label: "Gender",      state: gender,      setter: setGender,      dbVal: character.gender },
     { key: "orientation", label: "Orientation", state: orientation, setter: setOrientation, dbVal: character.orientation },
     { key: "birthdate",  label: "Birthdate",  state: birthdate,  setter: setBirthdate,  dbVal: character.birthdate },
     { key: "age",        label: "Age",        state: age,        setter: setAge,        dbVal: character.age },
@@ -1191,11 +1191,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             {/* Sensitive content picker */}
             <div>
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
-                Contenu sensible
+                Sensitive content
               </span>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {([null, "nudity", "gore"] as const).map((val) => {
-                  const label = val === null ? "Aucun" : val === "nudity" ? "Nudité / fan service" : "Gore";
+                  const label = val === null ? "None" : val === "nudity" ? "Nudity / fan service" : "Gore";
                   const active = creditsSensitiveType === val;
                   return (
                     <button
@@ -1439,11 +1439,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             {/* Sensitive type picker */}
             <div>
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
-                Contenu sensible
+                Sensitive content
               </span>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {([null, "nudity", "gore"] as const).map((val) => {
-                  const label = val === null ? "Aucun" : val === "nudity" ? "Nudité / fan service" : "Gore";
+                  const label = val === null ? "None" : val === "nudity" ? "Nudity / fan service" : "Gore";
                   const active = pendingSensitiveType === val;
                   return (
                     <button
@@ -1823,7 +1823,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             )}
             <MetaItem
               label="Created"
-              value={new Intl.DateTimeFormat("fr-FR").format(new Date(character.createdAt))}
+              value={new Intl.DateTimeFormat("en-GB").format(new Date(character.createdAt))}
             />
           </div>
 
@@ -1935,40 +1935,23 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   ) : undefined}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {visibleInfoFields.map(({ key, label, state, setter, dbVal, multiline, fieldType }) => {
+                    {visibleInfoFields.map(({ key, label, state, setter, dbVal, multiline }) => {
                       const value = editing ? state : dbVal;
-                      const GENDER_PRESETS = ["Homme", "Femme", "Non-binaire", "Iel", "Autre"];
-                      const isGenderCustom = fieldType === "gender" && value !== "" && !GENDER_PRESETS.includes(value ?? "");
                       return (
-                        <div key={key} style={{ display: "flex", alignItems: (multiline || fieldType === "gender") ? "flex-start" : "center", justifyContent: "space-between", gap: 8 }}>
-                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0, paddingTop: (multiline || fieldType === "gender") ? 6 : 0 }}>
+                        <div key={key} style={{ display: "flex", alignItems: multiline ? "flex-start" : "center", justifyContent: "space-between", gap: 8 }}>
+                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0, paddingTop: multiline ? 6 : 0 }}>
                             {label}
                           </span>
                           {editing ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-                              {fieldType === "gender" ? (
-                                <>
-                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
-                                    {GENDER_PRESETS.map((opt) => (
-                                      <button key={opt} type="button" onClick={() => setter(state === opt ? "" : opt)} style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: state === opt ? "var(--novae-btn-primary)" : "none", color: state === opt ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}>{opt}</button>
-                                    ))}
-                                    <button type="button" onClick={() => setter(isGenderCustom ? "" : "custom-")} style={{ padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: isGenderCustom ? "var(--novae-btn-primary)" : "none", color: isGenderCustom ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", cursor: "pointer" }}>Custom</button>
-                                    <button onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", marginLeft: "auto" }}>×</button>
-                                  </div>
-                                  {isGenderCustom && (
-                                    <input value={state.startsWith("custom-") ? state.slice(7) : state} onChange={(e) => setter("custom-" + e.target.value)} placeholder="Mon genre…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                                  )}
-                                </>
-                              ) : (
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <input value={state ?? ""} onChange={(e) => setter(e.target.value)} placeholder="—" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1 }} />
-                                  <button onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px" }}>×</button>
-                                </div>
-                              )}
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <input value={state ?? ""} onChange={(e) => setter(e.target.value)} placeholder="—" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1 }} />
+                                <button onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px" }}>×</button>
+                              </div>
                             </div>
                           ) : (
                             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
-                              {fieldType === "gender" && value?.startsWith("custom-") ? value.slice(7) : (value || "—")}
+                              {value?.startsWith("custom-") ? value.slice(7) : (value || "—")}
                             </span>
                           )}
                         </div>
