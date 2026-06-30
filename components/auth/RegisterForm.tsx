@@ -34,6 +34,13 @@ export default function RegisterForm() {
     setError(null);
     setLoading(true);
 
+    // Validate username format
+    if (!/^[a-z0-9-]+$/.test(username)) {
+      setError(t.registerUsernameInvalid);
+      setLoading(false);
+      return;
+    }
+
     // Validate invite code first
     const codeRes = await fetch("/api/admin/invite-codes/validate", {
       method: "POST",
@@ -88,7 +95,7 @@ export default function RegisterForm() {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="username" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.registerUsernameLabel}</label>
-        <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} style={inputStyle} />
+        <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} style={inputStyle} />
       </div>
 
       <div className="flex flex-col gap-1.5">

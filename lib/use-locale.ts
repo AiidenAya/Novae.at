@@ -35,6 +35,7 @@ export const translations = {
     registerHasAccount: "Already have an account?",
     registerSignIn: "Login",
     registerError: "An error occurred.",
+    registerUsernameInvalid: "Username can only contain letters, numbers, and hyphens.",
     // Navbar
     navProfile: "Profile",
     navHome: "Home",
@@ -131,6 +132,7 @@ export const translations = {
     registerHasAccount: "Déjà un compte ?",
     registerSignIn: "Connexion",
     registerError: "Une erreur est survenue.",
+    registerUsernameInvalid: "Le nom d'utilisateur ne peut contenir que des lettres, chiffres et tirets.",
     // Navbar
     navProfile: "Profil",
     navHome: "Accueil",
