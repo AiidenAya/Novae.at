@@ -8,6 +8,8 @@ import type { Profile } from "../_mock-data";
 type Tab    = "creations" | "social" | "characters" | "worlds" | "artworks";
 type Entity = { id?: string; name: string; hearts: number; images: number; coverImage: string | null };
 
+import { useT } from "@/lib/locale-context";
+
 // ── Picker modal ──────────────────────────────────────────────────────────────
 
 function PickerModal({ all, current, onPick, onClose, title }: {
@@ -119,6 +121,8 @@ export default function CreationsTab({
 }) {
   const featuredChars   = characters.slice(0, 6);
   const featuredWorlds  = worlds.slice(0, 6);
+  
+  const { t, locale, toggle: toggleLocale } = useT();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
@@ -128,7 +132,7 @@ export default function CreationsTab({
           {!isEditing && <button onClick={() => setActiveTab("characters")} style={viewAllStyle}>View all</button>}
         </div>
         {isEditing ? (
-          <EditableGrid items={featuredChars} all={allCharacters} onRemove={onRemoveCharacter} onAdd={onAddCharacter} addLabel="Add character" />
+          <EditableGrid items={featuredChars} all={allCharacters} onRemove={onRemoveCharacter} onAdd={onAddCharacter} addLabel={t.profileAddCharacter} />
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 32, justifyContent: "flex-start" }}>
             {featuredChars.map((c, i) => <CharacterCard key={i} {...c} />)}
@@ -142,7 +146,7 @@ export default function CreationsTab({
           {!isEditing && <button onClick={() => setActiveTab("worlds")} style={viewAllStyle}>View all</button>}
         </div>
         {isEditing ? (
-          <EditableGrid items={featuredWorlds} all={allWorlds} onRemove={onRemoveWorld} onAdd={onAddWorld} addLabel="Add world" />
+          <EditableGrid items={featuredWorlds} all={allWorlds} onRemove={onRemoveWorld} onAdd={onAddWorld} addLabel={t.profileAddWorld} />
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
             {featuredWorlds.map((w, i) => <CharacterCard key={i} {...w} />)}

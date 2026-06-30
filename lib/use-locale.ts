@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 
 export const translations = {
   en: {
+    //Generic
+    cancel: "Cancel",
+    confirm: "Confirm",
+    close: "Close",
+    send: "Send",
+    sending: "Sending…",
+    prompt: "Write something…",
     // Auth - Login page
     loginPageTitle: "Welcome back",
     loginPageSubtitle: "Sign in to your Novae account",
@@ -40,6 +47,9 @@ export const translations = {
     navSettings: "Settings",
     navLogout: "Logout",
     navNotifications: "Notifications",
+    // Bug report
+    reportTitle: "Report a bug",
+    reportPlaceholder: "Describe the problem, the steps to reproduce it...",
     // Home
     homeComingSoon: "Home — coming soon",
     // Notifications
@@ -79,8 +89,24 @@ export const translations = {
     notifWith: "with",
     notifDeclinedRel: "declined or removed a relationship.",
     notifGeneric: "sent you a notification.",
+    // Profile content
+    profileStats: "Statistics",
+    profileSocials: "Socials",
+    profileLatestPost: "Latest Forum Post",
+    profileNoPost: "No post yet.",
+    profileBio: "Biography",
+    profileAboutyou: "Say something about you…",
+    profileAddCharacter: "Add Character",
+    profileAddWorld: "Add World",
   },
   fr: {
+    //Generic
+    cancel: "Annuler",
+    confirm: "Confirmer",
+    close: "Fermer",
+    send: "Envoyer",
+    sending: "Envoi…",
+    prompt: "Écris quelque chose…",
     // Auth - Login page
     loginPageTitle: "Bon retour",
     loginPageSubtitle: "Connecte-toi à ton compte Novae",
@@ -117,6 +143,9 @@ export const translations = {
     navSettings: "Paramètres",
     navLogout: "Déconnexion",
     navNotifications: "Notifications",
+    // Bug report
+    reportTitle: "Signaler un bug",
+    reportPlaceholder: "Décris le problème, les étapes pour le reproduire...",
     // Home
     homeComingSoon: "Accueil — bientôt disponible",
     // Notifications
@@ -156,6 +185,15 @@ export const translations = {
     notifWith: "avec",
     notifDeclinedRel: "a refusé ou supprimé une relation.",
     notifGeneric: "t'a envoyé une notification.",
+    // Profile content
+    profileStats: "Statistiques",
+    profileSocials: "Réseaux sociaux",
+    profileLatestPost: "Dernier Post Forum",
+    profileNoPost: "Pas encore de post",
+    profileBio: "Biographie",
+    profileAboutyou: "Parle de toi…",
+    profileAddCharacter: "Nouveau personnage",
+    profileAddWorld: "Nouveau monde",
   },
 } as const;
 

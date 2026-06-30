@@ -216,6 +216,8 @@ function TicketButton() {
   const [sent, setSent]   = useState<{ url: string; number: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const { t, locale, toggle: toggleLocale } = useT();
+  
   function reset() { setBody(""); setSent(null); setError(null); }
 
   async function send() {
@@ -246,7 +248,7 @@ function TicketButton() {
       <button
         onClick={() => { setOpen(true); reset(); }}
         className="nav-links items-center justify-center"
-        title="Report a bug"
+        title="{t.reportTitle}"
         style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 12px", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center" }}
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -264,7 +266,7 @@ function TicketButton() {
           <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "30vh", pointerEvents: "none" }}>
             <div style={{ pointerEvents: "all", background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(460px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>Report a bug</h2>
+                <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>{t.reportTitle}</h2>
                 <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex" }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -275,19 +277,21 @@ function TicketButton() {
                   <p style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-primary)", margin: 0, textAlign: "center" }}>
                     Issue <a href={sent.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)" }}>#{sent.number}</a> created successfully.
                   </p>
-                  <button onClick={() => setOpen(false)} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>Close</button>
+                  <button onClick={() => setOpen(false)} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>{t.close}</button>
                 </div>
               ) : (
                 <>
                   {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
-                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="Describe the problem, the steps to reproduce it..." style={inp} />
+                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="{t.reportPlaceholder}" style={inp} />
                   </div>
                   <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                    <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>Cancel</button>
+                    <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>
+                      {t.cancel}
+                    </button>
                     <button onClick={send} disabled={sending} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: sending ? "not-allowed" : "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: sending ? 0.6 : 1 }}>
-                      {sending ? "Sending…" : "Send"}
+                      {sending ? t.sending : t.send}
                     </button>
                   </div>
                 </>
