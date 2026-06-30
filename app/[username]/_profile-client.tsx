@@ -398,7 +398,7 @@ function ProfileHeader({
           <EditorField
             value={editState.bio ?? ""}
             onChange={(val) => setEditState((p) => ({ ...p, bio: val }))}
-            placeholder={t.profileAboutYou}
+            placeholder={t.profileAboutyou}
             minHeight={150}
           />
         ) : (
