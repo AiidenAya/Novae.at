@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
+import { addContactToBrevo } from "./brevo";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -49,6 +50,9 @@ export const auth = betterAuth({
             return { data: { ...user, username: `${base}_${suffix}` } };
           }
           return { data: { ...user, username: rawUsername.toLowerCase() } };
+        },
+        after: async (user) => {
+          await addContactToBrevo(user.email, user.name ?? undefined).catch(() => {});
         },
       },
     },
