@@ -160,7 +160,7 @@ function Sidebar({
       </Card>}
 
       <Card style={{ padding: "var(--novae-space-2xl)" }}>
-        <SectionTitle>{t.profileLastestPost}</SectionTitle>
+        <SectionTitle>{t.profileLatestPost}</SectionTitle>
         <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, color: "var(--novae-text-secondary)", margin: 0, fontStyle: "italic" }}>
           {t.profileNoPost}
         </p>
