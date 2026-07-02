@@ -26,6 +26,7 @@ export async function GET() {
       id: true, code: true, note: true, createdAt: true,
       expiresAt: true, usedAt: true,
       usedBy: { select: { username: true } },
+      createdBy: { select: { username: true, roles: true } },
     },
   });
   return NextResponse.json(codes);
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
 
   const created = await prisma.inviteCode.create({
     data: { code, note, createdById: user.id },
-    select: { id: true, code: true, note: true, createdAt: true, expiresAt: true, usedAt: true, usedBy: { select: { username: true } } },
+    select: { id: true, code: true, note: true, createdAt: true, expiresAt: true, usedAt: true, usedBy: { select: { username: true } }, createdBy: { select: { username: true, roles: true } } },
   });
 
   return NextResponse.json(created, { status: 201 });

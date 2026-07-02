@@ -1,8 +1,27 @@
-export default function BrowseCharactersPage() {
+import { prisma } from "@/lib/prisma";
+import { BrowseClient } from "../_client";
+
+export const revalidate = 60;
+
+const PAGE_SIZE = 24;
+
+export default async function BrowseCharactersPage() {
+  const chars = await prisma.character.findMany({
+    where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
+    orderBy: { createdAt: "desc" },
+    take: PAGE_SIZE + 1,
+    select: {
+      id: true, numId: true, slug: true, name: true, avatarUrl: true,
+      _count: { select: { artworks: true, favorites: true } },
+      user: { select: { username: true, name: true } },
+    },
+  });
+
   return (
-    <main className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Browse characters</h1>
-      <p className="text-muted-foreground">Public exploration — to be implemented</p>
-    </main>
+    <BrowseClient
+      type="characters"
+      initialItems={chars.slice(0, PAGE_SIZE)}
+      initialHasMore={chars.length > PAGE_SIZE}
+    />
   );
 }

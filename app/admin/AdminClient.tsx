@@ -9,12 +9,14 @@ type RoleRecord = { id: string; name: string; description: string | null; icon: 
 type RecentUser = {
   id: string; username: string | null; name: string | null;
   email: string; roles: string[]; createdAt: string; inviteCode: string | null;
+  invitedBy: string | null;
 };
 
 type InviteCode = {
   id: string; code: string; note: string | null;
   createdAt: string; expiresAt: string | null; usedAt: string | null;
   usedBy: { username: string | null } | null;
+  createdBy: { username: string | null; roles: string[] } | null;
 };
 
 const cell: React.CSSProperties = {
@@ -118,6 +120,14 @@ function CodeStatusBadge({ code }: { code: InviteCode }) {
 }
 
 type CodeFilter = "all" | "available" | "used" | "expired";
+
+type AdminTab = "users" | "roles" | "codes";
+
+const ADMIN_TABS: { key: AdminTab; label: string }[] = [
+  { key: "codes", label: "Invite codes" },
+  { key: "users", label: "Users" },
+  { key: "roles", label: "Roles" },
+];
 
 // ── Create role modal ─────────────────────────────────────────────────────────
 
@@ -436,6 +446,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
   const [copied, setCopied]     = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState<CodeFilter>("all");
+  const [tab, setTab] = useState<AdminTab>("codes");
   const [editingUser, setEditingUser] = useState<RecentUser | null>(null);
   const { deleteUser, deletingId: deletingUser } = useDeleteUser((id) =>
     setUsers((prev) => prev.filter((u) => u.id !== id))
@@ -597,8 +608,28 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
         ))}
       </div>
 
-      {/* Roles — full width above users */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 4, width: "100%", borderBottom: "1px solid var(--novae-outline-all)", marginBottom: 24 }}>
+        {ADMIN_TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            style={{
+              padding: "4px 16px 10px", background: "none", border: "none", cursor: "pointer",
+              fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600,
+              color: tab === key ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
+              borderBottom: `2px solid ${tab === key ? "var(--novae-btn-primary)" : "transparent"}`,
+              marginBottom: -1,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Roles */}
+      {tab === "roles" && (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, ...card, padding: "16px 20px" }}>
           <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
             Roles
@@ -653,10 +684,10 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
         </div>
       </div>
 
-      {/* Users + Invite codes side by side */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, alignItems: "start" }}>
+      )}
 
-        {/* Users table */}
+      {/* Users table */}
+      {tab === "users" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {/* Bulk action bar */}
           {someSelected && (
@@ -684,7 +715,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                   <th style={{ ...th, width: 40, paddingRight: 8 }}>
                     <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ cursor: "pointer", accentColor: "var(--novae-text-tag)" }} />
                   </th>
-                  {["Username", "Email", "Role", "Code", "Joined", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
+                  {["Username", "Email", "Role", "Code", "Referred by", "Joined", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -702,6 +733,11 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                     <td style={cell}><RolesBadges roles={u.roles} iconMap={roleIconMap} /></td>
                     <td style={{ ...cell, fontFamily: "monospace", fontSize: "var(--novae-text-xs)", color: u.inviteCode ? "var(--novae-text-tag)" : "var(--novae-text-secondary)", whiteSpace: "nowrap" }}>
                       {u.inviteCode ?? "—"}
+                    </td>
+                    <td style={{ ...cell, fontSize: "var(--novae-text-xs)", whiteSpace: "nowrap" }}>
+                      {u.invitedBy
+                        ? <a href={`/${u.invitedBy}`} style={{ color: "var(--novae-text-primary)", textDecoration: "none", fontWeight: 600 }} onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>@{u.invitedBy}</a>
+                        : <span style={{ color: "var(--novae-text-secondary)" }}>—</span>}
                     </td>
                     <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)", whiteSpace: "nowrap" }}>
                       {new Date(u.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
@@ -729,8 +765,10 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
             </table>
           </div>
         </div>
+      )}
 
-        {/* Invite codes */}
+      {/* Invite codes */}
+      {tab === "codes" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, ...card, padding: "16px 20px" }}>
             <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0, whiteSpace: "nowrap" }}>
@@ -767,7 +805,14 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                     const used = !!c.usedAt;
                     return (
                       <tr key={c.id}>
-                        <td style={{ ...cell, fontFamily: "monospace", fontWeight: 700, fontSize: "var(--novae-text-xs)", letterSpacing: "0.03em", color: "var(--novae-text-tag)", whiteSpace: "nowrap" }}>{c.code}</td>
+                        <td style={{ ...cell, whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "var(--novae-text-xs)", letterSpacing: "0.03em", color: "var(--novae-text-tag)" }}>{c.code}</span>
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+                              by {c.createdBy?.username ? `@${c.createdBy.username}` : "—"}{c.createdBy?.roles.includes("admin") ? " (admin)" : ""}
+                            </span>
+                          </div>
+                        </td>
                         <td style={cell}><CodeStatusBadge code={c} /></td>
                         <td style={{ ...cell, width: 70 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -799,8 +844,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
             )}
           </div>
         </div>
-
-      </div>
+      )}
     </main>
   );
 }

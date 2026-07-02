@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -94,6 +95,15 @@ function IconMoon() {
   );
 }
 
+function IconGift() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/>
+      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+    </svg>
+  );
+}
+
 function IconSettings() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,9 +129,7 @@ const LIBRARY_ITEMS  = [
 
 const BROWSE_ITEMS = [
   { label: "Characters", href: "/browse/characters" },
-  { label: "Worlds",     href: "/browse/worlds" },
-  { label: "Species",    href: "/browse/species" },
-  { label: "Artists",    href: "/browse/artists" },
+  { label: "Users",      href: "/browse/users" },
 ];
 
 const COMMUNITY_ITEMS = [
@@ -216,7 +224,7 @@ function TicketButton() {
   const [sent, setSent]   = useState<{ url: string; number: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { t, locale, toggle: toggleLocale } = useT();
+  const { t } = useT(); // Extrait uniquement ce dont tu as besoin
   
   function reset() { setBody(""); setSent(null); setError(null); }
 
@@ -245,10 +253,11 @@ function TicketButton() {
 
   return (
     <>
+      {/* Le bouton reste physiquement dans le header pour le layout */}
       <button
         onClick={() => { setOpen(true); reset(); }}
         className="nav-links items-center justify-center"
-        title="{t.reportTitle}"
+        title={t.reportTitle}
         style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 12px", cursor: "pointer", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center" }}
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -257,10 +266,11 @@ function TicketButton() {
         </svg>
       </button>
 
-      {open && (
+      {/* Le Portal téléporte l'overlay et la modale directement à la racine du document body */}
+      {open && typeof window !== "undefined" && createPortal(
         <>
           <div
-            style={{ position: "fixed", top: 72, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)" }}
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)" }}
             onClick={() => setOpen(false)}
           />
           <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "30vh", pointerEvents: "none" }}>
@@ -284,7 +294,7 @@ function TicketButton() {
                   {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
-                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder="{t.reportPlaceholder}" style={inp} />
+                    <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder={t.reportPlaceholder} style={inp} />
                   </div>
                   <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                     <button onClick={() => setOpen(false)} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>
@@ -298,7 +308,8 @@ function TicketButton() {
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );
@@ -379,7 +390,7 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconHome />{t.navHome}</Link>
         <Link href="/library/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navLibrary}</Link>
         <Link href="/library/favorites" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />Favorites</Link>
-        <Link href="/browse" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconSearch />{t.navBrowse}</Link>
+        <Link href="/browse/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconSearch />{t.navBrowse}</Link>
         <Link href="/community" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconGroup />{t.navCommunity}</Link>
         <div style={{ height: 1, background: "var(--novae-outline-all)", margin: "8px 0" }} />
         {session ? (
@@ -442,12 +453,24 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Browse — disabled */}
+          {/* Browse */}
           <div className="relative self-stretch flex items-center">
-            <span className="flex items-center gap-2 shrink-0 cursor-not-allowed" style={{ ...navItemStyle(false), opacity: 0.35 }}>
+            <button
+              onClick={() => toggle("browse")}
+              className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
+              style={navItemStyle(pathname.startsWith("/browse"))}
+            >
               <IconSearch />
               {t.navBrowse}
-            </span>
+              <span style={{ color: "var(--novae-text-secondary)", transform: open === "browse" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                <IconChevron />
+              </span>
+            </button>
+            {open === "browse" && (
+              <DropdownPanel>
+                {BROWSE_ITEMS.map((item) => <DropdownLink key={item.href} {...item} />)}
+              </DropdownPanel>
+            )}
           </div>
 
           {/* Community — disabled */}
@@ -581,6 +604,16 @@ export default function Navbar() {
                       )}
                     </span>
                     <span>{t.navNotifications}</span>
+                  </Link>
+
+                  {/* Referrals */}
+                  <Link
+                    href="/referrals"
+                    className="flex items-center gap-2 transition-opacity hover:opacity-70"
+                    style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}
+                  >
+                    <span className="w-[22px] flex justify-center" style={{ color: "var(--novae-text-secondary)" }}><IconGift /></span>
+                    {t.navReferrals}
                   </Link>
 
                   <Divider />

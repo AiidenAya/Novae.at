@@ -24,7 +24,7 @@ async function getData() {
       select: {
         id: true, username: true, name: true, email: true,
         roles: true, createdAt: true,
-        invitesUsed: { select: { code: true }, take: 1 },
+        invitesUsed: { select: { code: true, createdBy: { select: { username: true } } }, take: 1 },
       },
     }),
     prisma.inviteCode.findMany({
@@ -33,6 +33,7 @@ async function getData() {
         id: true, code: true, note: true, createdAt: true,
         expiresAt: true, usedAt: true,
         usedBy: { select: { username: true } },
+        createdBy: { select: { username: true, roles: true } },
       },
     }),
     prisma.role.findMany({ orderBy: { createdAt: "asc" } }),
@@ -48,6 +49,7 @@ async function getData() {
       roles: u.roles,
       createdAt: u.createdAt.toISOString(),
       inviteCode: u.invitesUsed[0]?.code ?? null,
+      invitedBy: u.invitesUsed[0]?.createdBy?.username ?? null,
     })),
     initialCodes: codes.map((c) => ({
       ...c,
