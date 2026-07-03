@@ -448,7 +448,7 @@ function makeEditState(p: Profile): EditState {
 
 type DbCharacter = { id?: string; numId?: number; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
 type DbFolder = { id: string; name: string };
-type DbArtwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; characters: { id: string; numId: number; slug: string; name: string }[] };
+type DbArtwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; sensitiveType: string | null; characters: { id: string; numId: number; slug: string; name: string }[] };
 type DbProfile = {
   name: string | null;
   bio: string | null;
@@ -601,7 +601,7 @@ export function ProfileClient({
           {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
           {activeTab === "worlds"     && <WorldsTab     folders={[]} isEditing={isEditing} />}
           {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isAdmin={isAdmin} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
-          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, thumbnailUrl: a.thumbnailUrl ?? null, hearts: 0, characters: a.characters }))} isOwner={isOwner} username={username} />}
+          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, thumbnailUrl: a.thumbnailUrl ?? null, hearts: 0, sensitiveType: a.sensitiveType ?? null, characters: a.characters }))} isOwner={isOwner} username={username} />}
         </div>
         <Sidebar
           profile={profile}
