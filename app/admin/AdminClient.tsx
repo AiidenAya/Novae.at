@@ -121,10 +121,11 @@ function CodeStatusBadge({ code }: { code: InviteCode }) {
 
 type CodeFilter = "all" | "available" | "used" | "expired";
 
-type AdminTab = "users" | "roles" | "codes";
+type AdminTab = "users" | "roles" | "codes" | "mail";
 
 const ADMIN_TABS: { key: AdminTab; label: string }[] = [
   { key: "codes", label: "Invite codes" },
+  { key: "mail", label: "Mail" },
   { key: "users", label: "Users" },
   { key: "roles", label: "Roles" },
 ];
@@ -447,6 +448,9 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
   const [deleting, setDeleting] = useState<string | null>(null);
   const [codeFilter, setCodeFilter] = useState<CodeFilter>("all");
   const [tab, setTab] = useState<AdminTab>("codes");
+  const [mailInput, setMailInput] = useState("");
+  const [mailSending, setMailSending] = useState(false);
+  const [mailResults, setMailResults] = useState<{ email: string; ok: boolean; message: string }[]>([]);
   const [editingUser, setEditingUser] = useState<RecentUser | null>(null);
   const { deleteUser, deletingId: deletingUser } = useDeleteUser((id) =>
     setUsers((prev) => prev.filter((u) => u.id !== id))
@@ -499,6 +503,31 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
     });
     setCodes((prev) => prev.filter((c) => c.id !== id));
     setDeleting(null);
+  }
+
+  async function sendMailCode() {
+    const emails = [...new Set(mailInput.split(/[\n,]/).map((e) => e.trim()).filter(Boolean))];
+    if (emails.length === 0) return;
+    setMailSending(true);
+    setMailResults([]);
+    const res = await fetch("/api/admin/invite-codes/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setCodes((prev) => [...data.results.map((r: { code: InviteCode }) => r.code), ...prev]);
+      setMailResults(data.results.map((r: { email: string; code: InviteCode; emailSent: boolean }) => ({
+        email: r.email,
+        ok: r.emailSent,
+        message: r.emailSent ? `Code envoyé à ${r.email}` : `Code ${r.code.code} créé mais l'envoi à ${r.email} a échoué — copie-le manuellement.`,
+      })));
+      setMailInput("");
+    } else {
+      setMailResults([{ email: "", ok: false, message: data.error ?? "Erreur" }]);
+    }
+    setMailSending(false);
   }
 
   async function deleteRole(id: string) {
@@ -798,7 +827,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr>{["Code", "Statut", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
+                  <tr>{["Code", "Envoyé à", "Statut", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {filteredCodes.map(c => {
@@ -813,6 +842,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                             </span>
                           </div>
                         </td>
+                        <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{c.note ?? "—"}</td>
                         <td style={cell}><CodeStatusBadge code={c} /></td>
                         <td style={{ ...cell, width: 70 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -841,6 +871,47 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                   })}
                 </tbody>
               </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mail */}
+      {tab === "mail" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ ...card, padding: "20px" }}>
+            <h2 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 4px" }}>
+              Envoyer un code d'accès
+            </h2>
+            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", margin: "0 0 16px" }}>
+              Une adresse par ligne (ou séparées par des virgules) — chacune reçoit un code différent.
+            </p>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <textarea
+                value={mailInput}
+                onChange={e => setMailInput(e.target.value)}
+                placeholder={"email1@example.com\nemail2@example.com"}
+                rows={4}
+                style={{
+                  flex: 1, padding: "8px 12px", borderRadius: "var(--novae-radius-md)",
+                  border: "1px solid var(--novae-outline-all)", background: "var(--novae-bg-card)",
+                  color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)",
+                  fontSize: "var(--novae-text-sm)", outline: "none", boxSizing: "border-box", resize: "vertical",
+                }}
+              />
+              <button onClick={sendMailCode} disabled={mailSending || !mailInput.trim()}
+                style={{ whiteSpace: "nowrap", padding: "8px 20px", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", cursor: mailSending || !mailInput.trim() ? "not-allowed" : "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, opacity: mailSending || !mailInput.trim() ? 0.5 : 1 }}>
+                {mailSending ? "…" : "Envoyer"}
+              </button>
+            </div>
+            {mailResults.length > 0 && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+                {mailResults.map((r, i) => (
+                  <p key={i} style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: r.ok ? "#48c78e" : "#ff6b7a" }}>
+                    {r.message}
+                  </p>
+                ))}
+              </div>
             )}
           </div>
         </div>
