@@ -45,7 +45,7 @@ function CardSkeleton() {
 
 function CharGridSkeleton() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
       {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
     </div>
   );
@@ -53,7 +53,7 @@ function CharGridSkeleton() {
 
 function UserGridSkeleton() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 16, height: 80, opacity: 0.5 }} />
       ))}
@@ -158,7 +158,7 @@ async function LatestSection() {
     return <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>;
   }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
       {chars.map((c, i) => <CharCard key={c.id} char={c} priority={i < 4} />)}
     </div>
   );
@@ -182,7 +182,7 @@ async function DiscoverCharsSection() {
     return <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>;
   }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
       {randomChars.map((c) => <CharCard key={c.id} char={c} />)}
     </div>
   );
@@ -204,7 +204,7 @@ async function DiscoverUsersSection() {
     return <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No creators yet.</p>;
   }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
       {randomUsers.map((u) => <UserCard key={u.id} user={u} />)}
     </div>
   );
