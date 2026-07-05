@@ -5,12 +5,15 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 const EditorField    = dynamic(() => import("@/components/editor/EditorField"),    { ssr: false });
 const EditorRenderer = dynamic(() => import("@/components/editor/EditorRenderer"), { ssr: false });
 import { useUploadThing } from "@/lib/uploadthing-client";
 import { thumbUrl } from "@/lib/thumb";
+import { characterUrl } from "@/lib/character-url";
+import { useT } from "@/lib/locale-context";
 import ImageCropModal from "@/components/ImageCropModal";
 import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
 
@@ -45,6 +48,7 @@ interface CharacterData {
   summary: string | null;
   biography: string | null;
   sections: string | null;
+  profileBlockOrder: string | null;
   relationshipsA: { id: string; type: string; typeB: string | null; description: string | null; status?: string; externalName?: string | null; externalImageUrl?: string | null; characterB: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } | null }[];
   relationshipsB: { id: string; type: string; typeB: string | null; description: string | null; status?: string; characterA: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } }[];
   isDesigner: boolean;
@@ -59,6 +63,8 @@ interface CharacterData {
   colorPalettes: { id: string; swatches: Swatch[] }[];
   favorites: { id: string }[];
   galleries: { id: string; name: string; images: { id: string; artworkId: string; order: number }[] }[];
+  baseCharacter: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; isPublic: boolean; variants: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; variantLabel: string | null; isPublic: boolean }[] } | null;
+  variants: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; variantLabel: string | null; isPublic: boolean }[];
 }
 
 interface Props {
@@ -114,6 +120,39 @@ function SectionCard({ title, action, children }: { title: React.ReactNode; acti
         </span>
         {action}
       </div>
+      {children}
+    </div>
+  );
+}
+
+function SortableBlock({ id, draggable, children }: { id: string; draggable: boolean; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !draggable });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative" }}
+    >
+      {draggable && (
+        <div
+          {...attributes}
+          {...listeners}
+          title="Drag to reorder"
+          style={{
+            position: "absolute", top: 8, right: 8, zIndex: 2,
+            width: 24, height: 24, borderRadius: "var(--novae-radius-sm)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "grab", touchAction: "none",
+            color: "var(--novae-text-secondary)",
+            background: "var(--novae-bg-card)",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
+            <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+            <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
+          </svg>
+        </div>
+      )}
       {children}
     </div>
   );
@@ -394,9 +433,67 @@ function DroppableGallerySection({
 
 export default function CharacterPageClient({ character, isOwner, currentUserId, initialFavorited = false }: Props) {
   const router = useRouter();
+  const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "story" | "relationships" | "gallery" | "timeline">("profile");
+  const [showAuModal, setShowAuModal] = useState(false);
+  const [auName, setAuName] = useState("");
+  const [auLabel, setAuLabel] = useState("");
+  const [creatingAu, setCreatingAu] = useState(false);
+
+  // "Star" topology: every AU points to the root character. The switcher always shows
+  // [root, ...all variants of root], regardless of which one is currently open.
+  const rootCharacter = character.baseCharacter
+    ? { id: character.baseCharacter.id, name: character.baseCharacter.name, numId: character.baseCharacter.numId, slug: character.baseCharacter.slug, avatarUrl: character.baseCharacter.avatarUrl }
+    : { id: character.id, name: character.name, numId: character.numId, slug: character.slug, avatarUrl: character.avatarUrl };
+  const auVariants = character.baseCharacter ? character.baseCharacter.variants : character.variants;
+
+  const createAlternateUniverse = useCallback(async () => {
+    if (!auName.trim()) return;
+    setCreatingAu(true);
+    try {
+      const res = await fetch("/api/characters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: auName.trim(),
+          baseCharacterId: rootCharacter.id,
+          variantLabel: auLabel.trim() || null,
+        }),
+      });
+      if (!res.ok) throw new Error("failed");
+      const created = await res.json();
+      setShowAuModal(false);
+      setAuName("");
+      setAuLabel("");
+      router.push(characterUrl(created.numId, created.slug));
+    } catch {
+      // no-op: keep modal open so the user can retry
+    } finally {
+      setCreatingAu(false);
+    }
+  }, [auName, auLabel, rootCharacter.id, router]);
+
+  const [auToDelete, setAuToDelete] = useState<{ id: string; label: string; isViewingIt: boolean } | null>(null);
+  const [deletingAu, setDeletingAu] = useState(false);
+
+  const confirmDeleteAlternateUniverse = useCallback(async () => {
+    if (!auToDelete) return;
+    setDeletingAu(true);
+    try {
+      const res = await fetch(`/api/characters/${auToDelete.id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      if (auToDelete.isViewingIt) {
+        router.push(characterUrl(rootCharacter.numId, rootCharacter.slug));
+      } else {
+        router.refresh();
+      }
+      setAuToDelete(null);
+    } finally {
+      setDeletingAu(false);
+    }
+  }, [auToDelete, rootCharacter.numId, rootCharacter.slug, router]);
 
   // Edit state mirrors the DB fields
   const [name, setName] = useState(character.name);
@@ -662,6 +759,18 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [customFields, setCustomFields] = useState<CustomField[]>(parseCustomFields);
   const [customContainers, setCustomContainers] = useState<Container[]>(parseContainers);
 
+  // Middle-column block order (drag & drop, Profile tab)
+  const parseBlockOrder = (): string[] => {
+    if (!character.profileBlockOrder) return [];
+    try {
+      const parsed = JSON.parse(character.profileBlockOrder);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  };
+  const [blockOrder, setBlockOrder] = useState<string[]>(parseBlockOrder);
+  const profileSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
   // Edit credits modal
   const [editingCredits, setEditingCredits] = useState<Artwork | null>(null);
   const [creditsType, setCreditsType] = useState<"onsite" | "offsite">("onsite");
@@ -696,6 +805,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation,
           custom: customFields.length > 0 ? JSON.stringify(customFields) : null,
           sections: customContainers.length > 0 ? JSON.stringify(customContainers) : null,
+          profileBlockOrder: blockOrder.length > 0 ? JSON.stringify(blockOrder) : null,
           customFieldName: null,
           voiceClaimUrl,
           playlistUrl: tracks.length > 0 ? JSON.stringify(tracks) : null,
@@ -729,7 +839,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, customContainers, voiceClaimUrl, tracks, summary, biography, avatarUrl, isPublic, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
+  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, customContainers, blockOrder, voiceClaimUrl, tracks, summary, biography, avatarUrl, isPublic, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(character.name);
@@ -1715,7 +1825,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Description du personnage…"
+                    placeholder={t.characterDescriptionPlaceholder}
                     rows={3}
                     style={{ width: "100%", background: "rgba(25,32,46,0.6)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 12px", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontStyle: "italic", outline: "none", resize: "vertical", boxSizing: "border-box" }}
                   />
@@ -1730,6 +1840,174 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               </div>
             </div>
           </div>
+
+          {/* Alternate universes switcher */}
+          {(auVariants.length > 0 || isOwner) && (
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" as const, gap: 8, marginTop: 4 }}>
+              {[{ ...rootCharacter, variantLabel: null as string | null }, ...auVariants].map((v) => {
+                const isCurrent = v.id === character.id;
+                const isBase = v.id === rootCharacter.id;
+                return (
+                  <div
+                    key={v.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      borderRadius: "999px",
+                      border: isCurrent ? "1px solid var(--novae-btn-primary)" : "1px solid var(--novae-outline-all)",
+                      background: isCurrent ? "rgba(120,110,255,0.12)" : "var(--novae-bg-card)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <button
+                      onClick={() => !isCurrent && router.push(characterUrl(v.numId, v.slug))}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 12px 4px 4px",
+                        border: "none",
+                        background: "transparent",
+                        color: isCurrent ? "var(--novae-text-primary)" : "var(--novae-text-secondary)",
+                        fontFamily: "var(--font-dm-sans)",
+                        fontSize: "var(--novae-text-sm)",
+                        fontWeight: isCurrent ? 600 : 400,
+                        cursor: isCurrent ? "default" : "pointer",
+                      }}
+                    >
+                      {v.avatarUrl ? (
+                        <img src={thumbUrl(v.avatarUrl, 40)} alt="" width={20} height={20} style={{ borderRadius: "50%", objectFit: "cover" as const }} />
+                      ) : (
+                        <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--novae-outline-all)" }} />
+                      )}
+                      {isBase ? t.auMain : (v.variantLabel || v.name)}
+                    </button>
+                    {isOwner && !isBase && (
+                      <button
+                        onClick={() => setAuToDelete({ id: v.id, label: v.variantLabel || v.name, isViewingIt: isCurrent })}
+                        title={t.auDeleteTooltip}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 22,
+                          height: 22,
+                          marginRight: 4,
+                          border: "none",
+                          borderRadius: "50%",
+                          background: "transparent",
+                          color: "var(--novae-text-secondary)",
+                          cursor: "pointer",
+                          fontSize: "var(--novae-text-sm)",
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {isOwner && (
+                <button
+                  onClick={() => { setAuName(`${rootCharacter.name} (AU)`); setShowAuModal(true); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "4px 12px",
+                    borderRadius: "999px",
+                    border: "1px dashed var(--novae-outline-all)",
+                    background: "transparent",
+                    color: "var(--novae-text-secondary)",
+                    fontFamily: "var(--font-dm-sans)",
+                    fontSize: "var(--novae-text-sm)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {t.auAddButton}
+                </button>
+              )}
+            </div>
+          )}
+
+          {showAuModal && (
+            <div
+              onClick={() => !creatingAu && setShowAuModal(false)}
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "var(--novae-space-xl)", width: 380, display: "flex", flexDirection: "column", gap: 12 }}
+              >
+                <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", color: "var(--novae-text-primary)" }}>
+                  {t.auModalTitle}
+                </h3>
+                <p style={{ margin: 0, fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+                  {t.auModalDescription.replace("{name}", rootCharacter.name)}
+                </p>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{t.auNameLabel}</span>
+                  <input value={auName} onChange={(e) => setAuName(e.target.value)} style={inputStyle} placeholder={t.auNamePlaceholder} />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{t.auLabelLabel}</span>
+                  <input value={auLabel} onChange={(e) => setAuLabel(e.target.value)} style={inputStyle} placeholder={t.auLabelPlaceholder} />
+                </label>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                  <button
+                    onClick={() => setShowAuModal(false)}
+                    disabled={creatingAu}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "1px solid var(--novae-outline-all)", background: "transparent", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    onClick={createAlternateUniverse}
+                    disabled={creatingAu || !auName.trim()}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "none", background: "var(--novae-btn-primary)", color: "#fff", fontWeight: 600, cursor: creatingAu ? "not-allowed" : "pointer", opacity: creatingAu || !auName.trim() ? 0.7 : 1 }}
+                  >
+                    {creatingAu ? t.auCreating : t.auCreate}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {auToDelete && (
+            <div
+              onClick={() => !deletingAu && setAuToDelete(null)}
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "var(--novae-space-xl)", width: 380, display: "flex", flexDirection: "column", gap: 12 }}
+              >
+                <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", color: "var(--novae-text-primary)" }}>
+                  {t.auDeleteModalTitle}
+                </h3>
+                <p style={{ margin: 0, fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+                  {t.auDeleteModalBody.replace("{label}", auToDelete.label)}
+                </p>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                  <button
+                    onClick={() => setAuToDelete(null)}
+                    disabled={deletingAu}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "1px solid var(--novae-outline-all)", background: "transparent", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    onClick={confirmDeleteAlternateUniverse}
+                    disabled={deletingAu}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "none", background: "#e05252", color: "#fff", fontWeight: 600, cursor: deletingAu ? "not-allowed" : "pointer", opacity: deletingAu ? 0.7 : 1 }}
+                  >
+                    {deletingAu ? t.auDeleting : t.auDelete}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Meta row — owner / designer / created */}
           <div
@@ -2033,12 +2311,12 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
                 {/* Color Palette */}
                 <SectionCard title="Color Palette">
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                     {swatches.map((swatch, i) => (
                       <div key={i} style={{ position: "relative" }}>
                         <div
                           style={{
-                            width: 80, height: 80,
+                            width: "100%", aspectRatio: "1 / 1",
                             borderRadius: "var(--novae-radius-md)",
                             backgroundColor: swatch.hex,
                             cursor: editing ? "pointer" : "default",
@@ -2084,7 +2362,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                       <button
                         onClick={addSwatch}
                         style={{
-                          width: 80, height: 80,
+                          width: "100%", aspectRatio: "1 / 1",
                           borderRadius: "var(--novae-radius-md)",
                           border: "2px dashed var(--novae-outline-all)",
                           background: "none",
@@ -2099,7 +2377,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     )}
 
                     {swatches.length === 0 && !editing && (
-                      <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", gridColumn: "1 / -1" }}>
                         No palette yet.
                       </p>
                     )}
@@ -2109,222 +2387,281 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
               {/* Main content area */}
               <div className="char-body-main gap-6">
-                {/* Latest images */}
-                <SectionCard
-                  title="Latest Images"
-                  action={
-                    <button
-                      onClick={() => setActiveTab("gallery")}
-                      style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}
-                    >
-                      View more
-                    </button>
+                {(() => {
+                  const defaultOrder = ["latestImages", "storySummary", "music", ...customContainers.map((c) => `custom:${c.id}`)];
+                  const visibility: Record<string, boolean> = {
+                    latestImages: true,
+                    storySummary: !!summary,
+                    music: tracks.length > 0 || !!spotifyPlaylistUrl || editing,
+                  };
+                  customContainers.forEach((c) => { visibility[`custom:${c.id}`] = true; });
+
+                  const known = new Set(defaultOrder);
+                  const seen = new Set<string>();
+                  const ordered: string[] = [];
+                  const source = blockOrder.length > 0 ? blockOrder : defaultOrder;
+                  for (const key of source) {
+                    if (known.has(key) && !seen.has(key)) { ordered.push(key); seen.add(key); }
                   }
-                >
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-                    {latestImages.length > 0 ? latestImages.map((artwork) => (
-                      <div
-                        key={artwork.id}
-                        onClick={() => setLightbox({ url: artwork.imageUrl, artist: artwork.title })}
-                        style={{
-                          aspectRatio: "1",
-                          borderRadius: "var(--novae-radius-md)",
-                          overflow: "hidden",
-                          backgroundColor: "var(--novae-bg-main)",
-                          position: "relative",
-                          cursor: "zoom-in",
-                        }}
-                      >
-                        <SensitiveImageWrapper sensitiveType={artwork.sensitiveType} className="absolute inset-0">
-                          <Image src={artwork.thumbnailUrl ?? artwork.imageUrl} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" style={{ pointerEvents: "none" }} />
-                        </SensitiveImageWrapper>
-                        <SensitiveBadge sensitiveType={artwork.sensitiveType} side="left" />
-                        {isOwner && (
-                          <div className="artwork-actions" style={{ position: "absolute", top: 4, right: 4, display: "flex", gap: 3, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
-                            <button onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit">
-                              <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); deleteArtwork(artwork.id); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }} title="Delete">×</button>
-                          </div>
-                        )}
-                      </div>
-                    )) : (
-                      [1,2,3,4].map((i) => (
-                        <div key={i} style={{ aspectRatio: "1", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-bg-main)" }} />
-                      ))
-                    )}
-                  </div>
-                </SectionCard>
+                  for (const key of defaultOrder) {
+                    if (!seen.has(key)) { ordered.push(key); seen.add(key); }
+                  }
+                  const visibleKeys = ordered.filter((key) => visibility[key]);
+                  const draggable = !!(isOwner && editing);
 
-                {/* Story section — read-only preview, edit happens in Story tab */}
-                {summary && (
-                  <SectionCard
-                    title="Story"
-                    action={
-                      <button onClick={() => setActiveTab("story")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
-                        View more
-                      </button>
-                    }
-                  >
-                    <EditorRenderer content={summary} />
-                  </SectionCard>
-                )}
-
-                {/* Music section */}
-                {(tracks.length > 0 || !!spotifyPlaylistUrl || editing) && (
-                  <SectionCard title="Music">
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {tracks.map((track, i) => (
-                        <div key={track.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", width: 20, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
-                          {editing ? (
-                            <>
-                              <input
-                                value={track.title}
-                                onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, title: e.target.value } : t))}
-                                placeholder="Title"
-                                style={{ ...inputStyle, flex: 2, fontSize: "var(--novae-text-sm)" }}
-                              />
-                              <input
-                                value={track.artist}
-                                onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, artist: e.target.value } : t))}
-                                placeholder="Artist"
-                                style={{ ...inputStyle, flex: 1, fontSize: "var(--novae-text-sm)" }}
-                              />
-                              <button
-                                onClick={() => setTracks((prev) => prev.filter((t) => t.id !== track.id))}
-                                style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px", flexShrink: 0 }}
-                              >×</button>
-                            </>
-                          ) : (
-                            <div style={{ display: "flex", flex: 1, gap: 8, alignItems: "baseline" }}>
-                              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{track.title}</span>
-                              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{track.artist}</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {editing && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-                          <button
-                            onClick={() => setTracks((prev) => [...prev, { id: crypto.randomUUID(), title: "", artist: "" }])}
-                            style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            Add a track
-                          </button>
-                          <PlaylistImport onImport={(imported) => setTracks((prev) => [...prev, ...imported])} />
-                          {tracks.length > 0 && (
+                  const renderBlock = (key: string): React.ReactNode => {
+                    if (key === "latestImages") {
+                      return (
+                        <SectionCard
+                          title="Latest Images"
+                          action={
                             <button
-                              onClick={() => setTracks([])}
-                              style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
+                              onClick={() => setActiveTab("gallery")}
+                              style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                              Clear playlist
+                              View more
                             </button>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Spotify embed */}
-                      {(() => {
-                        const spotifyId = spotifyPlaylistUrl.trim().match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
-                        return (
-                          <>
-                            {spotifyId && !editing && (
-                              <iframe
-                                src={`https://open.spotify.com/embed/playlist/${spotifyId}?utm_source=generator&theme=0`}
-                                width="100%"
-                                height="352"
-                                frameBorder="0"
-                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                loading="lazy"
-                                style={{ borderRadius: "var(--novae-radius-md)", marginTop: tracks.length > 0 ? 12 : 0 }}
-                              />
+                          }
+                        >
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                            {latestImages.length > 0 ? latestImages.map((artwork) => (
+                              <div
+                                key={artwork.id}
+                                onClick={() => setLightbox({ url: artwork.imageUrl, artist: artwork.title })}
+                                style={{
+                                  aspectRatio: "1",
+                                  borderRadius: "var(--novae-radius-md)",
+                                  overflow: "hidden",
+                                  backgroundColor: "var(--novae-bg-main)",
+                                  position: "relative",
+                                  cursor: "zoom-in",
+                                }}
+                              >
+                                <SensitiveImageWrapper sensitiveType={artwork.sensitiveType} className="absolute inset-0">
+                                  <Image src={artwork.thumbnailUrl ?? artwork.imageUrl} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" style={{ pointerEvents: "none" }} />
+                                </SensitiveImageWrapper>
+                                <SensitiveBadge sensitiveType={artwork.sensitiveType} side="left" />
+                                {isOwner && (
+                                  <div className="artwork-actions" style={{ position: "absolute", top: 4, right: 4, display: "flex", gap: 3, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
+                                    <button onClick={(e) => { e.stopPropagation(); openEditCredits(artwork); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit">
+                                      <svg width="10" height="10" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); deleteArtwork(artwork.id); }} style={{ width: 24, height: 24, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }} title="Delete">×</button>
+                                  </div>
+                                )}
+                              </div>
+                            )) : (
+                              [1,2,3,4].map((i) => (
+                                <div key={i} style={{ aspectRatio: "1", borderRadius: "var(--novae-radius-md)", backgroundColor: "var(--novae-bg-main)" }} />
+                              ))
                             )}
+                          </div>
+                        </SectionCard>
+                      );
+                    }
+
+                    if (key === "storySummary") {
+                      return (
+                        <SectionCard
+                          title="Story"
+                          action={
+                            <button onClick={() => setActiveTab("story")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
+                              View more
+                            </button>
+                          }
+                        >
+                          <EditorRenderer content={summary} />
+                        </SectionCard>
+                      );
+                    }
+
+                    if (key === "music") {
+                      return (
+                        <SectionCard title="Music">
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {tracks.map((track, i) => (
+                              <div key={track.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", width: 20, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
+                                {editing ? (
+                                  <>
+                                    <input
+                                      value={track.title}
+                                      onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, title: e.target.value } : t))}
+                                      placeholder="Title"
+                                      style={{ ...inputStyle, flex: 2, fontSize: "var(--novae-text-sm)" }}
+                                    />
+                                    <input
+                                      value={track.artist}
+                                      onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, artist: e.target.value } : t))}
+                                      placeholder="Artist"
+                                      style={{ ...inputStyle, flex: 1, fontSize: "var(--novae-text-sm)" }}
+                                    />
+                                    <button
+                                      onClick={() => setTracks((prev) => prev.filter((t) => t.id !== track.id))}
+                                      style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px", flexShrink: 0 }}
+                                    >×</button>
+                                  </>
+                                ) : (
+                                  <div style={{ display: "flex", flex: 1, gap: 8, alignItems: "baseline" }}>
+                                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{track.title}</span>
+                                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{track.artist}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
                             {editing && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: tracks.length > 0 ? 8 : 0 }}>
-                                <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-                                  Spotify playlist URL
-                                </label>
-                                <input
-                                  value={spotifyPlaylistUrl}
-                                  onChange={(e) => setSpotifyPlaylistUrl(e.target.value)}
-                                  placeholder="https://open.spotify.com/playlist/…"
-                                  style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                                />
-                                {spotifyId && (
-                                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-                                    ✓ Playlist detected
-                                  </span>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+                                <button
+                                  onClick={() => setTracks((prev) => [...prev, { id: crypto.randomUUID(), title: "", artist: "" }])}
+                                  style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                  Add a track
+                                </button>
+                                <PlaylistImport onImport={(imported) => setTracks((prev) => [...prev, ...imported])} />
+                                {tracks.length > 0 && (
+                                  <button
+                                    onClick={() => setTracks([])}
+                                    style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                    Clear playlist
+                                  </button>
                                 )}
                               </div>
                             )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </SectionCard>
-                )}
 
-                {/* Custom containers */}
-                {customContainers.map((container) => (
-                  <SectionCard
-                    key={container.id}
-                    title={
-                      editing ? (
-                        <input
-                          value={container.title}
-                          placeholder="Section title"
-                          onChange={(e) => setCustomContainers((prev) =>
-                            prev.map((c) => c.id === container.id ? { ...c, title: e.target.value } : c)
-                          )}
-                          style={{
-                            background: "none", border: "none", outline: "none",
-                            fontFamily: "var(--font-space-grotesk)",
-                            fontSize: "var(--novae-text-base)",
-                            fontWeight: 700,
-                            color: "var(--novae-text-primary)",
-                            width: "100%",
-                            padding: 0,
-                          }}
-                        />
-                      ) : container.title
+                            {/* Spotify embed */}
+                            {(() => {
+                              const spotifyId = spotifyPlaylistUrl.trim().match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
+                              return (
+                                <>
+                                  {spotifyId && !editing && (
+                                    <iframe
+                                      src={`https://open.spotify.com/embed/playlist/${spotifyId}?utm_source=generator&theme=0`}
+                                      width="100%"
+                                      height="352"
+                                      frameBorder="0"
+                                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                      loading="lazy"
+                                      style={{ borderRadius: "var(--novae-radius-md)", marginTop: tracks.length > 0 ? 12 : 0 }}
+                                    />
+                                  )}
+                                  {editing && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: tracks.length > 0 ? 8 : 0 }}>
+                                      <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                                        Spotify playlist URL
+                                      </label>
+                                      <input
+                                        value={spotifyPlaylistUrl}
+                                        onChange={(e) => setSpotifyPlaylistUrl(e.target.value)}
+                                        placeholder="https://open.spotify.com/playlist/…"
+                                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                                      />
+                                      {spotifyId && (
+                                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+                                          ✓ Playlist detected
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </SectionCard>
+                      );
                     }
-                    action={
-                      editing ? (
-                        <button
-                          onClick={() => setCustomContainers((prev) => prev.filter((c) => c.id !== container.id))}
-                          style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
-                        >×</button>
-                      ) : undefined
-                    }
-                  >
-                    {editing ? (
-                      <>
-                        <EditorField
-                          value={container.content}
-                          onChange={(val) => setCustomContainers((prev) =>
-                            prev.map((c) => c.id === container.id ? { ...c, content: val } : c)
+
+                    if (key.startsWith("custom:")) {
+                      const containerId = key.slice("custom:".length);
+                      const container = customContainers.find((c) => c.id === containerId);
+                      if (!container) return null;
+                      return (
+                        <SectionCard
+                          title={
+                            editing ? (
+                              <input
+                                value={container.title}
+                                placeholder="Section title"
+                                onChange={(e) => setCustomContainers((prev) =>
+                                  prev.map((c) => c.id === container.id ? { ...c, title: e.target.value } : c)
+                                )}
+                                style={{
+                                  background: "none", border: "none", outline: "none",
+                                  fontFamily: "var(--font-space-grotesk)",
+                                  fontSize: "var(--novae-text-base)",
+                                  fontWeight: 700,
+                                  color: "var(--novae-text-primary)",
+                                  width: "100%",
+                                  padding: 0,
+                                }}
+                              />
+                            ) : container.title
+                          }
+                          action={
+                            editing ? (
+                              <button
+                                onClick={() => setCustomContainers((prev) => prev.filter((c) => c.id !== container.id))}
+                                style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
+                              >×</button>
+                            ) : undefined
+                          }
+                        >
+                          {editing ? (
+                            <>
+                              <EditorField
+                                value={container.content}
+                                onChange={(val) => setCustomContainers((prev) =>
+                                  prev.map((c) => c.id === container.id ? { ...c, content: val } : c)
+                                )}
+                                placeholder="Write something…"
+                              />
+                              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                                <button
+                                  onClick={save}
+                                  disabled={saving}
+                                  style={{ background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-sm)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, padding: "6px 16px", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
+                                >
+                                  {saving ? "Saving…" : "Save"}
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <EditorRenderer content={container.content} />
                           )}
-                          placeholder="Write something…"
-                        />
-                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-                          <button
-                            onClick={save}
-                            disabled={saving}
-                            style={{ background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-sm)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, padding: "6px 16px", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
-                          >
-                            {saving ? "Saving…" : "Save"}
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <EditorRenderer content={container.content} />
-                    )}
-                  </SectionCard>
-                ))}
+                        </SectionCard>
+                      );
+                    }
+
+                    return null;
+                  };
+
+                  return (
+                    <DndContext
+                      sensors={profileSensors}
+                      onDragEnd={(e: DragEndEvent) => {
+                        const { active, over } = e;
+                        if (!over || active.id === over.id) return;
+                        const oldIdx = visibleKeys.indexOf(active.id as string);
+                        const newIdx = visibleKeys.indexOf(over.id as string);
+                        if (oldIdx === -1 || newIdx === -1) return;
+                        const reordered = arrayMove(visibleKeys, oldIdx, newIdx);
+                        const hiddenKeys = ordered.filter((k) => !visibility[k]);
+                        setBlockOrder([...reordered, ...hiddenKeys]);
+                      }}
+                    >
+                      <SortableContext items={visibleKeys} strategy={verticalListSortingStrategy}>
+                        {visibleKeys.map((key) => (
+                          <SortableBlock key={key} id={key} draggable={draggable}>
+                            {renderBlock(key)}
+                          </SortableBlock>
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  );
+                })()}
 
                 {isOwner && editing && (
                   <button
@@ -2901,10 +3238,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           <SectionCard title="Statistics">
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               {[
-                { count: artworks.length, label: "images" },
-                { count: relationships.length, label: "relations" },
-                { count: favoritesCount, label: "favorites" },
-                { count: tags.length, label: "tags" },
+                { count: artworks.length, label: t.statLabelImages },
+                { count: relationships.length, label: t.statLabelRelationships },
+                { count: favoritesCount, label: t.statLabelFavorites },
+                { count: tags.length, label: t.statLabelTags },
               ].map(({ count, label }) => (
                 <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                   <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-2xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
