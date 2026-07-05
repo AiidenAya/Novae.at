@@ -64,10 +64,18 @@ export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, isDesigner, designerCredit, isWriter, writerCredit } = await req.json();
+  const { name, isDesigner, designerCredit, isWriter, writerCredit, baseCharacterId, variantLabel } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
   const slug = await uniqueSlug(toSlug(name.trim()));
+
+  let baseCharacter: { id: string; userId: string } | null = null;
+  if (baseCharacterId) {
+    baseCharacter = await prisma.character.findUnique({ where: { id: baseCharacterId }, select: { id: true, userId: true } });
+    if (!baseCharacter || baseCharacter.userId !== session.user.id) {
+      return NextResponse.json({ error: "Base character not found" }, { status: 404 });
+    }
+  }
 
   const character = await prisma.character.create({
     data: {
@@ -78,6 +86,7 @@ export async function POST(req: NextRequest) {
       designerCredit: isDesigner !== false ? null : (designerCredit ?? null),
       isWriter: isWriter !== false,
       writerCredit: isWriter !== false ? null : (writerCredit ?? null),
+      ...(baseCharacter && { baseCharacterId: baseCharacter.id, variantLabel: variantLabel?.trim() || null }),
     },
   });
 

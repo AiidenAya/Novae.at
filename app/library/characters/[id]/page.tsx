@@ -22,6 +22,13 @@ export default async function CharacterPage({ params }: Props) {
     include: {
       user:    { select: { username: true } },
       folder:  { select: { isPublic: true } },
+      baseCharacter: {
+        select: {
+          id: true, name: true, numId: true, slug: true, avatarUrl: true, isPublic: true,
+          variants: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, variantLabel: true, isPublic: true }, orderBy: { createdAt: "asc" } },
+        },
+      },
+      variants: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, variantLabel: true, isPublic: true }, orderBy: { createdAt: "asc" } },
       artworks: { orderBy: { createdAt: "desc" }, include: { characters: { select: { id: true, name: true, numId: true, slug: true } } } },
       tags:          { include: { tag: true } },
       colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
@@ -47,6 +54,11 @@ export default async function CharacterPage({ params }: Props) {
     ...character,
     relationshipsA: character.relationshipsA.filter((r) => r.status === "accepted" || isOwner),
     relationshipsB: character.relationshipsB.filter((r) => r.status === "accepted"),
+    variants: character.variants.filter((v) => v.isPublic || isOwner),
+    baseCharacter: character.baseCharacter && {
+      ...character.baseCharacter,
+      variants: character.baseCharacter.variants.filter((v) => v.isPublic || isOwner),
+    },
   };
 
   return (
