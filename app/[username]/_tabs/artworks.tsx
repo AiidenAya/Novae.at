@@ -46,7 +46,7 @@ function Lightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => voi
   return (
     <div
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "var(--novae-bg-main)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, cursor: "zoom-out" }}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "transparent", backdropFilter: "blur(8px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, cursor: "zoom-out" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -257,7 +257,7 @@ export default function ArtworksTab({
       {editingId && (
         <div
           onClick={() => setEditingId(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 999, background: "var(--novae-bg-main)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ position: "fixed", inset: 0, zIndex: 999, background: "transparent", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <div
             onClick={(e) => e.stopPropagation()}

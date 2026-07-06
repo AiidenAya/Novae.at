@@ -291,7 +291,7 @@ function TicketButton() {
                 </div>
               ) : (
                 <>
-                  {error && <p style={{ color: "#ff6b7a", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
+                  {error && <p style={{ color: "#ff6b7a", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", margin: 0 }}>{error}</p>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description</label>
                     <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} placeholder={t.reportPlaceholder} style={inp} />

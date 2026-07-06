@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const type = searchParams.get("type");
   const q = searchParams.get("q")?.trim() ?? "";
+  const tag = searchParams.get("tag")?.trim() ?? "";
   const skip = Math.max(parseInt(searchParams.get("skip") ?? "0") || 0, 0);
 
   if (type === "characters") {
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
         isPublic: true,
         OR: [{ folderId: null }, { folder: { isPublic: true } }],
         ...(q && { name: { contains: q, mode: "insensitive" } }),
+        ...(tag && { tags: { some: { tag: { name: tag } } } }),
       },
       orderBy: { createdAt: "desc" },
       skip,

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useT } from "@/lib/locale-context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -57,31 +58,34 @@ function UserCard({ user }: { user: BrowseUser }) {
   if (!user.username) return null;
   return (
     <Link href={`/${user.username}`} style={{ textDecoration: "none", display: "block" }}>
-      <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-        <div style={{ position: "relative", width: 48, height: 48, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)", flexShrink: 0 }}>
+      <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
+        <div style={{ position: "relative", aspectRatio: "1/1", background: "rgba(105,61,169,0.1)" }}>
           {user.avatar
-            ? <Image src={user.avatar} alt={user.name ?? user.username} fill sizes="48px" style={{ objectFit: "cover" }} />
-            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-space-grotesk)", fontWeight: 700, fontSize: 20, color: "var(--novae-text-link)" }}>
+            ? <Image src={user.avatar} alt={user.name ?? user.username} fill sizes="(max-width: 768px) 45vw, 200px" style={{ objectFit: "cover" }} />
+            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-space-grotesk)", fontWeight: 700, fontSize: 36, color: "var(--novae-text-link)" }}>
                 {(user.name ?? user.username)?.[0]?.toUpperCase() ?? "?"}
               </div>
           }
         </div>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+        <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-link)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {user.name ?? user.username}
           </span>
-          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             @{user.username}
           </span>
-          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-            <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-              {user._count.characters} chars
+          <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
+            <span title="Characters" style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>
+              {user._count.characters}
             </span>
-            <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-              {user._count.artworks} arts
+            <span title="Artworks" style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              {user._count.artworks}
             </span>
-            <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-              {user._count.followers} followers
+            <span title="Followers" style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22 21v-1a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              {user._count.followers}
             </span>
           </div>
         </div>
@@ -93,23 +97,26 @@ function UserCard({ user }: { user: BrowseUser }) {
 // ── Browse client ─────────────────────────────────────────────────────────────
 
 type Props =
-  | { type: "characters"; initialItems: BrowseCharacter[]; initialHasMore: boolean }
+  | { type: "characters"; initialItems: BrowseCharacter[]; initialHasMore: boolean; initialTag?: string }
   | { type: "users"; initialItems: BrowseUser[]; initialHasMore: boolean };
 
-export function BrowseClient({ type, initialItems, initialHasMore }: Props) {
+export function BrowseClient({ type, initialItems, initialHasMore, ...rest }: Props) {
+  const initialTag = "initialTag" in rest ? rest.initialTag ?? "" : "";
   const { t } = useT();
+  const router = useRouter();
   const [q, setQ] = useState("");
+  const [tag, setTag] = useState(initialTag);
   const [items, setItems] = useState<(BrowseCharacter | BrowseUser)[]>(initialItems);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestId = useRef(0);
 
-  async function load(query: string, skip: number, append: boolean) {
+  async function load(query: string, skip: number, append: boolean, tagFilter: string) {
     const id = ++requestId.current;
     setLoading(true);
     try {
-      const res = await fetch(`/api/browse?type=${type}&q=${encodeURIComponent(query)}&skip=${skip}`);
+      const res = await fetch(`/api/browse?type=${type}&q=${encodeURIComponent(query)}&skip=${skip}&tag=${encodeURIComponent(tagFilter)}`);
       if (!res.ok) return;
       const data = await res.json();
       if (id !== requestId.current) return; // stale response
@@ -125,9 +132,14 @@ export function BrowseClient({ type, initialItems, initialHasMore }: Props) {
   useEffect(() => {
     if (first.current) { first.current = false; return; }
     if (debounce.current) clearTimeout(debounce.current);
-    debounce.current = setTimeout(() => load(q, 0, false), 300);
+    debounce.current = setTimeout(() => load(q, 0, false, tag), 300);
     return () => { if (debounce.current) clearTimeout(debounce.current); };
-  }, [q]);
+  }, [q, tag]);
+
+  const clearTag = () => {
+    setTag("");
+    router.replace("/browse/characters");
+  };
 
   const isChars = type === "characters";
 
@@ -159,13 +171,30 @@ export function BrowseClient({ type, initialItems, initialHasMore }: Props) {
         </div>
       </div>
 
+      {isChars && tag && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+            Filtering by
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: "var(--novae-radius-sm)", border: "0.5px solid var(--novae-outline-tag)", background: "var(--novae-bg-tag)", fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-tag)" }}>
+            #{tag}
+            <button
+              onClick={clearTag}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: 14 }}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )}
+
       {/* Results */}
       {items.length === 0 && !loading ? (
         <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
           {q ? t.browseNoResults.replace("{q}", q) : t.browseEmpty}
         </p>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: isChars ? "repeat(auto-fill, minmax(150px, 1fr))" : "repeat(auto-fill, minmax(240px, 1fr))", gap: 12, opacity: loading ? 0.6 : 1, transition: "opacity 0.15s" }}>
+        <div className={isChars ? undefined : "browse-users-grid"} style={{ display: "grid", gridTemplateColumns: isChars ? "repeat(auto-fill, minmax(150px, 1fr))" : "repeat(8, minmax(0, 1fr))", gap: 12, opacity: loading ? 0.6 : 1, transition: "opacity 0.15s" }}>
           {isChars
             ? (items as BrowseCharacter[]).map((c) => <CharCard key={c.id} char={c} />)
             : (items as BrowseUser[]).map((u) => <UserCard key={u.id} user={u} />)}
@@ -175,7 +204,7 @@ export function BrowseClient({ type, initialItems, initialHasMore }: Props) {
       {/* Load more */}
       {hasMore && (
         <button
-          onClick={() => load(q, items.length, true)}
+          onClick={() => load(q, items.length, true, tag)}
           disabled={loading}
           style={{
             alignSelf: "center", padding: "10px 24px", borderRadius: "var(--novae-radius-md)",

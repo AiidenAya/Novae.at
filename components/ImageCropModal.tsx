@@ -62,7 +62,7 @@ export default function ImageCropModal({ src, filename, originalFile, aspect = 1
 
   const overlay: React.CSSProperties = {
     position: "fixed", inset: 0, zIndex: 2000,
-    background: "var(--novae-bg-main)",
+    background: "transparent", backdropFilter: "blur(8px)",
     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, padding: 24,
   };
 

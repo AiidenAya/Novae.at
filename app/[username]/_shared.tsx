@@ -61,7 +61,7 @@ export function Card({ children, style }: { children: React.ReactNode; style?: R
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", width: "100%" }}>
-      <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 400, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.35em", display: "block" }}>
+      <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--novae-text-secondary)", flex: 1 }}>
         {children}
       </span>
       <div style={{ height: 1, width: "25%", backgroundColor: "var(--novae-outline-all)" }} />
