@@ -98,15 +98,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
     : null;
 
-  // When not the owner, filter out hidden folders and characters inside them
+  // Hidden folders never show on the public profile, even to their owner
   const visibleFolderIds = new Set(
     (user?.characterFolders ?? [])
-      .filter((f) => isOwner || f.isPublic)
+      .filter((f) => f.isPublic)
       .map((f) => f.id)
   );
   const hiddenFolderIds = new Set(
     (user?.characterFolders ?? [])
-      .filter((f) => !isOwner && !f.isPublic)
+      .filter((f) => !f.isPublic)
       .map((f) => f.id)
   );
 
@@ -124,7 +124,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     }));
 
   const dbFolders = (user?.characterFolders ?? [])
-    .filter((f) => isOwner || f.isPublic)
+    .filter((f) => f.isPublic)
     .map((f) => ({ id: f.id, name: f.name }));
 
   const dbProfile = user

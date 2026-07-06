@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -1134,7 +1135,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       {editingCredits && (
         <div
           onClick={() => setEditingCredits(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 999, background: "var(--novae-bg-main)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ position: "fixed", inset: 0, zIndex: 999, background: "transparent", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1342,7 +1343,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           onClick={() => setLightbox(null)}
           style={{
             position: "fixed", inset: 0, zIndex: 1000,
-            background: "var(--novae-bg-main)",
+            background: "transparent", backdropFilter: "blur(8px)",
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16,
             cursor: "zoom-out",
           }}
@@ -1472,14 +1473,14 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           onClick={() => { setPendingFiles(null); setArtworkThumbnailFile(null); }}
           style={{
             position: "fixed", inset: 0, zIndex: 999,
-            background: "rgba(0,0,0,0.6)",
+            background: "transparent", backdropFilter: "blur(8px)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "var(--novae-bg-card)",
+              background: "var(--novae-bg-main)",
               border: "1px solid var(--novae-outline-all)",
               borderRadius: "var(--novae-radius-lg)",
               padding: 32,
@@ -1934,38 +1935,38 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           {showAuModal && (
             <div
               onClick={() => !creatingAu && setShowAuModal(false)}
-              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+              style={{ position: "fixed", inset: 0, background: "transparent", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "var(--novae-space-xl)", width: 380, display: "flex", flexDirection: "column", gap: 12 }}
+                style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "var(--novae-space-xl)", width: 380, display: "flex", flexDirection: "column", gap: 12 }}
               >
                 <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", color: "var(--novae-text-primary)" }}>
                   {t.auModalTitle}
                 </h3>
-                <p style={{ margin: 0, fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+                <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
                   {t.auModalDescription.replace("{name}", rootCharacter.name)}
                 </p>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{t.auNameLabel}</span>
+                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{t.auNameLabel}</span>
                   <input value={auName} onChange={(e) => setAuName(e.target.value)} style={inputStyle} placeholder={t.auNamePlaceholder} />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{t.auLabelLabel}</span>
+                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{t.auLabelLabel}</span>
                   <input value={auLabel} onChange={(e) => setAuLabel(e.target.value)} style={inputStyle} placeholder={t.auLabelPlaceholder} />
                 </label>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
                   <button
                     onClick={() => setShowAuModal(false)}
                     disabled={creatingAu}
-                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "1px solid var(--novae-outline-all)", background: "transparent", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "1px solid var(--novae-outline-all)", background: "transparent", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", cursor: "pointer" }}
                   >
                     {t.cancel}
                   </button>
                   <button
                     onClick={createAlternateUniverse}
                     disabled={creatingAu || !auName.trim()}
-                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "none", background: "var(--novae-btn-primary)", color: "#fff", fontWeight: 600, cursor: creatingAu ? "not-allowed" : "pointer", opacity: creatingAu || !auName.trim() ? 0.7 : 1 }}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "none", background: "var(--novae-btn-primary)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontWeight: 600, cursor: creatingAu ? "not-allowed" : "pointer", opacity: creatingAu || !auName.trim() ? 0.7 : 1 }}
                   >
                     {creatingAu ? t.auCreating : t.auCreate}
                   </button>
@@ -1977,30 +1978,30 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           {auToDelete && (
             <div
               onClick={() => !deletingAu && setAuToDelete(null)}
-              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+              style={{ position: "fixed", inset: 0, background: "transparent", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "var(--novae-space-xl)", width: 380, display: "flex", flexDirection: "column", gap: 12 }}
+                style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "var(--novae-space-xl)", width: 380, display: "flex", flexDirection: "column", gap: 12 }}
               >
                 <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", color: "var(--novae-text-primary)" }}>
                   {t.auDeleteModalTitle}
                 </h3>
-                <p style={{ margin: 0, fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
+                <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
                   {t.auDeleteModalBody.replace("{label}", auToDelete.label)}
                 </p>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
                   <button
                     onClick={() => setAuToDelete(null)}
                     disabled={deletingAu}
-                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "1px solid var(--novae-outline-all)", background: "transparent", color: "var(--novae-text-secondary)", cursor: "pointer" }}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "1px solid var(--novae-outline-all)", background: "transparent", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", cursor: "pointer" }}
                   >
                     {t.cancel}
                   </button>
                   <button
                     onClick={confirmDeleteAlternateUniverse}
                     disabled={deletingAu}
-                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "none", background: "#e05252", color: "#fff", fontWeight: 600, cursor: deletingAu ? "not-allowed" : "pointer", opacity: deletingAu ? 0.7 : 1 }}
+                    style={{ padding: "8px 16px", borderRadius: "var(--novae-radius-md)", border: "none", background: "#e05252", color: "#fff", fontFamily: "var(--font-dm-sans)", fontWeight: 600, cursor: deletingAu ? "not-allowed" : "pointer", opacity: deletingAu ? 0.7 : 1 }}
                   >
                     {deletingAu ? t.auDeleting : t.auDelete}
                   </button>
@@ -2814,8 +2815,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
               {/* Add Relationship Modal */}
               {showAddRel && (
-                <div style={{ position: "fixed", inset: 0, background: "var(--novae-bg-main)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddRel(false); }}>
-                  <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 420, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ position: "fixed", inset: 0, background: "transparent", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddRel(false); }}>
+                  <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 420, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 16 }}>
                     <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Add Relationship</h3>
 
                     {/* Mode toggle: site character vs external */}
@@ -2996,8 +2997,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               {editingRel && (() => {
                 const otherChar = relationships.find((r) => r.id === editingRel.id)?.character;
                 return (
-                  <div style={{ position: "fixed", inset: 0, background: "var(--novae-bg-main)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setEditingRel(null); }}>
-                    <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 460, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div style={{ position: "fixed", inset: 0, background: "transparent", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setEditingRel(null); }}>
+                    <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 460, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 20 }}>
                       <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Edit Relationship</h3>
 
                       {/* Character row with labels */}
@@ -3272,7 +3273,12 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     color: "var(--novae-text-tag)",
                   }}
                 >
-                  #{tag.name}
+                  <Link
+                    href={`/browse/characters?tag=${encodeURIComponent(tag.name)}`}
+                    style={{ color: "inherit", textDecoration: "none" }}
+                  >
+                    #{tag.name}
+                  </Link>
                   {editing && (
                     <button
                       onClick={() => removeTag(tagId)}

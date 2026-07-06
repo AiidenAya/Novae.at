@@ -5,9 +5,19 @@ export const revalidate = 60;
 
 const PAGE_SIZE = 24;
 
-export default async function BrowseCharactersPage() {
+export default async function BrowseCharactersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string }>;
+}) {
+  const { tag } = await searchParams;
+
   const chars = await prisma.character.findMany({
-    where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
+    where: {
+      isPublic: true,
+      OR: [{ folderId: null }, { folder: { isPublic: true } }],
+      ...(tag && { tags: { some: { tag: { name: tag } } } }),
+    },
     orderBy: { createdAt: "desc" },
     take: PAGE_SIZE + 1,
     select: {
@@ -22,6 +32,7 @@ export default async function BrowseCharactersPage() {
       type="characters"
       initialItems={chars.slice(0, PAGE_SIZE)}
       initialHasMore={chars.length > PAGE_SIZE}
+      initialTag={tag ?? ""}
     />
   );
 }

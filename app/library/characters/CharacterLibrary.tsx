@@ -272,6 +272,7 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
   const [folders, setFolders] = useState(initialFolders);
 
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
 
@@ -415,6 +416,7 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
   const viewChars = openFolderId
     ? localChars.filter((c) => c.folderId === openFolderId)
     : localChars.filter((c) => !c.folderId);
+  const allCharsSorted = [...localChars].sort((a, b) => a.name.localeCompare(b.name));
   const confirmChar = localChars.find((c) => c.id === confirmId);
   const activeChar = activeType === "character" ? localChars.find((c) => c.id === activeId) : undefined;
   const activeFolder = activeType === "folder" ? folders.find((f) => `folder-${f.id}` === activeId) : undefined;
@@ -437,8 +439,8 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
     <>
       {/* Delete confirm modal */}
       {confirmChar && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setConfirmId(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(360px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "transparent", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setConfirmId(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(360px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 20 }}>
             <div>
               <p style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 8px" }}>Delete character?</p>
               <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0, lineHeight: 1.5 }}>
@@ -512,6 +514,16 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
               Delete folder
             </button>
           </>
+        ) : showAll ? (
+          <>
+            <button onClick={() => setShowAll(false)} style={btnStyle}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+              Back
+            </button>
+            <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
+              All characters
+            </span>
+          </>
         ) : (
           <>
             {creatingFolder ? (
@@ -539,6 +551,12 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
               </button>
             )}
             {localChars.length > 0 && (
+              <button onClick={() => setShowAll(true)} style={btnStyle}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
+                Show all
+              </button>
+            )}
+            {localChars.length > 0 && (
               <button
                 onClick={() => { setSelectMode((v) => !v); if (selectMode) setSelected(new Set()); }}
                 style={{ ...btnStyle, marginLeft: "auto", color: selectMode ? "var(--novae-text-link)" : "var(--novae-text-secondary)", borderColor: selectMode ? "var(--novae-text-link)" : "var(--novae-outline-all)" }}
@@ -560,6 +578,13 @@ export default function CharacterLibrary({ characters, folders: initialFolders }
           <Link href="/library/new/character" style={{ color: "var(--novae-btn-primary)", fontSize: "var(--novae-text-sm)", textDecoration: "none", fontWeight: 600 }}>
             Create your first character →
           </Link>
+        </div>
+      ) : showAll ? (
+        /* ── Show all: flat, alphabetical, folders ignored ── */
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 20 }}>
+          {allCharsSorted.map((char) => (
+            <CharCard key={char.id} char={char} onDelete={setConfirmId} />
+          ))}
         </div>
       ) : openFolderId ? (
         /* ── Folder view ── */

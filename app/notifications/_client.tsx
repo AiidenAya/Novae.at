@@ -232,9 +232,9 @@ export function NotificationsClient({ notifications: initial }: { notifications:
   const unreadCount = notifs.filter((n) => !n.read).length;
 
   // categories that actually have notifications, in display order
-  const presentCategories = CATEGORY_ORDER.filter((c) => notifs.some((n) => categoryOf(n.type) === c));
+  const presentCategories = CATEGORY_ORDER.filter((c) => notifs.some((n) => !n.read && categoryOf(n.type) === c));
 
-  const visible = filter === "all" ? notifs : notifs.filter((n) => categoryOf(n.type) === filter);
+  const visible = (filter === "all" ? notifs : notifs.filter((n) => categoryOf(n.type) === filter)).filter((n) => !n.read);
   const sections = CATEGORY_ORDER
     .filter((c) => filter === "all" || filter === c)
     .map((c) => ({ category: c, items: visible.filter((n) => categoryOf(n.type) === c) }))

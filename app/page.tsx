@@ -176,7 +176,7 @@ async function DiscoverCharsSection() {
       user: { select: { username: true, name: true } },
     },
   });
-  const randomChars = shuffle(chars).slice(0, 7);
+  const randomChars = shuffle(chars).filter((c) => c.avatarUrl).slice(0, 8);
 
   if (randomChars.length === 0) {
     return <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)" }}>No characters yet.</p>;
@@ -229,12 +229,7 @@ export default function Home() {
 
       {/* Latest characters */}
       <section>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <SectionHeading>Recently added</SectionHeading>
-          <Link href="/browse/characters" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-link)", textDecoration: "none", fontStyle: "italic", marginTop: 4, flexShrink: 0 }}>
-            Browse all →
-          </Link>
-        </div>
+        <SectionHeading>Recently added</SectionHeading>
         <Suspense fallback={<CharGridSkeleton />}>
           <LatestSection />
         </Suspense>
@@ -242,7 +237,12 @@ export default function Home() {
 
       {/* Discover characters */}
       <section>
-        <SectionHeading>Discover characters</SectionHeading>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <SectionHeading>Discover characters</SectionHeading>
+          <Link href="/browse/characters" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-link)", textDecoration: "none", fontStyle: "italic", marginTop: 4, flexShrink: 0 }}>
+            Browse all →
+          </Link>
+        </div>
         <Suspense fallback={<CharGridSkeleton />}>
           <DiscoverCharsSection />
         </Suspense>
@@ -250,7 +250,12 @@ export default function Home() {
 
       {/* Discover creators */}
       <section>
-        <SectionHeading>Discover creators</SectionHeading>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <SectionHeading>Discover creators</SectionHeading>
+          <Link href="/browse/users" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-link)", textDecoration: "none", fontStyle: "italic", marginTop: 4, flexShrink: 0 }}>
+            Browse all →
+          </Link>
+        </div>
         <Suspense fallback={<UserGridSkeleton />}>
           <DiscoverUsersSection />
         </Suspense>
