@@ -198,9 +198,9 @@ function Badge({ count }: { count: number }) {
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
 
-function Logo() {
+function Logo({ href }: { href: string }) {
   return (
-    <Link href="/" aria-label="Novae home" className="flex items-center shrink-0">
+    <Link href={href} aria-label="Novae home" className="flex items-center shrink-0">
       <svg height="36" viewBox="0 0 638.39 258.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path fill="currentColor" d="M167.03,234.69c1.1,6.16-6.2,10.25-10.88,6.08-5.28-4.7-10.66-9.53-13.52-12.23-13.51-12.75-35.25-31.09-52.98-52.13-36.71-43.57-33.65-40.63-28.76-2.69,2.37,18.34-2.12,46.89-8.09,56.76-3.6,5.94-15.98,13.79-22.4,16.42-7.5,3.07-30.4,11.19-30.4,11.19,0,0,26.39-17.03,37.61-75.74,5.84-30.57-6.14-66.58-9.69-92.89-.04-.28-.06-.56-.08-.85-.58-7.82-4.8-24.6-7.9-38.4-1.35-6,6.37-9.67,10.18-4.85,5.48,6.95,11.22,14.39,13.96,18.5,9.6,14.42,24.33,41.23,34.25,55.43,10.77,15.42,37.2,47.24,48.6,62.19,1.29,1.69,9.97,14.65,7.94,3.01-9.74-55.81-5.07-141.85,30.49-171.51,18.77-15.66,43.87-22.87,81.34,11.89,15.83,14.69,28.7,57.92,28.7,57.92,0,0-45.97-69.01-81.78-58.79-33.25,18.16-36.38,65.27-36.38,65.27,0,0-1.65,59.97-.32,78.44,1.06,14.77,6.46,46.54,10.1,66.97Z"/>
         <path fill="currentColor" d="M239.77,230.2c-66.83,19.32-80.26-101.9-12.21-104.94,54.88,5.6,62.58,85.76,12.21,104.94ZM244.07,204.37c19.08-19.5,15.13-62.26-13.76-62.37-45.43-.16-21.9,98.8,13.76,62.37Z"/>
@@ -382,17 +382,22 @@ export default function Navbar() {
   });
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const logoHref = session ? "/home" : "/";
 
   return (
     <>
       {/* Mobile menu — sibling of header so backdrop-filter doesn't trap it */}
       <div className={`nav-mobile-menu${mobileOpen ? " open" : ""}`} onClick={() => setMobileOpen(false)}>
-        <Link href="/" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconHome />{t.navHome}</Link>
-        <Link href="/library/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navLibrary}</Link>
-        <Link href="/library/favorites" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />Favorites</Link>
-        <Link href="/browse/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconSearch />{t.navBrowse}</Link>
-        <Link href="/community" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconGroup />{t.navCommunity}</Link>
-        <div style={{ height: 1, background: "var(--novae-outline-all)", margin: "8px 0" }} />
+        {session && (
+          <>
+            <Link href="/home" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconHome />{t.navHome}</Link>
+            <Link href="/library/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navLibrary}</Link>
+            <Link href="/library/favorites" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />Favorites</Link>
+            <Link href="/browse/characters" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconSearch />{t.navBrowse}</Link>
+            <Link href="/community" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconGroup />{t.navCommunity}</Link>
+            <div style={{ height: 1, background: "var(--novae-outline-all)", margin: "8px 0" }} />
+          </>
+        )}
         {session ? (
           <>
             <Link href="/library/new" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-btn-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 600 }}><IconPlus />{t.navNew}</Link>
@@ -419,68 +424,73 @@ export default function Navbar() {
 
       {/* Left — Logo + nav */}
       <div className="flex items-center self-stretch gap-4 md:gap-8">
-        <Logo />
-        <div className="nav-links w-px h-10 shrink-0" style={{ backgroundColor: "var(--novae-outline-all)" }} />
+        <Logo href={logoHref} />
 
-        <nav className="nav-links items-center self-stretch gap-6 xl:gap-8">
-          {/* Home */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
-            style={navItemStyle(pathname === "/")}
-          >
-            <IconHome />
-            {t.navHome}
-          </Link>
+        {session && (
+          <>
+            <div className="nav-links w-px h-10 shrink-0" style={{ backgroundColor: "var(--novae-outline-all)" }} />
 
-          {/* My Library */}
-          <div className="relative self-stretch flex items-center">
-            <button
-              onClick={() => toggle("library")}
-              className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
-              style={navItemStyle(pathname.startsWith("/library"))}
-            >
-              <IconUser />
-              {t.navLibrary}
-              <span style={{ color: "var(--novae-text-secondary)", transform: open === "library" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-                <IconChevron />
-              </span>
-            </button>
-            {open === "library" && (
-              <DropdownPanel>
-                {LIBRARY_ITEMS.map((item) => <DropdownLink key={item.href} {...item} />)}
-              </DropdownPanel>
-            )}
-          </div>
+            <nav className="nav-links items-center self-stretch gap-6 xl:gap-8">
+              {/* Home */}
+              <Link
+                href="/home"
+                className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
+                style={navItemStyle(pathname === "/home")}
+              >
+                <IconHome />
+                {t.navHome}
+              </Link>
 
-          {/* Browse */}
-          <div className="relative self-stretch flex items-center">
-            <button
-              onClick={() => toggle("browse")}
-              className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
-              style={navItemStyle(pathname.startsWith("/browse"))}
-            >
-              <IconSearch />
-              {t.navBrowse}
-              <span style={{ color: "var(--novae-text-secondary)", transform: open === "browse" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-                <IconChevron />
-              </span>
-            </button>
-            {open === "browse" && (
-              <DropdownPanel>
-                {BROWSE_ITEMS.map((item) => <DropdownLink key={item.href} {...item} />)}
-              </DropdownPanel>
-            )}
-          </div>
+              {/* My Library */}
+              <div className="relative self-stretch flex items-center">
+                <button
+                  onClick={() => toggle("library")}
+                  className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
+                  style={navItemStyle(pathname.startsWith("/library"))}
+                >
+                  <IconUser />
+                  {t.navLibrary}
+                  <span style={{ color: "var(--novae-text-secondary)", transform: open === "library" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                    <IconChevron />
+                  </span>
+                </button>
+                {open === "library" && (
+                  <DropdownPanel>
+                    {LIBRARY_ITEMS.map((item) => <DropdownLink key={item.href} {...item} />)}
+                  </DropdownPanel>
+                )}
+              </div>
 
-          {/* Community — disabled */}
-          <div className="relative self-stretch flex items-center">
-            <span className="flex items-center gap-2 shrink-0 cursor-not-allowed" style={{ ...navItemStyle(false), opacity: 0.35 }}>
-              <IconGroup />
-              {t.navCommunity}
-            </span>
-          </div>
-        </nav>
+              {/* Browse */}
+              <div className="relative self-stretch flex items-center">
+                <button
+                  onClick={() => toggle("browse")}
+                  className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80"
+                  style={navItemStyle(pathname.startsWith("/browse"))}
+                >
+                  <IconSearch />
+                  {t.navBrowse}
+                  <span style={{ color: "var(--novae-text-secondary)", transform: open === "browse" ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                    <IconChevron />
+                  </span>
+                </button>
+                {open === "browse" && (
+                  <DropdownPanel>
+                    {BROWSE_ITEMS.map((item) => <DropdownLink key={item.href} {...item} />)}
+                  </DropdownPanel>
+                )}
+              </div>
+
+              {/* Community — disabled */}
+              <div className="relative self-stretch flex items-center">
+                <span className="flex items-center gap-2 shrink-0 cursor-not-allowed" style={{ ...navItemStyle(false), opacity: 0.35 }}>
+                  <IconGroup />
+                  {t.navCommunity}
+                </span>
+              </div>
+            </nav>
+          </>
+        )}
       </div>
 
       {/* Right — authenticated or not */}
