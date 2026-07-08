@@ -74,7 +74,38 @@ export async function addContactToBrevo(email: string, name?: string) {
 
   if (!res.ok && res.status !== 204) {
     const body = await res.text().catch(() => "");
-    console.error(`[Brevo] Failed to add ${email}: ${res.status} ${body}`);
+    throw new Error(`[Brevo] Failed to add ${email}: ${res.status} ${body}`);
+  }
+}
+
+// Reconciliation pass — heals drift from failed webhooks/hooks by making sure every
+// given user ends up in the "website" list and out of the "leads" list. Per-contact
+// upserts (not the bulk list endpoints) so it's safe to re-run: a contact already in
+// place is just a no-op, rather than an error for the whole batch.
+export async function reconcileWebsiteList(users: { email: string; name?: string | null }[]) {
+  const failures: string[] = [];
+  for (const user of users) {
+    try {
+      await addContactToBrevo(user.email, user.name ?? undefined);
+    } catch {
+      failures.push(user.email);
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(`[Brevo] Reconciliation failed for: ${failures.join(", ")}`);
+  }
+}
+
+// Account deletion — remove the contact from Brevo entirely.
+export async function removeContactFromBrevo(email: string) {
+  const res = await fetch(`${BREVO_API_URL}/${encodeURIComponent(email)}`, {
+    method: "DELETE",
+    headers: { "api-key": process.env.BREVO_API_KEY! },
+  });
+
+  if (!res.ok && res.status !== 204 && res.status !== 404) {
+    const body = await res.text().catch(() => "");
+    console.error(`[Brevo] Failed to remove ${email}: ${res.status} ${body}`);
   }
 }
 

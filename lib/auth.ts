@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
-import { addContactToBrevo } from "./brevo";
+import { addContactToBrevo, removeContactFromBrevo } from "./brevo";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -53,6 +53,17 @@ export const auth = betterAuth({
         },
         after: async (user) => {
           await addContactToBrevo(user.email, user.name ?? undefined).catch(() => {});
+        },
+      },
+      update: {
+        after: async (user) => {
+          // Covers email/name changes — re-syncs the (possibly new) email to the "website" list.
+          await addContactToBrevo(user.email, user.name ?? undefined).catch(() => {});
+        },
+      },
+      delete: {
+        after: async (user) => {
+          await removeContactFromBrevo(user.email).catch(() => {});
         },
       },
     },
