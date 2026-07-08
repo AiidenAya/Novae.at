@@ -98,7 +98,7 @@ function NotificationRow({ n, onMarkRead, onRespond }: { n: Notification; onMark
     if (src) thumb = (
       <Link href={href} style={{ display: "block", width: 48, height: 48, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0, position: "relative" }}>
         <SensitiveImageWrapper sensitiveType={n.artwork?.sensitiveType ?? null}>
-          <img src={thumbUrl(src, 96) ?? src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <img src={thumbUrl(src, 96) ?? src} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         </SensitiveImageWrapper>
       </Link>
     );
@@ -142,7 +142,7 @@ function NotificationRow({ n, onMarkRead, onRespond }: { n: Notification; onMark
       <Link href={n.actor.username ? `/${n.actor.username}` : "#"} style={{ flexShrink: 0 }}>
         <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)" }}>
           {n.actor.avatar
-            ? <img src={thumbUrl(n.actor.avatar, 80) ?? n.actor.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ? <img src={thumbUrl(n.actor.avatar, 80) ?? n.actor.avatar} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-space-grotesk)", fontWeight: 700, fontSize: 16, color: "var(--novae-text-link)" }}>{actorName[0]?.toUpperCase() ?? "?"}</div>}
         </div>
       </Link>

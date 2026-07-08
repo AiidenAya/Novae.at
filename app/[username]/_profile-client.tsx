@@ -284,7 +284,7 @@ function ProfileHeader({
           onClick={() => isEditing && coverRef.current?.click()}
         >
           {coverImage
-            ? <img src={isEditing ? coverImage : (thumbUrl(coverImage, 1200) ?? coverImage)} alt="Cover" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ? <img src={isEditing ? coverImage : (thumbUrl(coverImage, 1200) ?? coverImage)} alt="Cover" fetchPriority="high" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, rgba(105,61,169,0.4), rgba(164,132,220,0.2))" }} />
           }
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 35%, var(--novae-bg-main) 100%)", pointerEvents: "none" }} />
