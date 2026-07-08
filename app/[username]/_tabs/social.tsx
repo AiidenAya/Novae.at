@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Card, SectionTitle, Avatar, viewAllStyle } from "../_shared";
+import { thumbUrl } from "@/lib/thumb";
 import type { Profile } from "../_mock-data";
 
 const EditorField    = dynamic(() => import("@/components/editor/EditorField"),    { ssr: false });
@@ -165,7 +166,7 @@ export default function SocialTab({
             const inner = (
               <>
                 <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "var(--novae-radius-md)", backgroundColor: "rgba(105,61,169,0.1)", backgroundImage: "repeating-conic-gradient(rgba(136,136,136,0.15) 0% 25%, transparent 0% 50%)", backgroundSize: "12px 12px", overflow: "hidden" }}>
-                  {friend.avatar && <img src={friend.avatar} alt={friend.username} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  {friend.avatar && <img src={thumbUrl(friend.avatar, 128) ?? friend.avatar} alt={friend.username} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </div>
                 <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500, color: "var(--novae-text-primary)", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friend.username}</span>
               </>

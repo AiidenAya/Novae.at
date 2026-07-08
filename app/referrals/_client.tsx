@@ -165,7 +165,7 @@ export function ReferralsClient({ initialCodes, max }: { initialCodes: ReferralC
               return (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderBottom: i < referred.length - 1 ? "1px solid var(--novae-outline-all)" : "none" }}>
                   {u.avatar ? (
-                    <img src={thumbUrl(u.avatar, 80) ?? u.avatar} alt={u.username ?? ""} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                    <img src={thumbUrl(u.avatar, 80) ?? u.avatar} alt={u.username ?? ""} loading="lazy" decoding="async" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                   ) : (
                     <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600 }}>
                       {(u.username ?? "?")[0].toUpperCase()}

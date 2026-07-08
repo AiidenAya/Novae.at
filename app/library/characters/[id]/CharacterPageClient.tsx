@@ -374,7 +374,7 @@ function DraggableArtworkTile({
             <Image src={artwork.thumbnailUrl!} alt={artwork.title ?? ""} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" />
           </div>
         ) : (
-          <img src={thumbUrl(artwork.imageUrl, 640) ?? artwork.imageUrl} alt={artwork.title ?? ""} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
+          <img src={thumbUrl(artwork.imageUrl, 640) ?? artwork.imageUrl} alt={artwork.title ?? ""} loading="lazy" decoding="async" style={{ width: "100%", display: "block", pointerEvents: "none" }} />
         )}
       </SensitiveImageWrapper>
       <SensitiveBadge sensitiveType={artwork.sensitiveType} side="left" />
@@ -1877,7 +1877,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                       }}
                     >
                       {v.avatarUrl ? (
-                        <img src={thumbUrl(v.avatarUrl, 40)} alt="" width={20} height={20} style={{ borderRadius: "50%", objectFit: "cover" as const }} />
+                        <img src={thumbUrl(v.avatarUrl, 40)} alt="" width={20} height={20} loading="lazy" decoding="async" style={{ borderRadius: "50%", objectFit: "cover" as const }} />
                       ) : (
                         <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--novae-outline-all)" }} />
                       )}
@@ -2778,7 +2778,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                       <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)" }}>
                         {imgSrc ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={thumbUrl(imgSrc, 128) ?? imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img src={thumbUrl(imgSrc, 128) ?? imgSrc} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : null}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -3366,7 +3366,7 @@ function RelCard({ rel }: { rel: { id: string; type: string; description: string
   const displayName = isExternal ? (rel.externalName ?? "?") : (rel.character?.name ?? "?");
   const avatar = imgSrc ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={thumbUrl(imgSrc, 128) ?? imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    <img src={thumbUrl(imgSrc, 128) ?? imgSrc} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
   ) : null;
   const avatarBox = { width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" } as const;
   return (

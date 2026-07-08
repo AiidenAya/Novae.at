@@ -101,9 +101,9 @@ function ArtworkCard({
       >
         <SensitiveImageWrapper sensitiveType={artwork.sensitiveType ?? null}>
           {artwork.thumbnailUrl
-            ? <img src={thumbUrl(artwork.thumbnailUrl, 400) ?? artwork.thumbnailUrl} alt={artwork.title} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+            ? <img src={thumbUrl(artwork.thumbnailUrl, 400) ?? artwork.thumbnailUrl} alt={artwork.title} loading="lazy" decoding="async" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block", pointerEvents: "none" }} />
             : artwork.image
-              ? <img src={thumbUrl(artwork.image, 640) ?? artwork.image} alt={artwork.title} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
+              ? <img src={thumbUrl(artwork.image, 640) ?? artwork.image} alt={artwork.title} loading="lazy" decoding="async" style={{ width: "100%", display: "block", pointerEvents: "none" }} />
               : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
           }
         </SensitiveImageWrapper>
