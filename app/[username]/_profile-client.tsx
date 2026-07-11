@@ -448,7 +448,8 @@ function makeEditState(p: Profile): EditState {
 
 type DbCharacter = { id?: string; numId?: number; slug?: string; name: string; hearts: number; images: number; coverImage: string | null; folderId?: string | null };
 type DbFolder = { id: string; name: string };
-type DbArtwork = { id: string; imageUrl: string; thumbnailUrl: string | null; title: string | null; sensitiveType: string | null; characters: { id: string; numId: number; slug: string; name: string }[] };
+type DbArtworkCredit = { id: string; userId: string | null; username: string | null; label: string | null; url: string | null };
+type DbArtwork = { id: string; imageUrl: string; thumbnailUrl: string | null; sensitiveType: string | null; characters: { id: string; numId: number; slug: string; name: string }[]; credits: DbArtworkCredit[] };
 type DbProfile = {
   name: string | null;
   bio: string | null;
@@ -465,6 +466,7 @@ export function ProfileClient({
   dbCharacters,
   dbFolders = [],
   dbArtworks = [],
+  profileUserId = null,
   featuredCharacterIds = [],
   featuredFriends: dbFeaturedFriends = [],
   isOwner: isOwnerProp,
@@ -479,6 +481,7 @@ export function ProfileClient({
   dbCharacters: DbCharacter[];
   dbFolders?: DbFolder[];
   dbArtworks?: DbArtwork[];
+  profileUserId?: string | null;
   featuredCharacterIds?: string[];
   featuredFriends?: { username: string; avatar: string | null }[];
   isOwner: boolean;
@@ -601,7 +604,7 @@ export function ProfileClient({
           {activeTab === "characters" && <CharactersTab folders={characterFolder} isEditing={isEditing} />}
           {activeTab === "worlds"     && <WorldsTab     folders={[]} isEditing={isEditing} />}
           {activeTab === "social"     && <SocialTab     username={username} featuredFriends={featuredFriends} isOwner={isOwner} isAdmin={isAdmin} isEditing={isEditing} onRemoveFriend={removeFriend} onAddFriend={addFriend} />}
-          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, title: a.title ?? "", image: a.imageUrl, thumbnailUrl: a.thumbnailUrl ?? null, hearts: 0, sensitiveType: a.sensitiveType ?? null, characters: a.characters }))} isOwner={isOwner} username={username} />}
+          {activeTab === "artworks"   && <ArtworksTab   artworks={dbArtworks.map((a) => ({ id: a.id, image: a.imageUrl, thumbnailUrl: a.thumbnailUrl ?? null, hearts: 0, sensitiveType: a.sensitiveType ?? null, characters: a.characters, credits: a.credits }))} isOwner={isOwner} username={username} profileUserId={profileUserId} />}
         </div>
         <Sidebar
           profile={profile}

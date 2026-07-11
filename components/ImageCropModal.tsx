@@ -80,7 +80,7 @@ export default function ImageCropModal({ src, filename, originalFile, aspect = 1
   return (
     <div style={overlay}>
       <div
-        style={{ width: "min(480px, 100%)", display: "flex", flexDirection: "column", gap: 16 }}
+        style={{ width: "min(560px, 100%)", display: "flex", flexDirection: "column", gap: 16 }}
         onClick={(e) => e.stopPropagation()}
       >
         <p style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 600, color: "var(--novae-text-primary)", textAlign: "center" }}>

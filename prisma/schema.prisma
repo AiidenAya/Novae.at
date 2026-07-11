@@ -31,6 +31,7 @@ model User {
 
   characters    Character[]
   artworks      Artwork[]
+  artworkCredits ArtworkCredit[]
   authoredComments Comment[] @relation("AuthoredComments")
   profileComments  Comment[] @relation("ProfileComments")
   species       Species[]
@@ -210,15 +211,33 @@ model Artwork {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   characters Character[] @relation("ArtworkCharacters")
+  credits    ArtworkCredit[]
 
   galleryImages GalleryImage[]
   favorites     Favorite[]
   notifications Notification[]
 }
 
+model ArtworkCredit {
+  id       String @id @default(cuid())
+  position Int    @default(0)
+
+  artworkId String
+  artwork   Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  label String?
+  url   String?
+
+  createdAt DateTime @default(now())
+}
+
 model Gallery {
-  id   String @id @default(cuid())
-  name String
+  id    String @id @default(cuid())
+  name  String
+  order Int    @default(0)
 
   characterId String
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)

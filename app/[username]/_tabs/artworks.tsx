@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { thumbUrl } from "@/lib/thumb";
 import { Card, IconHeart } from "../_shared";
-import type { Artwork } from "../_mock-data";
+import type { Artwork, ArtworkCredit } from "../_mock-data";
 import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
+import { ArtworkCreditsDisplay } from "@/components/ui/ArtworkCreditsDisplay";
+import { ArtworkCreditsEditor, creditsValid, emptyCredit, type CreditDraft } from "@/components/ui/ArtworkCreditsEditor";
 
-type LightboxEntry = { url: string; artist: string | null; characters: Artwork["characters"] };
+type LightboxEntry = { url: string; credits: ArtworkCredit[]; characters: Artwork["characters"] };
 type CharStub = { id: string; name: string; numId: number; slug: string };
 
 const inputStyle: React.CSSProperties = {
@@ -22,20 +24,6 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-function ArtistCredit({ artist }: { artist: string }) {
-  if (artist.startsWith("@")) {
-    return <a href={`/${artist.slice(1)}`} style={{ color: "var(--novae-text-link)", textDecoration: "none" }}>{artist}</a>;
-  }
-  if (artist.includes("::")) {
-    const [label, url] = artist.split("::");
-    return <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)", textDecoration: "none" }}>{label}</a>;
-  }
-  if (artist.startsWith("http")) {
-    return <a href={artist} target="_blank" rel="noopener noreferrer" style={{ color: "var(--novae-text-link)", textDecoration: "none" }}>{artist}</a>;
-  }
-  return <span>{artist}</span>;
-}
-
 function Lightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -46,7 +34,7 @@ function Lightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => voi
   return (
     <div
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "transparent", backdropFilter: "blur(8px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, cursor: "zoom-out" }}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "var(--novae-bg-card)", backdropFilter: "blur(8px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, cursor: "zoom-out" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -69,9 +57,9 @@ function Lightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => voi
             ))}
           </div>
         )}
-        {entry.artist && (
+        {entry.credits.length > 0 && (
           <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "rgba(255,255,255,0.6)", margin: 0 }}>
-            Art by <ArtistCredit artist={entry.artist} />
+            Art by <ArtworkCreditsDisplay credits={entry.credits} linkStyle={{ color: "var(--novae-text-link)" }} />
           </p>
         )}
       </div>
@@ -101,9 +89,9 @@ function ArtworkCard({
       >
         <SensitiveImageWrapper sensitiveType={artwork.sensitiveType ?? null}>
           {artwork.thumbnailUrl
-            ? <img src={thumbUrl(artwork.thumbnailUrl, 400) ?? artwork.thumbnailUrl} alt={artwork.title} loading="lazy" decoding="async" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+            ? <img src={thumbUrl(artwork.thumbnailUrl, 400) ?? artwork.thumbnailUrl} alt="" loading="lazy" decoding="async" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block", pointerEvents: "none" }} />
             : artwork.image
-              ? <img src={thumbUrl(artwork.image, 640) ?? artwork.image} alt={artwork.title} loading="lazy" decoding="async" style={{ width: "100%", display: "block", pointerEvents: "none" }} />
+              ? <img src={thumbUrl(artwork.image, 640) ?? artwork.image} alt="" loading="lazy" decoding="async" style={{ width: "100%", display: "block", pointerEvents: "none" }} />
               : <div style={{ width: "100%", aspectRatio: artwork.aspectRatio ?? "1/1", background: artwork.fill ?? "rgba(105,61,169,0.15)" }} />
           }
         </SensitiveImageWrapper>
@@ -143,34 +131,30 @@ function ArtworkCard({
   );
 }
 
-function isMineArtwork(title: string | null | undefined, username: string) {
-  const t = title ?? "";
-  if (!t || t === `@${username}`) return true;
-  if (t.startsWith("@") && t.slice(1).toLowerCase() !== username.toLowerCase()) return false;
-  if (t.includes("::") || t.startsWith("http")) return false;
-  return true;
+function isMineArtwork(credits: ArtworkCredit[] | undefined, profileUserId: string | null) {
+  if (!profileUserId) return true;
+  return (credits ?? []).some((c) => c.userId === profileUserId);
 }
 
 export default function ArtworksTab({
-  artworks: initial, isOwner = false, username = "",
+  artworks: initial, isOwner = false, username = "", profileUserId = null,
 }: {
   artworks: Artwork[];
   isOwner?: boolean;
   username?: string;
+  profileUserId?: string | null;
 }) {
   const [artworks, setArtworks] = useState(initial);
   const [filter, setFilter] = useState<"mine" | "all">("mine");
   const [lightbox, setLightbox] = useState<LightboxEntry | null>(null);
 
   const visibleArtworks = filter === "mine"
-    ? artworks.filter((a) => isMineArtwork(a.title, username))
+    ? artworks.filter((a) => isMineArtwork(a.credits, profileUserId))
     : artworks;
 
   // Edit credits modal state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [creditsType, setCreditsType] = useState<"onsite" | "offsite">("onsite");
-  const [creditsValue, setCreditsValue] = useState("");
-  const [creditsLabel, setCreditsLabel] = useState("");
+  const [creditsDrafts, setCreditsDrafts] = useState<CreditDraft[]>([emptyCredit()]);
   const [creditsCharacters, setCreditsCharacters] = useState<CharStub[]>([]);
   const [creditsCharSearch, setCreditsCharSearch] = useState("");
   const [creditsCharResults, setCreditsCharResults] = useState<CharStub[]>([]);
@@ -188,21 +172,12 @@ export default function ArtworksTab({
   };
 
   const openEditCredits = (artwork: Artwork) => {
-    const title = artwork.title ?? "";
-    if (title.startsWith("@")) {
-      setCreditsType("onsite");
-      setCreditsValue(title.slice(1));
-      setCreditsLabel("");
-    } else if (title.includes("::")) {
-      const [label, url] = title.split("::");
-      setCreditsType("offsite");
-      setCreditsLabel(label);
-      setCreditsValue(url);
-    } else {
-      setCreditsType("onsite");
-      setCreditsValue(title);
-      setCreditsLabel("");
-    }
+    const drafts: CreditDraft[] = (artwork.credits ?? []).map((c) =>
+      c.userId && c.username
+        ? { type: "onsite" as const, value: c.username, label: "" }
+        : { type: "offsite" as const, value: c.url ?? "", label: c.label ?? "" }
+    );
+    setCreditsDrafts(drafts.length > 0 ? drafts : [emptyCredit()]);
     setCreditsCharacters(
       (artwork.characters ?? [])
         .filter((c): c is CharStub => typeof c.id === "string")
@@ -230,20 +205,20 @@ export default function ArtworksTab({
   };
 
   const saveCredits = async () => {
-    if (!editingId) return;
-    const raw = creditsValue.trim();
-    const label = creditsLabel.trim();
-    const newTitle = creditsType === "onsite"
-      ? `@${raw.replace(/^@/, "")}`
-      : label ? `${label}::${raw}` : raw;
+    if (!editingId || !creditsValid(creditsDrafts)) return;
+    const credits = creditsDrafts.map((c) => ({ type: c.type, value: c.value.trim(), label: c.label.trim() }));
     const res = await fetch("/api/artworks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ artworkId: editingId, title: newTitle, characterIds: creditsCharacters.map((c) => c.id), sensitiveType: creditsSensitiveType }),
+      body: JSON.stringify({ artworkId: editingId, credits, characterIds: creditsCharacters.map((c) => c.id), sensitiveType: creditsSensitiveType }),
     });
     if (res.ok) {
+      const updated = await res.json();
+      const newCredits: ArtworkCredit[] = (updated.credits ?? []).map((c: { id: string; userId: string | null; label: string | null; url: string | null; user: { username: string | null } | null }) => ({
+        id: c.id, userId: c.userId, username: c.user?.username ?? null, label: c.label, url: c.url,
+      }));
       setArtworks((prev) => prev.map((a) =>
-        String(a.id) === editingId ? { ...a, title: newTitle, characters: creditsCharacters, sensitiveType: creditsSensitiveType } : a
+        String(a.id) === editingId ? { ...a, credits: newCredits, characters: creditsCharacters, sensitiveType: creditsSensitiveType } : a
       ));
     }
     setEditingId(null);
@@ -261,135 +236,111 @@ export default function ArtworksTab({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: "#141820", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }}
+            style={{ background: "#141820", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 32, width: "min(960px, 100vw)", maxWidth: "calc(100vw - 64px)", display: "flex", flexDirection: "column", gap: 20 }}
           >
             <h2 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
               Edit credits
             </h2>
 
-            {/* Toggle */}
-            <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-              {(["onsite", "offsite"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setCreditsType(t); setCreditsValue(""); setCreditsLabel(""); }}
-                  style={{
-                    flex: 1, padding: "8px 0",
-                    background: creditsType === t ? "var(--novae-btn-primary)" : "none",
-                    border: "none",
-                    color: creditsType === t ? "#fff" : "var(--novae-text-secondary)",
-                    fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                    fontWeight: creditsType === t ? 600 : 400, cursor: "pointer",
-                  }}
-                >
-                  {t === "onsite" ? "On Novae" : "External"}
-                </button>
-              ))}
-            </div>
-
-            {creditsType === "offsite" && (
-              <input
-                autoFocus
-                value={creditsLabel}
-                onChange={(e) => setCreditsLabel(e.target.value)}
-                placeholder="Display name (e.g. AiidenAya)"
-                style={inputStyle}
-              />
-            )}
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {creditsType === "onsite" && username && (
-                <button
-                  type="button"
-                  onClick={() => setCreditsValue(username)}
-                  style={{ alignSelf: "flex-start", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
-                >
-                  Me (@{username})
-                </button>
-              )}
-              <input
-                autoFocus={creditsType === "onsite"}
-                value={creditsValue}
-                onChange={(e) => setCreditsValue(e.target.value)}
-                placeholder={creditsType === "onsite" ? "username" : "https://..."}
-                onKeyDown={(e) => { if (e.key === "Enter") saveCredits(); }}
-                style={inputStyle}
-              />
-            </div>
-
-            {/* Characters in this image */}
-            <div>
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Characters in this image
-              </span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                {creditsCharacters.map((c) => (
-                  <span key={c.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-tag)" }}>
-                    {c.name}
-                    <button onClick={() => setCreditsCharacters((prev) => prev.filter((x) => x.id !== c.id))} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: "0 0 0 2px", lineHeight: 1, fontSize: 13 }}>×</button>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 32 }}>
+              {/* Left column ─ characters, sensitive content */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {/* Characters in this image */}
+                <div>
+                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Characters in this image
                   </span>
-                ))}
-              </div>
-              <div style={{ position: "relative", marginTop: 8 }}>
-                <input
-                  value={creditsCharSearch}
-                  onChange={(e) => searchCreditsChars(e.target.value)}
-                  placeholder="Search characters to tag…"
-                  style={inputStyle}
-                />
-                {creditsCharResults.length > 0 && (
-                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 60, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", marginTop: 4, overflow: "hidden" }}>
-                    {creditsCharResults.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => {
-                          if (!creditsCharacters.find((x) => x.id === c.id)) setCreditsCharacters((prev) => [...prev, c]);
-                          setCreditsCharSearch(""); setCreditsCharResults([]);
-                        }}
-                        style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", cursor: "pointer" }}
-                      >
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    {creditsCharacters.map((c) => (
+                      <span key={c.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-tag)" }}>
                         {c.name}
-                      </button>
+                        <button onClick={() => setCreditsCharacters((prev) => prev.filter((x) => x.id !== c.id))} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: "0 0 0 2px", lineHeight: 1, fontSize: 13 }}>×</button>
+                      </span>
                     ))}
                   </div>
-                )}
-                {creditsCharLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--novae-text-secondary)" }}>…</span>}
-              </div>
-            </div>
+                  <div style={{ position: "relative", marginTop: 8 }}>
+                    <input
+                      value={creditsCharSearch}
+                      onChange={(e) => searchCreditsChars(e.target.value)}
+                      placeholder="Search characters to tag…"
+                      style={inputStyle}
+                    />
+                    {creditsCharResults.length > 0 && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 60, background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", marginTop: 4, overflow: "hidden" }}>
+                        {creditsCharResults.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => {
+                              if (!creditsCharacters.find((x) => x.id === c.id)) setCreditsCharacters((prev) => [...prev, c]);
+                              setCreditsCharSearch(""); setCreditsCharResults([]);
+                            }}
+                            style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", cursor: "pointer" }}
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {creditsCharLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--novae-text-secondary)" }}>…</span>}
+                  </div>
+                </div>
 
-            {/* Sensitive type picker */}
-            <div>
-              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
-                Sensitive content
-              </span>
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                {([null, "nudity", "gore"] as const).map((val) => {
-                  const label = val === null ? "None" : val === "nudity" ? "Nudity / fan service" : "Gore";
-                  const active = creditsSensitiveType === val;
-                  return (
-                    <button
-                      key={String(val)}
-                      onClick={() => setCreditsSensitiveType(val)}
-                      style={{
-                        padding: "6px 14px",
-                        borderRadius: "var(--novae-radius-sm)",
-                        border: `1px solid ${active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-outline-all)"}`,
-                        background: active && val !== null ? "rgba(192,32,90,0.12)" : active ? "var(--novae-bg-tag)" : "none",
-                        color: active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-text-secondary)",
-                        fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
-                        fontWeight: active ? 600 : 400, cursor: "pointer",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
+                {/* Sensitive type picker */}
+                <div>
+                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                    Sensitive content
+                  </span>
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                    {([null, "nudity", "gore"] as const).map((val) => {
+                      const label = val === null ? "None" : val === "nudity" ? "Nudity / fan service" : "Gore";
+                      const active = creditsSensitiveType === val;
+                      return (
+                        <button
+                          key={String(val)}
+                          onClick={() => setCreditsSensitiveType(val)}
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: "var(--novae-radius-sm)",
+                            border: `1px solid ${active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-outline-all)"}`,
+                            background: active && val !== null ? "rgba(192,32,90,0.12)" : active ? "var(--novae-bg-tag)" : "none",
+                            color: active && val !== null ? "var(--novae-accent-main, #c0205a)" : "var(--novae-text-secondary)",
+                            fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
+                            fontWeight: active ? 600 : 400, cursor: "pointer",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right column ─ credits */}
+              <div>
+                <span style={{ display: "block", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                  Credits
+                </span>
+                <ArtworkCreditsEditor credits={creditsDrafts} onChange={setCreditsDrafts} meUsername={username} inputStyle={{ fontSize: "var(--novae-text-sm)" }} />
               </div>
             </div>
 
             <div style={{ display: "flex", gap: 12 }}>
               <button onClick={() => setEditingId(null)} style={{ flex: 1, padding: "10px 0", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", cursor: "pointer" }}>Cancel</button>
-              <button onClick={saveCredits} style={{ flex: 1, padding: "10px 0", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}>Save</button>
+              <button
+                onClick={saveCredits}
+                disabled={!creditsValid(creditsDrafts)}
+                style={{
+                  flex: 1, padding: "10px 0",
+                  background: creditsValid(creditsDrafts) ? "var(--novae-btn-primary)" : "var(--novae-bg-input)",
+                  border: "none", borderRadius: "var(--novae-radius-md)",
+                  color: creditsValid(creditsDrafts) ? "#fff" : "var(--novae-text-secondary)",
+                  fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600,
+                  cursor: creditsValid(creditsDrafts) ? "pointer" : "not-allowed",
+                }}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
@@ -422,7 +373,7 @@ export default function ArtworksTab({
           <ArtworkCard
             key={a.id}
             artwork={a}
-            onClick={() => setLightbox({ url: a.image ?? "", artist: a.title || null, characters: a.characters })}
+            onClick={() => setLightbox({ url: a.image ?? "", credits: a.credits ?? [], characters: a.characters })}
             isOwner={isOwner}
             onDelete={handleDelete}
             onEdit={openEditCredits}
