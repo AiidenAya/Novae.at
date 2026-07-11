@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUploadThing } from "@/lib/uploadthing-client";
 import ImageCropModal from "@/components/ImageCropModal";
+import { useSession } from "@/lib/auth-client";
+import { ArtworkCreditsEditor, creditsValid, type CreditDraft } from "@/components/ui/ArtworkCreditsEditor";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,9 +21,7 @@ interface CharacterOption {
 interface ImageEntry {
   file: File;
   preview: string;
-  artistType: "me" | "onsite" | "offsite";
-  artistValue: string;
-  artistLabel: string;
+  credits: CreditDraft[];
   characters: CharacterOption[];
   thumbnailFile: File | null;
   thumbnailPreview: string | null;
@@ -138,29 +138,16 @@ function CharacterPickerModal({
 
 function ArtistModal({
   entry,
+  meUsername,
   onSave,
   onClose,
 }: {
   entry: ImageEntry;
-  onSave: (artistType: ImageEntry["artistType"], artistValue: string, artistLabel: string) => void;
+  meUsername?: string | null;
+  onSave: (credits: CreditDraft[]) => void;
   onClose: () => void;
 }) {
-  const [artistType, setArtistType] = useState<ImageEntry["artistType"]>(entry.artistType);
-  const [artistValue, setArtistValue] = useState(entry.artistValue);
-  const [artistLabel, setArtistLabel] = useState(entry.artistLabel);
-
-  const inputStyle: React.CSSProperties = {
-    background: "var(--novae-bg-input)",
-    border: "1px solid var(--novae-outline-all)",
-    borderRadius: "var(--novae-radius-md)",
-    outline: "none",
-    color: "var(--novae-text-primary)",
-    fontFamily: "var(--font-dm-sans)",
-    fontSize: "var(--novae-text-base)",
-    padding: "10px 14px",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  };
+  const [credits, setCredits] = useState<CreditDraft[]>(entry.credits);
 
   return (
     <div
@@ -169,7 +156,7 @@ function ArtistModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20 }}
+        style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 32, width: "min(560px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: 20 }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
@@ -178,51 +165,7 @@ function ArtistModal({
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
         </div>
 
-        <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-          {([
-            { key: "me" as const, label: "Me" },
-            { key: "onsite" as const, label: "Novae" },
-            { key: "offsite" as const, label: "Outside website" },
-          ]).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => { setArtistType(key); setArtistValue(""); setArtistLabel(""); }}
-              style={{
-                flex: 1, padding: "8px 0",
-                background: artistType === key ? "var(--novae-btn-primary)" : "none",
-                border: "none",
-                color: artistType === key ? "#fff" : "var(--novae-text-secondary)",
-                fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                fontWeight: artistType === key ? 600 : 400,
-                cursor: "pointer",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {artistType !== "me" && (
-          <>
-            {artistType === "offsite" && (
-              <input
-                autoFocus
-                value={artistLabel}
-                onChange={(e) => setArtistLabel(e.target.value)}
-                placeholder="Display name (e.g. AiidenAya)"
-                style={inputStyle}
-              />
-            )}
-            <input
-              autoFocus={artistType === "onsite"}
-              value={artistValue}
-              onChange={(e) => setArtistValue(e.target.value)}
-              placeholder={artistType === "onsite" ? "username" : "https://twitter.com/..."}
-              style={inputStyle}
-              onKeyDown={(e) => { if (e.key === "Enter") { onSave(artistType, artistValue, artistLabel); onClose(); } }}
-            />
-          </>
-        )}
+        <ArtworkCreditsEditor credits={credits} onChange={setCredits} meUsername={meUsername} />
 
         <div style={{ display: "flex", gap: 12 }}>
           <button
@@ -232,8 +175,16 @@ function ArtistModal({
             Cancel
           </button>
           <button
-            onClick={() => { onSave(artistType, artistValue, artistLabel); onClose(); }}
-            style={{ flex: 2, padding: "10px 0", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}
+            disabled={!creditsValid(credits)}
+            onClick={() => { if (!creditsValid(credits)) return; onSave(credits); onClose(); }}
+            style={{
+              flex: 2, padding: "10px 0",
+              background: creditsValid(credits) ? "var(--novae-btn-primary)" : "var(--novae-bg-input)",
+              border: "none", borderRadius: "var(--novae-radius-md)",
+              color: creditsValid(credits) ? "#fff" : "var(--novae-text-secondary)",
+              fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600,
+              cursor: creditsValid(credits) ? "pointer" : "not-allowed",
+            }}
           >
             Confirm
           </button>
@@ -247,6 +198,8 @@ function ArtistModal({
 
 export default function NewMultiImagePage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const meUsername = (session?.user as { username?: string } | undefined)?.username ?? null;
   const [entries, setEntries] = useState<ImageEntry[]>([]);
   const [dragging, setDragging] = useState(false);
   const [characters, setCharacters] = useState<CharacterOption[]>([]);
@@ -267,16 +220,14 @@ export default function NewMultiImagePage() {
     const newEntries: ImageEntry[] = imgs.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
-      artistType: "me",
-      artistValue: "",
-      artistLabel: "",
+      credits: [{ type: "onsite", value: meUsername ?? "", label: "" }],
       characters: [],
       thumbnailFile: null,
       thumbnailPreview: null,
       sensitiveType: null,
     }));
     setEntries((prev) => [...prev, ...newEntries]);
-  }, []);
+  }, [meUsername]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -291,8 +242,8 @@ export default function NewMultiImagePage() {
     });
   };
 
-  const updateArtist = (i: number, artistType: ImageEntry["artistType"], artistValue: string, artistLabel: string) => {
-    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, artistType, artistValue, artistLabel } : e));
+  const updateArtist = (i: number, credits: CreditDraft[]) => {
+    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, credits } : e));
   };
 
   const setThumbnail = (i: number, file: File | null, preview: string | null) => {
@@ -311,10 +262,13 @@ export default function NewMultiImagePage() {
     }));
   };
 
-  const artistLabel = (entry: ImageEntry) => {
-    if (entry.artistType === "me") return "Me";
-    if (entry.artistType === "onsite") return entry.artistValue ? `@${entry.artistValue}` : "On Novae";
-    return entry.artistLabel || entry.artistValue || "External";
+  const creditsSummary = (entry: ImageEntry) => {
+    if (entry.credits.length === 0) return "Add credit";
+    const first = entry.credits[0];
+    const firstLabel = first.type === "onsite"
+      ? (first.value ? `@${first.value}` : "On Novae")
+      : (first.label || first.value || "External");
+    return entry.credits.length > 1 ? `${firstLabel} & ${entry.credits.length - 1} more` : firstLabel;
   };
 
   const handleUpload = async () => {
@@ -344,13 +298,7 @@ export default function NewMultiImagePage() {
           const imageUrl = uploaded[i]?.ufsUrl;
           if (!imageUrl) return Promise.resolve();
 
-          const artistRaw = entry.artistType === "me"
-            ? null
-            : entry.artistType === "onsite"
-              ? `@${entry.artistValue.replace(/^@/, "")}`
-              : entry.artistLabel
-                ? `${entry.artistLabel}::${entry.artistValue}`
-                : entry.artistValue;
+          const credits = entry.credits.map((c) => ({ type: c.type, value: c.value.trim(), label: c.label.trim() }));
 
           entry.characters.forEach((c) => charactersSeen.set(c.id, c));
 
@@ -360,7 +308,7 @@ export default function NewMultiImagePage() {
             body: JSON.stringify({
               imageUrl,
               thumbnailUrl: thumbUrls[i] ?? null,
-              title: artistRaw,
+              credits,
               characterIds: entry.characters.map((c) => c.id),
               sensitiveType: entry.sensitiveType,
             }),
@@ -466,7 +414,7 @@ export default function NewMultiImagePage() {
                   onClick={() => setArtistModal(i)}
                   style={{
                     padding: "6px 14px",
-                    background: entry.artistType !== "me" && !entry.artistValue ? "none" : "rgba(105,61,169,0.1)",
+                    background: creditsValid(entry.credits) ? "rgba(105,61,169,0.1)" : "none",
                     border: "1px solid var(--novae-outline-all)",
                     borderRadius: "var(--novae-radius-sm)",
                     color: "var(--novae-text-primary)",
@@ -478,7 +426,7 @@ export default function NewMultiImagePage() {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                   </svg>
-                  {artistLabel(entry)}
+                  {creditsSummary(entry)}
                 </button>
 
                 {/* Character button */}
@@ -580,15 +528,15 @@ export default function NewMultiImagePage() {
           </button>
           <button
             onClick={handleUpload}
-            disabled={entries.length === 0 || uploading}
+            disabled={entries.length === 0 || uploading || !entries.every((e) => creditsValid(e.credits))}
             style={{
               flex: 2, padding: "14px 24px",
-              background: entries.length > 0 && !uploading ? "var(--novae-btn-primary)" : "var(--novae-bg-card)",
+              background: entries.length > 0 && !uploading && entries.every((e) => creditsValid(e.credits)) ? "var(--novae-btn-primary)" : "var(--novae-bg-card)",
               border: "none", borderRadius: "var(--novae-radius-md)",
               color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)",
               fontSize: "var(--novae-text-lg)", fontWeight: 600,
-              cursor: entries.length > 0 && !uploading ? "pointer" : "not-allowed",
-              opacity: entries.length > 0 && !uploading ? 1 : 0.5,
+              cursor: entries.length > 0 && !uploading && entries.every((e) => creditsValid(e.credits)) ? "pointer" : "not-allowed",
+              opacity: entries.length > 0 && !uploading && entries.every((e) => creditsValid(e.credits)) ? 1 : 0.5,
               transition: "opacity 0.15s, background 0.15s",
             }}
           >
@@ -601,7 +549,8 @@ export default function NewMultiImagePage() {
       {artistModal !== null && entries[artistModal] && (
         <ArtistModal
           entry={entries[artistModal]}
-          onSave={(t, v, l) => updateArtist(artistModal, t, v, l)}
+          meUsername={meUsername}
+          onSave={(credits) => updateArtist(artistModal, credits)}
           onClose={() => setArtistModal(null)}
         />
       )}

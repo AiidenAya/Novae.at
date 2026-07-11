@@ -122,7 +122,7 @@ export const translations = {
     profileAddCharacter: "Add Character",
     profileAddWorld: "Add World",
     // Character - page
-    characterDescriptionPlaceholder: "Character description…",
+    characterDescriptionPlaceholder: "A memorable quote from this character…",
     statLabelImages: "images",
     statLabelRelationships: "relationships",
     statLabelFavorites: "favorites",
@@ -299,7 +299,7 @@ export const translations = {
     profileAddCharacter: "Nouveau personnage",
     profileAddWorld: "Nouveau monde",
     // Character - page
-    characterDescriptionPlaceholder: "Description du personnage…",
+    characterDescriptionPlaceholder: "Une citation mémorable de ce personnage…",
     statLabelImages: "images",
     statLabelRelationships: "relations",
     statLabelFavorites: "favoris",

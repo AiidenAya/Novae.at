@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { creditsInclude } from "@/lib/artwork-credits";
 import { ProfileClient } from "./_profile-client";
 
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
@@ -46,9 +47,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
             id: true,
             imageUrl: true,
             thumbnailUrl: true,
-            title: true,
             sensitiveType: true,
             characters: { select: { id: true, numId: true, slug: true, name: true } },
+            ...creditsInclude,
           },
         },
       },
@@ -142,9 +143,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     id: a.id,
     imageUrl: a.imageUrl,
     thumbnailUrl: a.thumbnailUrl ?? null,
-    title: a.title ?? null,
     sensitiveType: a.sensitiveType ?? null,
     characters: a.characters.map((c) => ({ id: c.id, numId: c.numId, slug: c.slug, name: c.name })),
+    credits: a.credits.map((c) => ({
+      id: c.id,
+      userId: c.userId,
+      username: c.user?.username ?? null,
+      label: c.label,
+      url: c.url,
+    })),
   }));
 
   return (
@@ -155,6 +162,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       dbCharacters={dbCharacters}
       dbFolders={dbFolders}
       dbArtworks={dbArtworks}
+      profileUserId={user?.id ?? null}
       featuredCharacterIds={user?.featuredCharacterIds ?? []}
       featuredFriends={featuredFriends}
       isOwner={isOwner}

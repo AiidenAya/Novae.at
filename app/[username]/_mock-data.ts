@@ -25,14 +25,17 @@ export type CommentData = {
   replies?: CommentData[];
 };
 
+export type ArtworkCredit = { id?: string; userId: string | null; username: string | null; label: string | null; url: string | null };
+
 export type Artwork = {
   id: string | number;
-  title: string;
+  title?: string;
   image: string | null;
   thumbnailUrl?: string | null;
   sensitiveType?: string | null;
   hearts: number;
   characters: { id?: string; numId: number; slug: string; name: string; avatar?: string | null; owner?: string }[];
+  credits?: ArtworkCredit[];
   aspectRatio?: string;
   fill?: string;
 };

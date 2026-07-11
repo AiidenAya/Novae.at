@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { parseCharacterParam } from "@/lib/character-url";
+import { creditsInclude } from "@/lib/artwork-credits";
 import CharacterPageClient from "./CharacterPageClient";
 
 interface Props {
@@ -29,13 +30,13 @@ export default async function CharacterPage({ params }: Props) {
         },
       },
       variants: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, variantLabel: true, isPublic: true }, orderBy: { createdAt: "asc" } },
-      artworks: { orderBy: { createdAt: "desc" }, include: { characters: { select: { id: true, name: true, numId: true, slug: true } } } },
+      artworks: { orderBy: { createdAt: "desc" }, include: { characters: { select: { id: true, name: true, numId: true, slug: true } }, ...creditsInclude } },
       tags:          { include: { tag: true } },
       colorPalettes: { include: { swatches: { orderBy: { order: "asc" } } } },
       favorites: { select: { id: true, userId: true } },
         relationshipsA: { include: { characterB: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, user: { select: { username: true } } } } } },
         relationshipsB: { include: { characterA: { select: { id: true, name: true, numId: true, slug: true, avatarUrl: true, user: { select: { username: true } } } } } },
-        galleries: { include: { images: { orderBy: { order: "asc" }, select: { id: true, artworkId: true, order: true } } }, orderBy: { name: "asc" } },
+        galleries: { include: { images: { orderBy: { order: "asc" }, select: { id: true, artworkId: true, order: true } } }, orderBy: { order: "asc" } },
     },
   });
 
@@ -59,6 +60,10 @@ export default async function CharacterPage({ params }: Props) {
       ...character.baseCharacter,
       variants: character.baseCharacter.variants.filter((v) => v.isPublic || isOwner),
     },
+    artworks: character.artworks.map((a) => ({
+      ...a,
+      credits: a.credits.map((c) => ({ id: c.id, userId: c.userId, username: c.user?.username ?? null, label: c.label, url: c.url })),
+    })),
   };
 
   return (

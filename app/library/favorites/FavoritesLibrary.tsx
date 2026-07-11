@@ -80,7 +80,7 @@ function FavCard({
             </button>
             {showMenu && (
               <div
-                style={{ position: "absolute", top: 32, right: 0, zIndex: 50, background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden", minWidth: 160, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}
+                style={{ position: "absolute", top: 32, right: 0, zIndex: 50, background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden", minWidth: 160, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}
                 onMouseLeave={() => setShowMenu(false)}
               >
                 {fav.folderId && (

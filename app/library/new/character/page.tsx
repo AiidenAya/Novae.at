@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { NovaeUserSearch } from "@/components/ui/NovaeUserSearch";
 
 export default function NewCharacterPage() {
   const router = useRouter();
@@ -194,15 +195,19 @@ export default function NewCharacterPage() {
                   onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
                 />
               )}
-              <input
-                type="text"
-                value={creditValue}
-                onChange={(e) => setCreditValue(e.target.value)}
-                placeholder={creditType === "onsite" ? "username" : "https://..."}
-                style={{ background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", padding: "10px 14px", width: "100%", boxSizing: "border-box" }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-selected)")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
-              />
+              {creditType === "onsite" ? (
+                <NovaeUserSearch value={creditValue} onChange={setCreditValue} placeholder="Search username…" />
+              ) : (
+                <input
+                  type="text"
+                  value={creditValue}
+                  onChange={(e) => setCreditValue(e.target.value)}
+                  placeholder="https://..."
+                  style={{ background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", padding: "10px 14px", width: "100%", boxSizing: "border-box" }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-selected)")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
+                />
+              )}
             </div>
           )}
         </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { creditsInclude, resolveCredits } from "@/lib/artwork-credits";
 
 export async function PATCH(
   req: NextRequest,
@@ -15,18 +16,27 @@ export async function PATCH(
   if (!artwork || !artwork.characters.some((c) => c.id === id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (artwork.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title, characterIds, thumbnailUrl, sensitiveType } = await req.json();
+  const { credits, characterIds, thumbnailUrl, sensitiveType } = await req.json();
+
+  let resolvedCredits: Awaited<ReturnType<typeof resolveCredits>> = null;
+  if (credits !== undefined) {
+    resolvedCredits = await resolveCredits(credits);
+    if (!resolvedCredits) return NextResponse.json({ error: "At least one valid credit is required" }, { status: 400 });
+  }
+
   const updated = await prisma.artwork.update({
     where: { id: artworkId },
     data: {
-      title,
       ...(thumbnailUrl !== undefined && { thumbnailUrl: thumbnailUrl ?? null }),
       ...(sensitiveType !== undefined && { sensitiveType: sensitiveType === "gore" || sensitiveType === "nudity" ? sensitiveType : null }),
       ...(Array.isArray(characterIds) && {
         characters: { set: characterIds.map((cid: string) => ({ id: cid })) },
       }),
+      ...(resolvedCredits && {
+        credits: { deleteMany: {}, create: resolvedCredits },
+      }),
     },
-    include: { characters: { select: { id: true, name: true, numId: true, slug: true } } },
+    include: { characters: { select: { id: true, name: true, numId: true, slug: true } }, ...creditsInclude },
   });
   return NextResponse.json(updated);
 }
