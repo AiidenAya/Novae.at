@@ -97,6 +97,7 @@ export default function SocialTab({
 }) {
   const [comments, setComments] = useState<DbComment[]>([]);
   const [commentValue, setCommentValue] = useState("");
+  const {t} = useT();
 
   const fetchComments = useCallback(async () => {
     const res = await fetch(`/api/profile/${username}/comments`);
@@ -143,7 +144,7 @@ export default function SocialTab({
     const res = await fetch(`/api/users/search?q=${encodeURIComponent(name)}`);
     const data = await res.json();
     setFriendSearching(false);
-    if (!data.user) { setFriendError("Utilisateur introuvable"); return; }
+    if (!data.user) { setFriendError(t.errorUserNotFound); return; }
     onAddFriend({ username: data.user.username, avatar: data.user.avatar });
     setNewFriendName("");
     setFriendError(null);
@@ -159,7 +160,7 @@ export default function SocialTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
       <Card>
-        <SectionTitle>Featured Friends</SectionTitle>
+        <SectionTitle>{t.profileTabSocialFeatfriend}</SectionTitle>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 8 }}>
           {visibleFriends.map((friend, i) => {
@@ -211,9 +212,9 @@ export default function SocialTab({
                 style={{ flex: 1, background: "rgba(25,32,46,0.6)", border: `1px solid ${friendError ? "#ff6b7a" : "var(--novae-outline-all)"}`, borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", padding: "8px 12px", fontSize: "var(--novae-text-base)" }}
               />
               <button onClick={submitFriend} disabled={friendSearching} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, opacity: friendSearching ? 0.6 : 1 }}>
-                {friendSearching ? "…" : "Add"}
+                {friendSearching ? "…" : t.add_}
               </button>
-              <button onClick={() => { setAddingFriend(false); setFriendError(null); }} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)" }}>Cancel</button>
+              <button onClick={() => { setAddingFriend(false); setFriendError(null); }} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 16px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)" }}>{t.cancel}</button>
             </div>
             {friendError && <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "#ff6b7a" }}>{friendError}</span>}
           </div>
@@ -224,16 +225,16 @@ export default function SocialTab({
             onClick={() => setShowAllFriends((p) => !p)}
             style={{ alignSelf: "center", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}
           >
-            {showAllFriends ? "Show less ›" : `View more (${featuredFriends.length - VISIBLE_LIMIT}) ›`}
+            {showAllFriends ? `${t.showLess} ›` : `${t.viewMore} (${featuredFriends.length - VISIBLE_LIMIT}) ›`}
           </button>
         )}
       </Card>
 
       <Card>
-        <SectionTitle>Comments</SectionTitle>
-        <EditorField value={commentValue} onChange={setCommentValue} placeholder="Laisse un commentaire…" minHeight={100} />
+        <SectionTitle>{t.profileTabSocialComments}</SectionTitle>
+        <EditorField value={commentValue} onChange={setCommentValue} placeholder={t.prompt2} minHeight={100} />
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={postComment} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>Post</button>
+          <button onClick={postComment} style={{ backgroundColor: "var(--novae-btn-primary)", color: "var(--novae-text-btn)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>{t.send}</button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-3xl)" }}>
           {comments.map((comment) => (
@@ -248,7 +249,7 @@ export default function SocialTab({
         </div>
         {comments.length > 3 && (
           <button style={{ alignSelf: "center", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "8px 24px", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-            View more ›
+            {t.viewMore} ›
           </button>
         )}
       </Card>

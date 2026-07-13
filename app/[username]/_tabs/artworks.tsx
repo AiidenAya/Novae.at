@@ -363,7 +363,7 @@ export default function ArtworksTab({
               cursor: "pointer",
             }}
           >
-            {f === "mine" ? "Mine" : "All"}
+            {f === "mine" ? t.mine : t.all_}
           </button>
         ))}
       </div>
