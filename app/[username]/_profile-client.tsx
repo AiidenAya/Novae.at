@@ -169,7 +169,7 @@ function Sidebar({
 
   const [openList, setOpenList] = useState<"followers" | "following" | null>(null);
   const socials = isEditing ? editState.socials : profile.socials;
-  const { t, locale, toggle: toggleLocale } = useT();
+  const { t } = useT();
 
   const DEFAULT_HANDLE = "@username";
   function isSet(handle: string, name?: string) {
@@ -183,6 +183,15 @@ function Sidebar({
   }
 
   const visibleSocials = isEditing ? socials : socials.filter((s) => isSet(s.handle, s.name));
+
+
+  const label: Record<string, string> = {
+    followers: t.profileSideFollowers,
+    following: t.profileSideFollowing,
+    artworks: t.profileSideArtworks,
+    characters: t.characters,
+    worlds: t.worlds,
+  };
 
   return (
     <div className="profile-sidebar">
@@ -198,7 +207,9 @@ function Sidebar({
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--novae-space-xs)", cursor: clickable ? "pointer" : "default" }}
               >
                 <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{val}</span>
-                <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{key}</span>
+                <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
+                  {label[key]}
+                </span>
               </div>
             );
           })}
@@ -213,12 +224,16 @@ function Sidebar({
             <div key={s.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <div style={{ display: "flex", gap: "var(--novae-space-sm)", alignItems: "center", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 500, flexShrink: 0, width: 110 }}>
                 <SocialIcon name={s.name} />
-                {s.name}
+                {s.name !== "Custom link" ? s.name : t.profileEditCustomlink}
               </div>
               {isEditing ? (
                 <input
                   value={isSet(s.handle, s.name) ? s.handle : ""}
-                  placeholder={s.name === "Custom link" ? "https://..." : `Your ${s.name} handle`}
+                  placeholder={
+                    s.name === "Custom link" 
+                      ? "https://…" 
+                      : t.profileEditSocialink.replace("{social}", s.name)
+                  }
                   onChange={(e) => updateHandle(s.name, e.target.value || (s.name === "Custom link" ? "custom link" : DEFAULT_HANDLE))}
                   style={{ ...inlineInput, padding: "5px 10px" }}
                 />
@@ -365,7 +380,7 @@ function ProfileHeader({
           {isEditing && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)" }}>
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "white", fontWeight: 500 }}>
-                {uploadingCover ? "Uploading…" : "Click to change cover"}
+                {uploadingCover ? t.uploading : t.profileEditCover}
               </span>
             </div>
           )}
@@ -382,7 +397,7 @@ function ProfileHeader({
             {isEditing && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}>
                 <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "white", fontWeight: 500, textAlign: "center", padding: "0 8px" }}>
-                  {uploadingAvatar ? "Uploading…" : "Change avatar"}
+                  {uploadingAvatar ? t.uploading : t.profileEditAvatar}
                 </span>
               </div>
             )}
@@ -401,7 +416,7 @@ function ProfileHeader({
                   <input
                     value={editState.pronouns}
                     onChange={(e) => setEditState((p) => ({ ...p, pronouns: e.target.value }))}
-                    placeholder="Pronouns"
+                    placeholder={t.profileEditPronouns}
                     style={{ ...inlineInput }}
                   />
                 </div>
@@ -430,7 +445,7 @@ function ProfileHeader({
 
             {isOwner && !isEditing && (
               <button onClick={onEdit} style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-sm)", backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "12px 20px", cursor: "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500, flexShrink: 0 }}>
-                <IconPencil /> Edit
+                <IconPencil /> {t.edit}
               </button>
             )}
             {!isOwner && (
@@ -454,10 +469,10 @@ function ProfileHeader({
             {isEditing && (
               <div style={{ display: "flex", gap: "var(--novae-space-sm)" }}>
                 <button onClick={onCancel} style={{ background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "10px 20px", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500 }}>
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button onClick={onSave} disabled={isUploading} style={{ backgroundColor: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", padding: "10px 20px", cursor: isUploading ? "not-allowed" : "pointer", color: "var(--novae-text-btn)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500, opacity: isUploading ? 0.6 : 1 }}>
-                  {isUploading ? "Uploading…" : "Save"}
+                  {isUploading ? t.uploading : t.save}
                 </button>
               </div>
             )}
@@ -485,19 +500,30 @@ function ProfileHeader({
 
 // ── Tab bar ────────────────────────────────────────────────────────────────────
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "creations",  label: "Creations",  icon: <IconBook /> },
-  { id: "social",     label: "Social",     icon: <IconUsers /> },
-  { id: "characters", label: "Characters", icon: <IconUser /> },
-  { id: "artworks",   label: "Artworks",   icon: <IconPalette /> },
+const TABS: { id: Tab; icon: React.ReactNode }[] = [
+  { id: "creations",   icon: <IconBook /> },
+  { id: "social",      icon: <IconUsers /> },
+  { id: "characters",  icon: <IconUser /> },
+  { id: "artworks",    icon: <IconPalette /> },
 ];
 
+
 function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+    const {t} = useT();
+
+  const label: Record<Tab, string> = {
+    creations: t.profileTabCreations,
+    social: t.profileTabSocial,
+    characters: t.characters,
+    worlds: t.worlds,
+    artworks: t.profileTabArtworks,
+  };
+
   return (
     <div style={{ display: "flex", backgroundColor: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
       {TABS.map((tab) => (
-        <button key={tab.id} onClick={() => onChange(tab.id)} style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-sm)", padding: "20px 32px", background: "none", border: "none", borderBottom: active === tab.id ? "2px solid var(--novae-outline-selected)" : "2px solid transparent", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500, color: active === tab.id ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}>
-          {tab.icon}{tab.label}
+        <button key={tab.id} onClick={() => onChange(tab.id)} style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-sm)", padding: "20px 32px", background: "none", border: "none", borderBottom: active === tab.id ? "2px solid var(--novae-outline-selected)" : "2px solid transparent", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500, color: active === tab.id ? "var(--novae-text-primary)" : "var(--novae-text-secondary)" }}>  
+            {tab.icon}{label[tab.id]}
         </button>
       ))}
     </div>
@@ -590,6 +616,7 @@ export function ProfileClient({
   const [editState, setEditState] = useState<EditState>(() => makeEditState(baseProfile));
   const [isUploading, setIsUploading] = useState(false);
   const [followerCount, setFollowerCount] = useState(dbStats?.followers ?? 0);
+  const { t } = useT();
 
   const isOwner = isOwnerProp;
 
@@ -648,7 +675,7 @@ export function ProfileClient({
       ]
     : [{
         id: "all",
-        name: "All characters",
+        name: t.defaultMainFolder,
         items: dbCharacters.map((c) => ({ numId: c.numId, slug: c.slug, name: c.name, hearts: c.hearts, images: c.images, coverImage: c.coverImage })),
       }];
 

@@ -122,14 +122,14 @@ export default function CreationsTab({
   const featuredChars   = characters.slice(0, 6);
   const featuredWorlds  = worlds.slice(0, 6);
   
-  const { t, locale, toggle: toggleLocale } = useT();
+  const {t} = useT();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-lg)" }}>
       <Card>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          <SectionTitle>Featured Characters</SectionTitle>
-          {!isEditing && <button onClick={() => setActiveTab("characters")} style={viewAllStyle}>View all</button>}
+          <SectionTitle>{t.profileTabCreaFeatchar}</SectionTitle>
+          {!isEditing && <button onClick={() => setActiveTab("characters")} style={viewAllStyle}>{t.viewAll}</button>}
         </div>
         {isEditing ? (
           <EditableGrid items={featuredChars} all={allCharacters} onRemove={onRemoveCharacter} onAdd={onAddCharacter} addLabel={t.profileAddCharacter} />
@@ -142,8 +142,8 @@ export default function CreationsTab({
 
       <Card>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          <SectionTitle>Featured Worlds</SectionTitle>
-          {!isEditing && <button onClick={() => setActiveTab("worlds")} style={viewAllStyle}>View all</button>}
+          <SectionTitle>{t.profileTabCreaFeatworld}</SectionTitle>
+          {!isEditing && <button onClick={() => setActiveTab("worlds")} style={viewAllStyle}>{t.viewAll}</button>}
         </div>
         {isEditing ? (
           <EditableGrid items={featuredWorlds} all={allWorlds} onRemove={onRemoveWorld} onAdd={onAddWorld} addLabel={t.profileAddWorld} />

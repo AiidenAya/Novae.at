@@ -5,12 +5,27 @@ import { useEffect, useState } from "react";
 export const translations = {
   en: {
     //Generic
+    edit: "Edit",
     cancel: "Cancel",
     confirm: "Confirm",
+    save: "Save",
     close: "Close",
     send: "Send",
     sending: "Sending…",
+    uploading: "Uploading…",
     prompt: "Write something…",
+    prompt2: "Leave a comment…",
+    viewAll: "View all",
+    viewMore: "View more",
+    showLess: "Show less",
+    add_: "Add",
+    mine: "Mine",
+    all_: "All",
+    // Novae
+    characters: "Characters",
+    worlds: "Worlds",
+    defaultMainFolder: "All characters",
+
     // Auth - Login page
     loginPageTitle: "Welcome back",
     loginPageSubtitle: "Sign in to your Novae account",
@@ -123,10 +138,27 @@ export const translations = {
     profileFollowing: "Following",
     profileFollowingLoading: "Loading…",
     profileNoFollowing: "Not following anyone yet.",
+    profileSideFollowers: "followers",
+    profileSideFollowing: "following",
+    profileSideArtworks: "artworks",
     profileBio: "Biography",
     profileAboutyou: "Say something about you…",
     profileAddCharacter: "Add Character",
     profileAddWorld: "Add World",
+    // Profile edit
+    profileEditCover: "Click to change cover",
+    profileEditAvatar: "Change avatar",
+    profileEditPronouns: "Pronoun(s)",
+    profileEditSocialink: "Your {social} handle",
+    profileEditCustomlink: "Other link",
+    // Tabs
+    profileTabCreations: "Creations",
+    profileTabSocial: "Social",
+    profileTabArtworks: "Gallery",
+    profileTabCreaFeatchar: "Featured Characters",
+    profileTabCreaFeatworld: "Featured Worlds",
+    profileTabSocialFeatfriend: "Friends",
+    profileTabSocialComments: "Comments",
     // Character - page
     characterDescriptionPlaceholder: "A memorable quote from this character…",
     statLabelImages: "images",
@@ -185,15 +217,33 @@ export const translations = {
     landingWaitlistSuccess: "You're on the list! See you soon.",
     landingWaitlistError: "Something went wrong. Please try again.",
     landingWaitlistInvalidEmail: "Please enter a valid email address.",
+
+    //errors
+    errorUserNotFound: "User not found",
   },
   fr: {
     //Generic
+    edit: "Modifier",
     cancel: "Annuler",
     confirm: "Confirmer",
+    save: "Enregistrer",
     close: "Fermer",
     send: "Envoyer",
     sending: "Envoi…",
+    uploading: "Importation…",
     prompt: "Écris quelque chose…",
+    prompt2: "Laisse un commentaire…",
+    viewAll: "Voir tout",
+    viewMore: "Voir plus",
+    showLess: "Moins",
+    add_: "Ajouter",
+    mine: "Les miennes",
+    all_: "Toutes",
+    // Novae
+    characters: "Personnages",
+    worlds: "Mondes",
+    defaultMainFolder: "Tous les personnages",
+
     // Auth - Login page
     loginPageTitle: "Bon retour",
     loginPageSubtitle: "Connecte-toi à ton compte Novae",
@@ -310,6 +360,24 @@ export const translations = {
     profileAboutyou: "Parle de toi…",
     profileAddCharacter: "Nouveau personnage",
     profileAddWorld: "Nouveau monde",
+    // Profile edit
+    profileEditCover: "Cliquez pour changer la bannière",
+    profileEditAvatar: "Changer l'avatar",
+    profileEditPronouns: "Pronom(s)",
+    profileSideFollowers: "Abonné·es",
+    profileSideFollowing: "Abonnements",
+    profileSideArtworks: "Oeuvres",
+    profileEditSocialink: "Ton compte {social}",
+    profileEditCustomlink: "Autre lien",
+    // Tabs
+    profileTabCreations: "Créations",
+    profileTabSocial: "Réseaux sociaux",
+    profileTabArtworks: "Galerie",
+    profileTabCreaFeatchar: "Personnages à l'affiche",
+    profileTabCreaFeatworld: "Mondes à l'affiche",
+    profileTabSocialFeatfriend: "Amis",
+    profileTabSocialComments: "Commentaires",
+    
     // Character - page
     characterDescriptionPlaceholder: "Une citation mémorable de ce personnage…",
     statLabelImages: "images",
@@ -368,6 +436,9 @@ export const translations = {
     landingWaitlistSuccess: "Tu es sur la liste ! À très vite.",
     landingWaitlistError: "Une erreur est survenue. Réessaie.",
     landingWaitlistInvalidEmail: "Merci d'entrer une adresse email valide.",
+
+    //errors
+    errorUserNotFound: "Utilisateur introuvable",
   },
 } as const;
 

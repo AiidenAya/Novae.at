@@ -7,6 +7,7 @@ import type { Artwork, ArtworkCredit } from "../_mock-data";
 import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
 import { ArtworkCreditsDisplay } from "@/components/ui/ArtworkCreditsDisplay";
 import { ArtworkCreditsEditor, creditsValid, emptyCredit, type CreditDraft } from "@/components/ui/ArtworkCreditsEditor";
+import { useT } from "@/lib/locale-context";
 
 type LightboxEntry = { url: string; credits: ArtworkCredit[]; characters: Artwork["characters"] };
 type CharStub = { id: string; name: string; numId: number; slug: string };
@@ -144,6 +145,7 @@ export default function ArtworksTab({
   username?: string;
   profileUserId?: string | null;
 }) {
+  const { t } = useT();
   const [artworks, setArtworks] = useState(initial);
   const [filter, setFilter] = useState<"mine" | "all">("mine");
   const [lightbox, setLightbox] = useState<LightboxEntry | null>(null);
@@ -363,7 +365,7 @@ export default function ArtworksTab({
               cursor: "pointer",
             }}
           >
-            {f === "mine" ? "Mine" : "All"}
+            {f === "mine" ? t.mine : t.all_}
           </button>
         ))}
       </div>
