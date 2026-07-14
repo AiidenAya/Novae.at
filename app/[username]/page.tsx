@@ -23,7 +23,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         socials: true,
         featuredCharacterIds: true,
         featuredFriendUsernames: true,
-        _count: { select: { followers: true, artworks: true } },
+        _count: { select: { followers: true, following: true, artworks: true } },
         characters: {
           where: { isPublic: true },
           select: {
@@ -96,7 +96,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const roleBadges = roleBadgesResult;
 
   const dbStats = user
-    ? { followers: user._count.followers, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
+    ? { followers: user._count.followers, following: user._count.following, artworks: user._count.artworks, characters: user.characters.length, worlds: 0 }
     : null;
 
   // Hidden folders never show on the public profile, even to their owner

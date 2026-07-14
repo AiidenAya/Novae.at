@@ -331,13 +331,27 @@ function EditUserModal({ user, availableRoles, onClose, onSaved }: {
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Roles</span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {availableRoles.map(r => (
-                <label key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
-                  <input type="checkbox" checked={roles.includes(r.name)} onChange={() => toggleRole(r.name)} />
-                  {r.name}
-                  {r.description && <span style={{ color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>— {r.description}</span>}
-                </label>
-              ))}
+              {availableRoles.map(r => {
+                const active = roles.includes(r.name);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => toggleRole(r.name)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6, cursor: "pointer",
+                      fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
+                      padding: "4px 12px", borderRadius: "var(--novae-radius-sm)",
+                      border: active ? "1px solid var(--novae-outline-tag)" : "1px solid var(--novae-outline-all)",
+                      backgroundColor: active ? "var(--novae-bg-tag)" : "transparent",
+                      color: active ? "var(--novae-text-tag)" : "var(--novae-text-secondary)",
+                    }}
+                  >
+                    {r.name}
+                    {r.description && <span style={{ opacity: 0.7, fontSize: "var(--novae-text-xs)" }}>— {r.description}</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

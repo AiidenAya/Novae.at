@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useUploadThing } from "@/lib/uploadthing-client";
 import dynamic from "next/dynamic";
 
@@ -86,22 +87,87 @@ const addBtn: React.CSSProperties = {
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
+function UserListModal({ username, kind, count, onClose }: { username: string; kind: "followers" | "following"; count: number; onClose: () => void }) {
+  const { t } = useT();
+  const [users, setUsers] = useState<{ username: string; name: string | null; avatar: string | null }[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/users/${username}/${kind}`)
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled) setUsers(data[kind] ?? []); })
+      .catch(() => { if (!cancelled) setUsers([]); });
+    return () => { cancelled = true; };
+  }, [username, kind]);
+
+  const title = kind === "followers" ? t.profileFollowers : t.profileFollowing;
+  const loadingLabel = kind === "followers" ? t.profileFollowersLoading : t.profileFollowingLoading;
+  const emptyLabel = kind === "followers" ? t.profileNoFollowers : t.profileNoFollowing;
+
+  return createPortal(
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "transparent", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 32, width: "min(360px, calc(100vw - 32px))", maxHeight: "min(480px, calc(100vh - 64px))", display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
+            {title} - {count}
+          </p>
+          <button
+            onClick={onClose}
+            aria-label={t.close}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="4" y1="4" x2="20" y2="20" />
+              <line x1="20" y1="4" x2="4" y2="20" />
+            </svg>
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-md)", overflowY: "auto" }}>
+          {users === null && (
+            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0, fontStyle: "italic" }}>
+              {loadingLabel}
+            </p>
+          )}
+          {users?.length === 0 && (
+            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0, fontStyle: "italic" }}>
+              {emptyLabel}
+            </p>
+          )}
+          {users?.map((u) => (
+            <a key={u.username} href={`/${u.username}`} style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-sm)", textDecoration: "none" }}>
+              <Avatar src={u.avatar} size={40} name={u.name ?? u.username} />
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{u.name ?? u.username}</span>
+                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>@{u.username}</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function Sidebar({
-  profile, dbStats, isEditing, editState, setEditState,
+  profile, dbStats, isEditing, editState, setEditState, profileUsername,
 }: {
   profile: Profile;
-  dbStats: { followers: number; artworks: number; characters: number; worlds: number } | null;
+  dbStats: { followers: number; following: number; artworks: number; characters: number; worlds: number } | null;
   isEditing: boolean;
   editState: EditState;
   setEditState: React.Dispatch<React.SetStateAction<EditState>>;
+  profileUsername: string;
 }) {
   const stats = {
     followers:  dbStats?.followers  ?? 0,
+    following:  dbStats?.following  ?? 0,
     artworks:   dbStats?.artworks   ?? 0,
     characters: dbStats?.characters ?? 0,
     worlds:     dbStats?.worlds     ?? 0,
   };
 
+  const [openList, setOpenList] = useState<"followers" | "following" | null>(null);
   const socials = isEditing ? editState.socials : profile.socials;
   const { t, locale, toggle: toggleLocale } = useT();
 
@@ -123,14 +189,22 @@ function Sidebar({
       <Card style={{ padding: "var(--novae-space-2xl)" }}>
         <SectionTitle>{t.profileStats}</SectionTitle>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          {Object.entries(stats).map(([key, val]) => (
-            <div key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--novae-space-xs)" }}>
-              <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{val}</span>
-              <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{key}</span>
-            </div>
-          ))}
+          {Object.entries(stats).map(([key, val]) => {
+            const clickable = key === "followers" || key === "following";
+            return (
+              <div
+                key={key}
+                onClick={clickable ? () => setOpenList(key as "followers" | "following") : undefined}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--novae-space-xs)", cursor: clickable ? "pointer" : "default" }}
+              >
+                <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{val}</span>
+                <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{key}</span>
+              </div>
+            );
+          })}
         </div>
       </Card>
+      {openList && <UserListModal username={profileUsername} kind={openList} count={stats[openList]} onClose={() => setOpenList(null)} />}
 
       {(isEditing || visibleSocials.length > 0) && <Card style={{ padding: "var(--novae-space-2xl)" }}>
         <SectionTitle>{t.profileSocials}</SectionTitle>
@@ -289,7 +363,7 @@ function ProfileHeader({
           }
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 35%, var(--novae-bg-main) 100%)", pointerEvents: "none" }} />
           {isEditing && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)" }}>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)" }}>
               <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "white", fontWeight: 500 }}>
                 {uploadingCover ? "Uploading…" : "Click to change cover"}
               </span>
@@ -306,7 +380,7 @@ function ProfileHeader({
           >
             <Avatar src={avatarImage} size={AVATAR_SIZE} name={isEditing ? editState.displayName : profile.displayName} />
             {isEditing && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}>
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}>
                 <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "white", fontWeight: 500, textAlign: "center", padding: "0 8px" }}>
                   {uploadingAvatar ? "Uploading…" : "Change avatar"}
                 </span>
@@ -477,7 +551,7 @@ export function ProfileClient({
 }: {
   username: string;
   dbProfile: DbProfile;
-  dbStats: { followers: number; artworks: number; characters: number; worlds: number } | null;
+  dbStats: { followers: number; following: number; artworks: number; characters: number; worlds: number } | null;
   dbCharacters: DbCharacter[];
   dbFolders?: DbFolder[];
   dbArtworks?: DbArtwork[];
@@ -580,7 +654,7 @@ export function ProfileClient({
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", backgroundColor: "var(--novae-bg-main)" }}>
-      <div className="profile-layout" style={{ position: "relative", zIndex: 1, width: "100%", padding: "32px", boxSizing: "border-box" }}>
+      <div className="profile-layout" style={{ position: "relative", width: "100%", padding: "32px", boxSizing: "border-box" }}>
         <div className="profile-main">
           <ProfileHeader
             profile={profile}
@@ -612,6 +686,7 @@ export function ProfileClient({
           isEditing={isEditing}
           editState={editState}
           setEditState={setEditState}
+          profileUsername={profileUsername ?? username}
         />
       </div>
     </div>
