@@ -7,6 +7,7 @@ import { useUploadThing } from "@/lib/uploadthing-client";
 import ImageCropModal from "@/components/ImageCropModal";
 import { useSession } from "@/lib/auth-client";
 import { ArtworkCreditsEditor, creditsValid, type CreditDraft } from "@/components/ui/ArtworkCreditsEditor";
+import { useT } from "@/lib/locale-context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ function CharacterPickerModal({
     c.name.toLowerCase().includes(search.toLowerCase())
   );
   const selectedIds = new Set(selected.map((s) => s.id));
+  const { t } = useT();
 
   return (
     <div
@@ -67,7 +69,7 @@ function CharacterPickerModal({
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search characters…"
+          placeholder={t.newMultiSearchchar}
           style={{
             background: "var(--novae-bg-input)",
             border: "1px solid var(--novae-outline-all)",
@@ -87,7 +89,7 @@ function CharacterPickerModal({
         <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
           {filtered.length === 0 ? (
             <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", margin: 0, padding: "8px 0" }}>
-              No characters found.
+              {t.newMultiNoCharFound}
             </p>
           ) : (
             filtered.map((c) => {
@@ -148,6 +150,7 @@ function ArtistModal({
   onClose: () => void;
 }) {
   const [credits, setCredits] = useState<CreditDraft[]>(entry.credits);
+  const { t } = useT();
 
   return (
     <div
@@ -160,7 +163,7 @@ function ArtistModal({
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
-            Who made this image?
+            {t.newMultiWho}
           </h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
         </div>
@@ -172,7 +175,7 @@ function ArtistModal({
             onClick={onClose}
             style={{ flex: 1, padding: "10px 0", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", cursor: "pointer" }}
           >
-            Cancel
+            {t.cancel}
           </button>
           <button
             disabled={!creditsValid(credits)}
@@ -186,7 +189,7 @@ function ArtistModal({
               cursor: creditsValid(credits) ? "pointer" : "not-allowed",
             }}
           >
-            Confirm
+            {t.confim}
           </button>
         </div>
       </div>
@@ -210,6 +213,7 @@ export default function NewMultiImagePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { startUpload } = useUploadThing("characterImage");
+  const { t } = useT();
 
   useEffect(() => {
     fetch("/api/characters").then((r) => r.json()).then(setCharacters).catch(() => {});
@@ -263,12 +267,13 @@ export default function NewMultiImagePage() {
   };
 
   const creditsSummary = (entry: ImageEntry) => {
-    if (entry.credits.length === 0) return "Add credit";
+    if (entry.credits.length === 0) return t.newAddCredits;
     const first = entry.credits[0];
     const firstLabel = first.type === "onsite"
-      ? (first.value ? `@${first.value}` : "On Novae")
+      ? (first.value ? `@${first.value}` : t.newOnsite)
       : (first.label || first.value || "External");
-    return entry.credits.length > 1 ? `${firstLabel} & ${entry.credits.length - 1} more` : firstLabel;
+    const moreCredits = t.newMoreCredits.replace("{first}", firstLabel).replace("{others}", entry.credits.length - 1)
+    return entry.credits.length > 1 ? moreCredits : firstLabel;
   };
 
   const handleUpload = async () => {
@@ -334,10 +339,10 @@ export default function NewMultiImagePage() {
         {/* Header */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-5xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
-            Upload images
+            {t.newMulti}
           </h1>
           <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-secondary)", margin: 0 }}>
-            Select multiple artworks, then configure each one before uploading.
+            {t.newMultiDesc}
           </p>
         </div>
 
@@ -365,10 +370,10 @@ export default function NewMultiImagePage() {
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
           </svg>
           <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", textAlign: "center" }}>
-            Drag & drop images here, or <span style={{ color: "var(--novae-text-link)", fontWeight: 600 }}>browse</span>
+            {t.newMultiDragdrop} <span style={{ color: "var(--novae-text-link)", fontWeight: 600 }}>{t.browse}</span>
           </span>
           <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-            PNG, JPG, GIF, WEBP — up to 8 MB each
+            {t.novaeFormat}
           </span>
           <input
             ref={fileInputRef}
@@ -447,10 +452,10 @@ export default function NewMultiImagePage() {
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                   </svg>
                   {entry.characters.length === 0
-                    ? "No character"
+                    ? t.newMultiNochar
                     : entry.characters.length === 1
                       ? entry.characters[0].name
-                      : `${entry.characters.length} characters`}
+                      : `${entry.characters.length} ${t.characters}`}
                 </button>
 
                 {/* Thumbnail button */}
@@ -476,7 +481,7 @@ export default function NewMultiImagePage() {
                       <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                     </svg>
                   )}
-                  {entry.thumbnailPreview ? "Thumbnail" : "Crop thumbnail"}
+                  {entry.thumbnailPreview ? t.newMultiThmb : newMultiThmbcrop}
                 </button>
 
                 {/* Sensitive type buttons */}
@@ -486,7 +491,7 @@ export default function NewMultiImagePage() {
                     <button
                       key={val}
                       onClick={() => setEntries((prev) => prev.map((e, j) => j === i ? { ...e, sensitiveType: active ? null : val } : e))}
-                      title={val === "nudity" ? "Nudity / fan service" : "Gore content"}
+                      title={val === "nudity" ? t.nudityVerbose : t.goreVerbose}
                       style={{
                         display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
                         background: active ? "rgba(192,32,90,0.12)" : "none",
@@ -501,7 +506,7 @@ export default function NewMultiImagePage() {
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                       </svg>
-                      {val === "nudity" ? "Nudity" : "Gore"}
+                      {val === "nudity" ? t.nudity : t.gore}
                     </button>
                   );
                 })}
@@ -524,7 +529,7 @@ export default function NewMultiImagePage() {
             onClick={() => router.back()}
             style={{ flex: 1, padding: "14px 24px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 600, cursor: "pointer" }}
           >
-            Cancel
+            {t.cancel}
           </button>
           <button
             onClick={handleUpload}
@@ -540,7 +545,7 @@ export default function NewMultiImagePage() {
               transition: "opacity 0.15s, background 0.15s",
             }}
           >
-            {uploading ? "Uploading…" : `Upload ${entries.length > 0 ? `${entries.length} image${entries.length > 1 ? "s" : ""}` : "images"} →`}
+            {uploading ? t.uploading : `${t.newMultiUpload} ${entries.length} image${entries.length > 1 ? "s" : ""} →`}
           </button>
         </div>
       </div>

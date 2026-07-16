@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "@/lib/auth-client";
+import { useT } from "@/lib/locale-context";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -59,6 +60,7 @@ const btnDanger: React.CSSProperties = {
 export default function AccountSettingsPage() {
   const { data: session } = useSession();
   const user = session?.user;
+  const { t } = useT();
 
   const [displayName, setDisplayName] = useState(user?.name ?? "");
   const [email,       setEmail]       = useState(user?.email ?? "");
@@ -69,38 +71,38 @@ export default function AccountSettingsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
       <div>
-        <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 4px 0" }}>Account</h1>
-        <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0 }}>Manage your account details and security.</p>
+        <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 4px 0" }}>{t.account}</h1>
+        <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0 }}>{t.accountDesc}</p>
       </div>
 
-      <Section title="Profile">
-        <Field label="Display name">
+      <Section title={t.accountProfile}>
+        <Field label={t.accountEditName}>
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={inputStyle} />
         </Field>
-        <Field label="Email">
+        <Field label={t.accountEditEmail}>
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={inputStyle} />
         </Field>
-        <button style={btnPrimary} onClick={() => { /* TODO: save */ }}>Save changes</button>
+        <button style={btnPrimary} onClick={() => { /* TODO: save */ }}>{t.saveChange}</button>
       </Section>
 
-      <Section title="Password">
-        <Field label="Current password">
+      <Section title={t.accountPassword}>
+        <Field label={t.accountCurrentPswd}>
           <input value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} type="password" style={inputStyle} />
         </Field>
-        <Field label="New password">
+        <Field label={t.accountNewPswd}>
           <input value={newPw} onChange={(e) => setNewPw(e.target.value)} type="password" style={inputStyle} />
         </Field>
-        <Field label="Confirm new password">
+        <Field label={t.accountConfirmPswd}>
           <input value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} type="password" style={inputStyle} />
         </Field>
-        <button style={btnPrimary} onClick={() => { /* TODO: change password */ }}>Update password</button>
+        <button style={btnPrimary} onClick={() => { /* TODO: change password */ }}>{t.accountUpdatePswd}</button>
       </Section>
 
-      <Section title="Danger zone">
+      <Section title={t.accountDangerzone}>
         <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0 }}>
-          Permanently delete your account and all associated data. This action cannot be undone.
+          {t.accountWarningDelete}
         </p>
-        <button style={btnDanger} onClick={() => { /* TODO: confirm + delete */ }}>Delete account</button>
+        <button style={btnDanger} onClick={() => { /* TODO: confirm + delete */ }}>{t.accountPermadelete}</button>
       </Section>
     </div>
   );

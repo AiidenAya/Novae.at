@@ -1,47 +1,49 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-
-const CHOICES = [
-  {
-    id: "character",
-    label: "Character",
-    description: "Create an original character with a profile, gallery, and lore.",
-    disabled: false,
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-      </svg>
-    ),
-  },
-  {
-    id: "world",
-    label: "World",
-    description: "Build a world, setting or universe for your characters to live in.",
-    disabled: true,
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-      </svg>
-    ),
-  },
-  {
-    id: "multi-image",
-    label: "Multi Image",
-    description: "Upload multiple artworks at once and organize them together.",
-    disabled: false,
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="7" y="7" width="14" height="14" rx="2"/><rect x="3" y="3" width="14" height="14" rx="2" fill="var(--novae-bg-card)"/>
-        <circle cx="7.5" cy="7.5" r="1"/><polyline points="17 13 13 9 6 17"/>
-      </svg>
-    ),
-  },
-];
+import { useT } from "@/lib/locale-context";
 
 export default function NewPage() {
   const router = useRouter();
+  const { t } = useT();
+
+  const CHOICES = [
+      {
+        id: "character",
+        label: t.character,
+        description: t.newCharDesc,
+        disabled: false,
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        ),
+      },
+      {
+        id: "world",
+        label: t.world,
+        description: t.newWorldDesc,
+        disabled: true,
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        ),
+      },
+      {
+        id: "multi-image",
+        label: t.newMultimage,
+        description: t.newMultimageDesc,
+        disabled: false,
+        icon: (
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="7" y="7" width="14" height="14" rx="2"/><rect x="3" y="3" width="14" height="14" rx="2" fill="var(--novae-bg-card)"/>
+            <circle cx="7.5" cy="7.5" r="1"/><polyline points="17 13 13 9 6 17"/>
+          </svg>
+        ),
+      },
+  ];
 
   function handleChoice(id: string) {
     router.push(`/library/new/${id}`);
@@ -52,10 +54,10 @@ export default function NewPage() {
       <div style={{ width: "100%", maxWidth: 860, display: "flex", flexDirection: "column", gap: 40 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-5xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: 0 }}>
-            Create new
+            {t.createNew}
           </h1>
           <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-secondary)", margin: 0 }}>
-            What would you like to add to your library?
+            {t.newPrompt}
           </p>
         </div>
 

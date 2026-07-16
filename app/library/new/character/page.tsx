@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { NovaeUserSearch } from "@/components/ui/NovaeUserSearch";
+import { useT } from "@/lib/locale-context";
 
 export default function NewCharacterPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function NewCharacterPage() {
   const [creditLabel, setCreditLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { t } = useT();
 
   function isCreditValid() {
     if (isDesigner !== false) return true;
@@ -23,8 +25,8 @@ export default function NewCharacterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    if (isDesigner === null) { setError("Please choose a designer option."); return; }
-    if (!isCreditValid()) { setError("Please fill in the designer credit fields."); return; }
+    if (isDesigner === null) { setError(t.newCharErrorDesigneropt); return; }
+    if (!isCreditValid()) { setError(t.newCharErrorNodesigner); return; }
     setLoading(true);
     setError("");
 
@@ -46,7 +48,7 @@ export default function NewCharacterPage() {
       const character = await res.json();
       router.push(`/library/characters/${character.numId}-${character.slug}`);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t.error0);
       setLoading(false);
     }
   }
@@ -81,7 +83,7 @@ export default function NewCharacterPage() {
               margin: 0,
             }}
           >
-            New character
+            {t.newChar}
           </h1>
           <p
             style={{
@@ -91,7 +93,7 @@ export default function NewCharacterPage() {
               margin: 0,
             }}
           >
-            Start with a name — you can fill in everything else on the character page.
+            {t.newCharAskName}
           </p>
         </div>
 
@@ -105,14 +107,14 @@ export default function NewCharacterPage() {
               color: "var(--novae-text-secondary)",
             }}
           >
-            Character name
+            {t.newCharName}
           </label>
           <input
             id="name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Saphira Aishi"
+            placeholder={t.eg+" Saphira Aishi"}
             autoFocus
             style={{
               background: "var(--novae-bg-input)",
@@ -146,15 +148,15 @@ export default function NewCharacterPage() {
         {/* Designer */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>
-            Design
+            {t.newCharDesign}
           </span>
 
           {/* 3-way toggle: me / on novae / external */}
           <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
             {([
-              { key: "me",      label: "Me" },
-              { key: "onsite",  label: "on Novae" },
-              { key: "offsite", label: "Outside website" },
+              { key: "me",      label: t.me },
+              { key: "onsite",  label: t.newOnsite },
+              { key: "offsite", label: t.newOffsite },
             ] as const).map(({ key, label }) => {
               const active = key === "me" ? isDesigner === true : (isDesigner === false && creditType === key);
               return (
@@ -189,14 +191,14 @@ export default function NewCharacterPage() {
                   type="text"
                   value={creditLabel}
                   onChange={(e) => setCreditLabel(e.target.value)}
-                  placeholder="Designer name"
+                  placeholder={t.newDesignerName}
                   style={{ background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", outline: "none", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", padding: "10px 14px", width: "100%", boxSizing: "border-box" }}
                   onFocus={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-selected)")}
                   onBlur={(e) => (e.currentTarget.style.borderColor = "var(--novae-outline-all)")}
                 />
               )}
               {creditType === "onsite" ? (
-                <NovaeUserSearch value={creditValue} onChange={setCreditValue} placeholder="Search username…" />
+                <NovaeUserSearch value={creditValue} onChange={setCreditValue} placeholder={t.newSearchUN} />
               ) : (
                 <input
                   type="text"
@@ -229,7 +231,7 @@ export default function NewCharacterPage() {
               cursor: "pointer",
             }}
           >
-            Cancel
+            {t.cancel}
           </button>
           <button
             type="submit"
@@ -249,7 +251,7 @@ export default function NewCharacterPage() {
               transition: "opacity 0.15s, background 0.15s",
             }}
           >
-            {loading ? "Creating…" : "Create character →"}
+            {loading ? t.newCreating : t.newCharLaunch}
           </button>
         </div>
       </form>
