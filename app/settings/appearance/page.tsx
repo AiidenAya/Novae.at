@@ -2,6 +2,7 @@
 
 import { useTheme } from "@/lib/use-theme";
 import { useLocaleContext } from "@/lib/locale-context";
+import { useT } from "@/lib/locale-context";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -37,22 +38,23 @@ function OptionCard({ label, description, selected, onClick }: { label: string; 
 export default function AppearanceSettingsPage() {
   const { isDark, toggle } = useTheme();
   const { locale, toggle: toggleLocale } = useLocaleContext();
+  const { t } = useT();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
       <div>
-        <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 4px 0" }}>Appearance</h1>
-        <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0 }}>Customise how Novae looks for you.</p>
+        <h1 style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)", margin: "0 0 4px 0" }}>{t.appearance}</h1>
+        <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)", margin: 0 }}>{t.appearanceDesc}</p>
       </div>
 
-      <Section title="Theme">
+      <Section title={t.appearanceTheme}>
         <div style={{ display: "flex", gap: 12 }}>
-          <OptionCard label="Dark" description="Easy on the eyes at night." selected={isDark} onClick={() => !isDark && toggle()} />
-          <OptionCard label="Light" description="Bright and clear." selected={!isDark} onClick={() => isDark && toggle()} />
+          <OptionCard label={t.appearanceDark} description={t.appearanceDarkDesc} selected={isDark} onClick={() => !isDark && toggle()} />
+          <OptionCard label={t.appearanceLight} description={t.appearanceLightDesc} selected={!isDark} onClick={() => isDark && toggle()} />
         </div>
       </Section>
 
-      <Section title="Language">
+      <Section title={t.appearanceLanguage}>
         <div style={{ display: "flex", gap: 12 }}>
           <OptionCard label="English" description="Interface in English." selected={locale === "en"} onClick={() => locale !== "en" && toggleLocale()} />
           <OptionCard label="Français" description="Interface en français." selected={locale === "fr"} onClick={() => locale !== "fr" && toggleLocale()} />
