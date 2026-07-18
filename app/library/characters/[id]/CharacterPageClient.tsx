@@ -349,6 +349,7 @@ type GalleryData = { id: string; name: string; images: { id: string; artworkId: 
 function DraggableArtworkTile({
   artwork, isOwner, galleries, characterId, assigningArtwork, setAssigningArtwork,
   setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive,
+  selectMode, isSelected, onToggleSelect,
 }: {
   artwork: Artwork;
   isOwner: boolean;
@@ -361,10 +362,13 @@ function DraggableArtworkTile({
   deleteArtwork: (id: string) => void;
   setGalleries: React.Dispatch<React.SetStateAction<GalleryData[]>>;
   isDndActive: boolean;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `artwork-${artwork.id}` });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `artwork-${artwork.id}`, disabled: selectMode });
   const hasThumbnail = !!artwork.thumbnailUrl;
-  const dragProps = isOwner && isDndActive ? { ...attributes, ...listeners } : {};
+  const dragProps = isOwner && isDndActive && !selectMode ? { ...attributes, ...listeners } : {};
   const tileStyle: React.CSSProperties = {
     position: "relative",
     aspectRatio: hasThumbnail ? "1" : undefined,
@@ -373,10 +377,17 @@ function DraggableArtworkTile({
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : 1,
     touchAction: "none",
-    cursor: isDragging ? "grabbing" : "zoom-in",
+    outline: isSelected ? "2px solid var(--novae-btn-primary)" : "none",
+    outlineOffset: -2,
+    cursor: selectMode ? "pointer" : isDragging ? "grabbing" : "zoom-in",
+  };
+  const handleClick = () => {
+    if (isDragging) return;
+    if (selectMode) { onToggleSelect?.(artwork.id); return; }
+    setLightbox({ url: artwork.imageUrl, credits: artwork.credits });
   };
   return (
-    <div ref={setNodeRef} style={tileStyle} {...dragProps} onClick={() => !isDragging && setLightbox({ url: artwork.imageUrl, credits: artwork.credits })}>
+    <div ref={setNodeRef} style={tileStyle} {...dragProps} onClick={handleClick}>
       <SensitiveImageWrapper sensitiveType={artwork.sensitiveType} className="absolute inset-0">
         {hasThumbnail ? (
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
@@ -387,7 +398,22 @@ function DraggableArtworkTile({
         )}
       </SensitiveImageWrapper>
       <SensitiveBadge sensitiveType={artwork.sensitiveType} side="left" />
-      {isOwner && (
+      {isOwner && selectMode && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggleSelect?.(artwork.id); }}
+          style={{
+            position: "absolute", top: 6, left: 6, width: 22, height: 22, borderRadius: "50%",
+            border: `2px solid ${isSelected ? "var(--novae-btn-primary)" : "#fff"}`,
+            background: isSelected ? "var(--novae-btn-primary)" : "rgba(0,0,0,0.35)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 15, cursor: "pointer",
+          }}
+        >
+          {isSelected && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          )}
+        </div>
+      )}
+      {isOwner && !selectMode && (
         <div className="artwork-actions" style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 4, opacity: 0, transition: "opacity 0.15s", zIndex: 10 }}>
           {galleries.length > 0 && (
             <button onClick={(e) => { e.stopPropagation(); setAssigningArtwork((prev) => prev === artwork.id ? null : artwork.id); }} style={{ width: 28, height: 28, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Manage categories">
@@ -608,6 +634,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [creatingGallery, setCreatingGallery] = useState(false);
   const [renamingGallery, setRenamingGallery] = useState<{ id: string; name: string } | null>(null);
   const [assigningArtwork, setAssigningArtwork] = useState<string | null>(null); // artworkId
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(new Set());
+  const [bulkMoveGalleryId, setBulkMoveGalleryId] = useState<string>("");
 
   // Relationships
   type RelEntry = {
@@ -976,6 +1005,40 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     if (!confirm("Delete this image?")) return;
     await fetch(`/api/characters/${character.id}/artworks/${artworkId}`, { method: "DELETE" });
     setArtworks((prev) => prev.filter((a) => a.id !== artworkId));
+  };
+
+  const toggleSelectArtwork = (artworkId: string) => {
+    setSelectedArtworkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(artworkId)) next.delete(artworkId); else next.add(artworkId);
+      return next;
+    });
+  };
+
+  const clearSelection = () => { setSelectedArtworkIds(new Set()); setSelectMode(false); setBulkMoveGalleryId(""); };
+
+  const bulkDeleteArtworks = async () => {
+    const ids = Array.from(selectedArtworkIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} image${ids.length > 1 ? "s" : ""}?`)) return;
+    await Promise.all(ids.map((id) => fetch(`/api/characters/${character.id}/artworks/${id}`, { method: "DELETE" })));
+    setArtworks((prev) => prev.filter((a) => !selectedArtworkIds.has(a.id)));
+    clearSelection();
+  };
+
+  const bulkMoveToGallery = async (galleryId: string) => {
+    const ids = Array.from(selectedArtworkIds);
+    if (ids.length === 0 || !galleryId) return;
+    await Promise.all(ids.map((id) => fetch(`/api/characters/${character.id}/galleries/${galleryId}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artworkId: id }),
+    })));
+    setGalleries((prev) => prev.map((gal) => {
+      if (gal.id !== galleryId) return gal;
+      const existing = new Set(gal.images.map((i) => i.artworkId));
+      const additions = ids.filter((id) => !existing.has(id)).map((id) => ({ id: Math.random().toString(), artworkId: id, order: 0 }));
+      return additions.length > 0 ? { ...gal, images: [...gal.images, ...additions] } : gal;
+    }));
+    clearSelection();
   };
 
   const openEditCredits = (artwork: Artwork) => {
@@ -2988,7 +3051,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
               const uncategorized = artworks.filter((a) => !galleries.some((g) => g.images.some((i) => i.artworkId === a.id)));
 
-              const tileProps = { isOwner, galleries, characterId: character.id, assigningArtwork, setAssigningArtwork, setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive: galleries.length > 0 };
+              const tileProps = { isOwner, galleries, characterId: character.id, assigningArtwork, setAssigningArtwork, setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive: galleries.length > 0, selectMode, onToggleSelect: toggleSelectArtwork };
 
               const reorderGalleries = (activeId: string, overId: string) => {
                 const oldIdx = galleries.findIndex((g) => g.id === activeId);
@@ -3052,7 +3115,40 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                         <button type="button" onClick={() => { setCreatingGallery(false); setNewGalleryName(""); }} style={{ padding: "7px 10px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
                       </form>
                     )}
+                    {isOwner && artworks.length > 0 && (
+                      <button
+                        onClick={() => { if (selectMode) clearSelection(); else setSelectMode(true); }}
+                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", background: selectMode ? "var(--novae-btn-primary)" : "none", border: `1px solid ${selectMode ? "var(--novae-btn-primary)" : "var(--novae-outline-all)"}`, borderRadius: "var(--novae-radius-md)", color: selectMode ? "#fff" : "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}
+                      >
+                        {selectMode ? "Cancel" : "Select"}
+                      </button>
+                    )}
                   </div>
+
+                  {/* ── Bulk selection toolbar ───────────────────── */}
+                  {selectMode && selectedArtworkIds.size > 0 && (
+                    <div style={{ position: "sticky", top: 8, zIndex: 30, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "10px 14px", background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-selected)", borderRadius: "var(--novae-radius-md)" }}>
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>
+                        {selectedArtworkIds.size} selected
+                      </span>
+                      {galleries.length > 0 && (
+                        <select
+                          value={bulkMoveGalleryId}
+                          onChange={(e) => { const gid = e.target.value; setBulkMoveGalleryId(gid); if (gid) bulkMoveToGallery(gid); }}
+                          style={{ padding: "6px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}
+                        >
+                          <option value="">Move to category…</option>
+                          {galleries.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                      )}
+                      <button onClick={bulkDeleteArtworks} style={{ padding: "7px 14px", background: "var(--novae-error, #d64545)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer" }}>
+                        Delete selected
+                      </button>
+                      <button onClick={() => setSelectedArtworkIds(new Set())} style={{ padding: "7px 12px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
+                        Deselect all
+                      </button>
+                    </div>
+                  )}
 
                   {/* ── Gallery sections ─────────────────────────── */}
                   <SortableContext items={galleries.map((g) => g.id)} strategy={verticalListSortingStrategy}>
@@ -3122,7 +3218,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                             </p>
                           ) : (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-                              {galleryArtworks.map((a) => <DraggableArtworkTile key={a.id} artwork={a} {...tileProps} />)}
+                              {galleryArtworks.map((a) => <DraggableArtworkTile key={a.id} artwork={a} {...tileProps} isSelected={selectedArtworkIds.has(a.id)} />)}
                             </div>
                           )
                         )}
@@ -3148,7 +3244,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                         </p>
                       ) : (
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-                          {uncategorized.map((a) => <DraggableArtworkTile key={a.id} artwork={a} {...tileProps} />)}
+                          {uncategorized.map((a) => <DraggableArtworkTile key={a.id} artwork={a} {...tileProps} isSelected={selectedArtworkIds.has(a.id)} />)}
                         </div>
                       )}
                     </div>
