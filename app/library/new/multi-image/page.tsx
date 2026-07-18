@@ -189,7 +189,7 @@ function ArtistModal({
               cursor: creditsValid(credits) ? "pointer" : "not-allowed",
             }}
           >
-            {t.confim}
+            {t.confirm}
           </button>
         </div>
       </div>
@@ -272,7 +272,7 @@ export default function NewMultiImagePage() {
     const firstLabel = first.type === "onsite"
       ? (first.value ? `@${first.value}` : t.newOnsite)
       : (first.label || first.value || "External");
-    const moreCredits = t.newMoreCredits.replace("{first}", firstLabel).replace("{others}", entry.credits.length - 1)
+    const moreCredits = t.newMoreCredits.replace("{first}", firstLabel).replace("{others}", String(entry.credits.length - 1))
     return entry.credits.length > 1 ? moreCredits : firstLabel;
   };
 
@@ -481,7 +481,7 @@ export default function NewMultiImagePage() {
                       <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                     </svg>
                   )}
-                  {entry.thumbnailPreview ? t.newMultiThmb : newMultiThmbcrop}
+                  {entry.thumbnailPreview ? t.newMultiThmb : t.newMultiThmbcrop}
                 </button>
 
                 {/* Sensitive type buttons */}
