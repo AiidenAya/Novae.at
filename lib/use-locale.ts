@@ -25,11 +25,14 @@ export const translations = {
     me: "Me",
     all_: "All",
     eg: "e.g.",
+    overview: "Overview",
+
     // Novae
     characters: "Characters",
     character: "Character",
     worlds: "Worlds",
     world: "World",
+    locations: "Locations",
     novaeFormat: "PNG, JPG, GIF, WEBP — up to 8 MB per file",
     defaultMainFolder: "All characters",
     nudity: "Nudity",
@@ -230,6 +233,25 @@ export const translations = {
     newMultiThmbcrop: "Crop thumbnail",
     newMultiUpload: "Upload",
 
+    // World - page
+    worldNoCharacters: "No characters yet.",
+    worldNoLocations: "No locations yet.",
+    worldNoMaps: "No maps yet.",
+    worldCreatedBy: "Created by",
+    worldAddMap: "Add map",
+    worldAddLocationPin: "Add location pin",
+    worldDelete: "Delete",
+    worldDeleting: "Deleting...",
+    worldMapAdded: "Map added successfully.",
+    worldPinAdded: "Location pin added successfully.",
+    worldAddMapPlaceholder: "Add map",
+    worldAddLocationPinPlaceholder: "Add location pin",
+    worldAddLocationDescriptionPlaceholder: "Description",
+    worldAddCharacter: "Add character",
+    worldLocationsTitle: "Locations",
+    worldMapsTitle: "Maps",
+    worldCharactersTitle: "Characters",
+
     // Character - page
     characterDescriptionPlaceholder: "A memorable quote from this character…",
     statLabelImages: "images",
@@ -291,6 +313,7 @@ export const translations = {
 
     //errors
     errorUserNotFound: "User not found",
+    errorUserNoName: "Name shouldn't be empty",
     error0: "Something went wrong. Please try again."
   },
   fr: {
@@ -315,11 +338,13 @@ export const translations = {
     me: "Moi",
     all_: "Toutes",
     eg: "Ex.",
+    overview: "Aperçu",
     // Novae
     characters: "Personnages",
     character: "Personnage",
     worlds: "Mondes",
     world: "Monde",
+    locations: "Lieux",
     novaeFormat: "PNG, JPG, GIF, WEBP — jusqu'à 8 MB par fichier",
     defaultMainFolder: "Tous les personnages",
     nudity: "Nudité",
@@ -521,6 +546,25 @@ export const translations = {
     newMultiThmbcrop: "Crop thumbnail",
     newMultiUpload: "Envoyer",
 
+    // World - page
+    worldNoCharacters: "Aucun personnage pour le moment.",
+    worldNoMaps: "Aucune carte pour le moment.",
+    worldCreatedBy: "Créé par",
+    worldAddMap: "Ajouter une carte",
+    worldAddLocationPin: "Ajouter un repère",
+    worldDelete: "Supprimer",
+    worldDeleting: "Suppression...",
+    worldMapAdded: "Carte ajoutée avec succès.",
+    worldPinAdded: "Repère ajouté avec succès.",
+    worldAddMapPlaceholder: "Ajouter une carte",
+    worldAddLocationPinPlaceholder: "Ajouter un repère",
+    worldAddLocationDescriptionPlaceholder: "Description",
+    worldAddCharacter: "Ajouter un personnage",
+    worldLocationsTitle: "Lieux",
+    worldMapsTitle: "Cartes",
+    worldCharactersTitle: "Personnages",
+    worldNoLocations: "Aucun lieu pour le moment.",
+
     // Character - page
     characterDescriptionPlaceholder: "Une citation mémorable de ce personnage…",
     statLabelImages: "images",
@@ -582,6 +626,7 @@ export const translations = {
 
     //errors
     errorUserNotFound: "Utilisateur introuvable",
+    errorUserNoName: "Le nom ne doit pas être vide",
     error0: "Une erreur est survenue. Veuillez réessayer."
   },
 } as const;

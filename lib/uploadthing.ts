@@ -25,6 +25,36 @@ export const ourFileRouter = {
       return { url: file.ufsUrl };
     }),
 
+  worldImage: f({ image: { maxFileSize: "8MB", maxFileCount: 20 } })
+    .middleware(async () => {
+      const session = await auth.api.getSession({ headers: await headers() });
+      if (!session?.user) throw new Error("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ file }) => {
+      return { url: file.ufsUrl };
+    }),
+
+  worldAvatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+    .middleware(async () => {
+      const session = await auth.api.getSession({ headers: await headers() });
+      if (!session?.user) throw new Error("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ file }) => {
+      return { url: file.ufsUrl };
+    }),
+
+  worldMap: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
+    .middleware(async () => {
+      const session = await auth.api.getSession({ headers: await headers() });
+      if (!session?.user) throw new Error("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ file }) => {
+      return { url: file.ufsUrl };
+    }),
+
   profileAvatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
     .middleware(async () => {
       const session = await auth.api.getSession({ headers: await headers() });
