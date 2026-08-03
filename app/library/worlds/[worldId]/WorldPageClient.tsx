@@ -13,7 +13,6 @@ const EditorField    = dynamic(() => import("@/components/editor/EditorField"), 
 const EditorRenderer = dynamic(() => import("@/components/editor/EditorRenderer"), { ssr: false });
 import { useUploadThing } from "@/lib/uploadthing-client";
 import { thumbUrl } from "@/lib/thumb";
-import { characterUrl } from "@/lib/character-url";
 import { useT } from "@/lib/locale-context";
 import ImageCropModal from "@/components/ImageCropModal";
 import SensitiveImageWrapper, { SensitiveBadge } from "@/components/SensitiveImageWrapper";
@@ -26,60 +25,47 @@ import { TagSearch } from "@/components/ui/TagSearch";
 
 type Swatch = { id?: string; hex: string; label: string | null };
 type Tag    = { tagId: string; tag: { id: string; name: string } };
-type Artwork = { id: string; imageUrl: string; thumbnailUrl: string | null; sensitiveType: string | null; characters: { id: string; name: string; numId: number; slug: string }[]; credits: ArtworkCreditData[] };
+type Artwork = { id: string; imageUrl: string; thumbnailUrl: string | null; sensitiveType: string | null; worlds: { id: string; name: string; numId: number; slug: string }[]; credits: ArtworkCreditData[] };
 
 type RawCredit = { id: string; userId: string | null; label: string | null; url: string | null; user: { username: string | null } | null };
 function mapCredits(raw: RawCredit[]): ArtworkCreditData[] {
   return raw.map((c) => ({ id: c.id, userId: c.userId, username: c.user?.username ?? null, label: c.label, url: c.url }));
 }
 
-interface CharacterData {
+type CharacterInWorld = { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } };
+
+interface WorldData {
   id: string;
   numId: number;
   slug: string;
   name: string;
   description: string | null;
   avatarUrl: string | null;
-  birthdate: string | null;
-  age: string | null;
-  height: string | null;
-  weight: string | null;
-  mbti: string | null;
-  kingdom: string | null;
-  ethnicity: string | null;
-  race: string | null;
-  gender: string | null;
-  orientation: string | null;
-  customFieldName: string | null;
-  custom: string | null;
-  voiceClaimUrl: string | null;
-  playlistUrl: string | null;
-  spotifyPlaylistUrl: string | null;
-  summary: string | null;
-  biography: string | null;
-  sections: string | null;
-  profileBlockOrder: string | null;
-  relationshipsA: { id: string; type: string; typeB: string | null; description: string | null; status?: string; externalName?: string | null; externalImageUrl?: string | null; characterB: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } | null }[];
-  relationshipsB: { id: string; type: string; typeB: string | null; description: string | null; status?: string; characterA: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } }[];
+  isPublic: boolean;
   isDesigner: boolean;
   designerCredit: string | null;
   isWriter: boolean;
   writerCredit: string | null;
+  summary: string | null;
+  biography: string | null;
+  sections: string | null;
+  profileBlockOrder: string | null;
   createdAt: Date;
-  isPublic: boolean;
-  user: { username: string | null };
-  world: { id: string; numId: number; name: string; slug: string; isPublic: boolean } | null;
+  creator: { username: string | null };
+  locations: { id: string; name: string; description: string | null; x: number | null; y: number | null }[];
+  characters: CharacterInWorld[];
+  maps: { id: string; name: string; imageUrl: string | null; bounds: unknown }[];
   artworks: Artwork[];
   tags: Tag[];
   colorPalettes: { id: string; swatches: Swatch[] }[];
   favorites: { id: string }[];
   galleries: { id: string; name: string; images: { id: string; artworkId: string; order: number }[] }[];
-  baseCharacter: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; isPublic: boolean; variants: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; variantLabel: string | null; isPublic: boolean }[] } | null;
+  baseWorld: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; isPublic: boolean; variants: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; variantLabel: string | null; isPublic: boolean }[] } | null;
   variants: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; variantLabel: string | null; isPublic: boolean }[];
 }
 
 interface Props {
-  character: CharacterData;
+  world: WorldData;
   isOwner: boolean;
   currentUserId: string | null;
   initialFavorited?: boolean;
@@ -169,80 +155,6 @@ function SortableBlock({ id, draggable, children }: { id: string; draggable: boo
   );
 }
 
-// ─── Playlist importer ──────────────────────────────────────────────────────
-
-function PlaylistImport({ onImport }: { onImport: (tracks: { id: string; title: string; artist: string }[]) => void }) {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleImport = async () => {
-    if (!url.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/playlist?url=${encodeURIComponent(url.trim())}`);
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Failed to import"); return; }
-      if (!data.tracks?.length) { setError("No tracks found in this playlist"); return; }
-      onImport(data.tracks);
-      setUrl("");
-    } catch {
-      setError("Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input
-          value={url}
-          onChange={(e) => { setUrl(e.target.value); setError(""); }}
-          onKeyDown={(e) => { if (e.key === "Enter") handleImport(); }}
-          placeholder="Import from YouTube playlist URL…"
-          style={{
-            background: "var(--novae-bg-input)",
-            border: "1px solid var(--novae-outline-all)",
-            borderRadius: "var(--novae-radius-sm)",
-            outline: "none",
-            color: "var(--novae-text-primary)",
-            fontFamily: "var(--font-dm-sans)",
-            fontSize: "var(--novae-text-sm)",
-            padding: "6px 10px",
-            flex: 1,
-            boxSizing: "border-box" as const,
-          }}
-        />
-        <button
-          onClick={handleImport}
-          disabled={!url.trim() || loading}
-          style={{
-            padding: "6px 14px",
-            background: url.trim() && !loading ? "var(--novae-btn-primary)" : "var(--novae-bg-card)",
-            border: "1px solid var(--novae-outline-all)",
-            borderRadius: "var(--novae-radius-sm)",
-            color: url.trim() && !loading ? "#fff" : "var(--novae-text-secondary)",
-            fontFamily: "var(--font-dm-sans)",
-            fontSize: "var(--novae-text-sm)",
-            fontWeight: 600,
-            cursor: url.trim() && !loading ? "pointer" : "not-allowed",
-            flexShrink: 0,
-          }}
-        >
-          {loading ? "Importing…" : "Import"}
-        </button>
-      </div>
-      {error && (
-        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-error, #e05252)" }}>
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
-
 // ─── Color Picker popover ───────────────────────────────────────────────────
 
 function ColorPickerPopover({
@@ -277,7 +189,7 @@ function ColorPickerPopover({
     >
       <input type="color" value={hex} onChange={(e) => setHex(e.target.value)} style={{ width: "100%", height: 48, border: "none", borderRadius: 6, cursor: "pointer" }} />
       <input
-        placeholder="Label (e.g. Eyes)"
+        placeholder="Label (e.g. Sky)"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
@@ -290,72 +202,19 @@ function ColorPickerPopover({
   );
 }
 
-// ─── Placeholder data ───────────────────────────────────────────────────────
-
-const PLACEHOLDER_STORY = [
-  {
-    id: "1",
-    title: "The First Chapter",
-    description: "In the beginning, before the world knew her name, she wandered the forgotten roads between kingdoms, carrying nothing but a blade and a purpose no one else could see.",
-    date: "03/12/2025",
-    coverUrl: null as string | null,
-  },
-  {
-    id: "2",
-    title: "Echoes of the Past",
-    description: "Old wounds resurface when a mysterious letter arrives bearing a seal she thought buried forever. The choices she makes now will echo through every story that follows.",
-    date: "07/28/2025",
-    coverUrl: null as string | null,
-  },
-];
-
-const PLACEHOLDER_MUSIC = [
-  {
-    id: "1",
-    title: "Placeholder Song Title",
-    artist: "Artist Name",
-    url: null as string | null,
-    thumbnailUrl: null as string | null,
-  },
-  {
-    id: "2",
-    title: "Another Track",
-    artist: "Another Artist",
-    url: null as string | null,
-    thumbnailUrl: null as string | null,
-  },
-];
-
-const PLACEHOLDER_RELATIONSHIPS = [
-  {
-    id: "1",
-    name: "Character Name",
-    role: "Best Friend",
-    description: "A steadfast companion through the darkest of times, always the first to offer a hand.",
-    avatarUrl: null as string | null,
-  },
-  {
-    id: "2",
-    name: "Another Character",
-    role: "Rival",
-    description: "Their rivalry began years ago and still burns with the fire of unresolved history.",
-    avatarUrl: null as string | null,
-  },
-];
-
 // ─── Gallery DnD sub-components ──────────────────────────────────────────────
 
 type GalleryData = { id: string; name: string; images: { id: string; artworkId: string; order: number }[] };
 
 function DraggableArtworkTile({
-  artwork, isOwner, galleries, characterId, assigningArtwork, setAssigningArtwork,
+  artwork, isOwner, galleries, worldId, assigningArtwork, setAssigningArtwork,
   setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive,
   selectMode, isSelected, onToggleSelect,
 }: {
   artwork: Artwork;
   isOwner: boolean;
   galleries: GalleryData[];
-  characterId: string;
+  worldId: string;
   assigningArtwork: string | null;
   setAssigningArtwork: React.Dispatch<React.SetStateAction<string | null>>;
   setLightbox: (v: { url: string; credits: ArtworkCreditData[] } | null) => void;
@@ -434,7 +293,7 @@ function DraggableArtworkTile({
             return (
               <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)" }}>
                 <input type="checkbox" checked={inGallery} onChange={async () => {
-                  const res = await fetch(`/api/characters/${characterId}/galleries/${g.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artworkId: artwork.id, remove: inGallery }) });
+                  const res = await fetch(`/api/worlds/${worldId}/galleries/${g.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artworkId: artwork.id, remove: inGallery }) });
                   if (res.ok) setGalleries((prev) => prev.map((gal) => {
                     if (gal.id !== g.id) return gal;
                     if (inGallery) return { ...gal, images: gal.images.filter((i) => i.artworkId !== artwork.id) };
@@ -480,34 +339,36 @@ function SortableGallerySection({
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export default function CharacterPageClient({ character, isOwner, currentUserId, initialFavorited = false }: Props) {
+export default function WorldPageClient({ world, isOwner, currentUserId, initialFavorited = false }: Props) {
   const router = useRouter();
   const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"profile" | "story" | "relationships" | "gallery" | "timeline">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "lore" | "inhabitants" | "gallery" | "map" | "timeline">("profile");
   const [showAuModal, setShowAuModal] = useState(false);
   const [auName, setAuName] = useState("");
   const [auLabel, setAuLabel] = useState("");
   const [creatingAu, setCreatingAu] = useState(false);
 
-  // "Star" topology: every AU points to the root character. The switcher always shows
+  // "Star" topology: every AU points to the root world. The switcher always shows
   // [root, ...all variants of root], regardless of which one is currently open.
-  const rootCharacter = character.baseCharacter
-    ? { id: character.baseCharacter.id, name: character.baseCharacter.name, numId: character.baseCharacter.numId, slug: character.baseCharacter.slug, avatarUrl: character.baseCharacter.avatarUrl }
-    : { id: character.id, name: character.name, numId: character.numId, slug: character.slug, avatarUrl: character.avatarUrl };
-  const auVariants = character.baseCharacter ? character.baseCharacter.variants : character.variants;
+  const rootWorld = world.baseWorld
+    ? { id: world.baseWorld.id, name: world.baseWorld.name, numId: world.baseWorld.numId, slug: world.baseWorld.slug, avatarUrl: world.baseWorld.avatarUrl }
+    : { id: world.id, name: world.name, numId: world.numId, slug: world.slug, avatarUrl: world.avatarUrl };
+  const auVariants = world.baseWorld ? world.baseWorld.variants : world.variants;
+
+  const worldUrl = (numId: number, slug: string) => `/library/worlds/${numId}-${slug}`;
 
   const createAlternateUniverse = useCallback(async () => {
     if (!auName.trim()) return;
     setCreatingAu(true);
     try {
-      const res = await fetch("/api/characters", {
+      const res = await fetch("/api/worlds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: auName.trim(),
-          baseCharacterId: rootCharacter.id,
+          baseWorldId: rootWorld.id,
           variantLabel: auLabel.trim() || null,
         }),
       });
@@ -516,13 +377,13 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       setShowAuModal(false);
       setAuName("");
       setAuLabel("");
-      router.push(characterUrl(created.numId, created.slug));
+      router.push(`/library/worlds/${created.id}`);
     } catch {
       // no-op: keep modal open so the user can retry
     } finally {
       setCreatingAu(false);
     }
-  }, [auName, auLabel, rootCharacter.id, router]);
+  }, [auName, auLabel, rootWorld.id, router]);
 
   const [auToDelete, setAuToDelete] = useState<{ id: string; label: string; isViewingIt: boolean } | null>(null);
   const [deletingAu, setDeletingAu] = useState(false);
@@ -531,10 +392,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     if (!auToDelete) return;
     setDeletingAu(true);
     try {
-      const res = await fetch(`/api/characters/${auToDelete.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/worlds/${auToDelete.id}`, { method: "DELETE" });
       if (!res.ok) return;
       if (auToDelete.isViewingIt) {
-        router.push(characterUrl(rootCharacter.numId, rootCharacter.slug));
+        router.push(`/library/worlds/${rootWorld.id}`);
       } else {
         router.refresh();
       }
@@ -542,23 +403,11 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     } finally {
       setDeletingAu(false);
     }
-  }, [auToDelete, rootCharacter.numId, rootCharacter.slug, router]);
+  }, [auToDelete, rootWorld.id, router]);
 
   // Edit state mirrors the DB fields
-  const [name, setName] = useState(character.name);
-  const [description, setDescription] = useState(character.description ?? "");
-  const [birthdate, setBirthdate] = useState(character.birthdate ?? "");
-  const [age, setAge] = useState(character.age ?? "");
-  const [height, setHeight] = useState(character.height ?? "");
-  const [weight, setWeight] = useState(character.weight ?? "");
-  const [mbti, setMbti] = useState(character.mbti ?? "");
-  const [kingdom, setKingdom] = useState(character.kingdom ?? "");
-  const [ethnicity, setEthnicity] = useState(character.ethnicity ?? "");
-  const [race, setRace] = useState(character.race ?? "");
-  const [gender, setGender] = useState(character.gender ?? "");
-  const [orientation, setOrientation] = useState(character.orientation ?? "");
-  const [customFieldName, setCustomFieldName] = useState(character.customFieldName ?? "");
-  const [custom, setCustom] = useState(character.custom ?? "");
+  const [name, setName] = useState(world.name);
+  const [description, setDescription] = useState(world.description ?? "");
 
   // Designer / Writer credit edit state
   const parseCredit = (raw: string | null): { type: "onsite" | "offsite"; value: string; label: string } => {
@@ -568,197 +417,36 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     if (m) return { type: "offsite", value: m[2], label: m[1] };
     return { type: "onsite", value: raw, label: "" };
   };
-  const [isDesigner, setIsDesigner] = useState(character.isDesigner);
-  const parsed = parseCredit(character.designerCredit);
+  const [isDesigner, setIsDesigner] = useState(world.isDesigner);
+  const parsed = parseCredit(world.designerCredit);
   const [creditType, setCreditType] = useState<"onsite" | "offsite">(parsed.type);
   const [creditValue, setCreditValue] = useState(parsed.value);
   const [creditLabel, setCreditLabel] = useState(parsed.label);
-  const [isWriter, setIsWriter] = useState(character.isWriter);
-  const parsedWriter = parseCredit(character.writerCredit);
+  const [isWriter, setIsWriter] = useState(world.isWriter);
+  const parsedWriter = parseCredit(world.writerCredit);
   const [writerType, setWriterType] = useState<"onsite" | "offsite">(parsedWriter.type);
   const [writerValue, setWriterValue] = useState(parsedWriter.value);
   const [writerLabel, setWriterLabel] = useState(parsedWriter.label);
-  const [voiceClaimUrl, setVoiceClaimUrl] = useState(character.voiceClaimUrl ?? "");
-
-  type Track = { id: string; title: string; artist: string };
-  const parseTracks = (): Track[] => {
-    if (!character.playlistUrl) return [];
-    try {
-      const parsed = JSON.parse(character.playlistUrl);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {}
-    return [];
-  };
-  const [tracks, setTracks] = useState<Track[]>(parseTracks);
-  const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState(character.spotifyPlaylistUrl ?? "");
-  const [summary, setSummary] = useState(character.summary ?? "");
-  const [biography, setBiography] = useState(character.biography ?? "");
-  const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl ?? "");
-  const [isPublic, setIsPublic] = useState(character.isPublic);
+  const [summary, setSummary] = useState(world.summary ?? "");
+  const [biography, setBiography] = useState(world.biography ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(world.avatarUrl ?? "");
+  const [isPublic, setIsPublic] = useState(world.isPublic);
 
   // Tags
-  const [tags, setTags] = useState<Tag[]>(character.tags);
+  const [tags, setTags] = useState<Tag[]>(world.tags);
   const [tagInput, setTagInput] = useState("");
   const [addingTag, setAddingTag] = useState(false);
 
   // Palette
-  const initialSwatches = character.colorPalettes[0]?.swatches ?? [];
+  const initialSwatches = world.colorPalettes[0]?.swatches ?? [];
   const [swatches, setSwatches] = useState<Swatch[]>(initialSwatches);
   const [editingSwatch, setEditingSwatch] = useState<number | null>(null);
-  const [copiedSwatch, setCopiedSwatch] = useState<number | null>(null);
 
   // Artworks
-  const [artworks, setArtworks] = useState<Artwork[]>(character.artworks);
+  const [artworks, setArtworks] = useState<Artwork[]>(world.artworks);
   const [uploadingImage, setUploadingImage] = useState(false);
   const artworkFileRef = useRef<HTMLInputElement>(null);
   const avatarFileRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload: startArtworkUpload } = useUploadThing("characterImage");
-  const { startUpload: startAvatarUpload } = useUploadThing("characterAvatar");
-
-  // Lightbox
-  const [lightbox, setLightbox] = useState<{ url: string; credits: ArtworkCreditData[] } | null>(null);
-
-  useEffect(() => {
-    if (!lightbox) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lightbox]);
-
-  // Galleries
-  const [galleries, setGalleries] = useState<GalleryData[]>(character.galleries ?? []);
-  const [collapsedGalleries, setCollapsedGalleries] = useState<Record<string, boolean>>({});
-  const [galleryDragId, setGalleryDragId] = useState<string | null>(null);
-  const [galleryOverId, setGalleryOverId] = useState<string | null>(null);
-  const gallerySensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
-  const [newGalleryName, setNewGalleryName] = useState("");
-  const [creatingGallery, setCreatingGallery] = useState(false);
-  const [renamingGallery, setRenamingGallery] = useState<{ id: string; name: string } | null>(null);
-  const [assigningArtwork, setAssigningArtwork] = useState<string | null>(null); // artworkId
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(new Set());
-  const [bulkMoveGalleryId, setBulkMoveGalleryId] = useState<string>("");
-
-  // Relationships
-  type RelEntry = {
-    id: string; type: string; typeRaw: string; typeBRaw: string | null; isA: boolean; description: string | null;
-    status: string;
-    character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } } | null;
-    externalName: string | null; externalImageUrl: string | null;
-  };
-  const initRels = (): RelEntry[] => [
-    ...character.relationshipsA.map((r) => ({ id: r.id, type: r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: true, description: r.description, status: r.status ?? "accepted", character: r.characterB, externalName: (r as { externalName?: string | null }).externalName ?? null, externalImageUrl: (r as { externalImageUrl?: string | null }).externalImageUrl ?? null })),
-    ...character.relationshipsB.map((r) => ({ id: r.id, type: r.typeB ?? r.type, typeRaw: r.type, typeBRaw: r.typeB, isA: false, description: r.description, status: r.status ?? "accepted", character: r.characterA, externalName: null, externalImageUrl: null })),
-  ];
-  const [relationships, setRelationships] = useState<RelEntry[]>(initRels);
-  const [showAddRel, setShowAddRel] = useState(false);
-  const [relMode, setRelMode] = useState<"site" | "external">("site");
-  // step 1: which user owns the character
-  type RelUser = { id: string; username: string | null; name: string | null; avatar: string | null };
-  const [relUser, setRelUser] = useState<RelUser | null>(null); // null = not chosen yet
-  const [relUserSearch, setRelUserSearch] = useState("");
-  const [relUserResults, setRelUserResults] = useState<RelUser[]>([]);
-  const [relUserLoading, setRelUserLoading] = useState(false);
-  // step 2: the character
-  const [relSearch, setRelSearch] = useState("");
-  const [relSearchResults, setRelSearchResults] = useState<{ id: string; name: string; numId: number; slug: string; avatarUrl: string | null; user?: { username: string | null } }[]>([]);
-  const [relSearchLoading, setRelSearchLoading] = useState(false);
-  const [relSelectedChar, setRelSelectedChar] = useState<{ id: string; name: string; numId: number; slug: string; avatarUrl: string | null } | null>(null);
-  const [relExternalName, setRelExternalName] = useState("");
-  const [relExternalImage, setRelExternalImage] = useState("");
-  const [relType, setRelType] = useState("");
-  const [relTypeB, setRelTypeB] = useState("");
-  const [relDesc, setRelDesc] = useState("");
-  const [relSaving, setRelSaving] = useState(false);
-  // myLabel = label from current char's perspective, otherLabel = the other side's label
-  const [editingRel, setEditingRel] = useState<{ id: string; isA: boolean; myLabel: string; otherLabel: string; description: string; error?: string } | null>(null);
-
-  const searchRelUsers = async (q: string) => {
-    if (!q.trim()) { setRelUserResults([]); return; }
-    setRelUserLoading(true);
-    try {
-      const res = await fetch(`/api/users/search?multi=1&q=${encodeURIComponent(q)}`);
-      if (res.ok) { const { users } = await res.json(); setRelUserResults(users ?? []); }
-    } finally { setRelUserLoading(false); }
-  };
-
-  // search characters belonging to the chosen user (relUser)
-  const searchRelChars = async (q: string) => {
-    if (!relUser) { setRelSearchResults([]); return; }
-    setRelSearchLoading(true);
-    try {
-      const params = new URLSearchParams({ userId: relUser.id, limit: "20", exclude: character.id });
-      if (q.trim()) params.set("search", q.trim());
-      const res = await fetch(`/api/characters?${params.toString()}`);
-      if (res.ok) setRelSearchResults(await res.json());
-    } finally { setRelSearchLoading(false); }
-  };
-
-  const pickRelUser = (u: RelUser) => {
-    setRelUser(u);
-    setRelUserResults([]); setRelUserSearch("");
-    setRelSelectedChar(null); setRelSearch(""); setRelSearchResults([]);
-  };
-
-  const meUser: RelUser = { id: currentUserId ?? "", username: character.user?.username ?? null, name: null, avatar: avatarUrl ?? null };
-
-  const addRelationship = async () => {
-    if (!relType.trim()) return;
-    if (relMode === "site" && !relSelectedChar) return;
-    if (relMode === "external" && !relExternalName.trim()) return;
-    setRelSaving(true);
-    try {
-      const body = relMode === "site"
-        ? { characterBId: relSelectedChar!.id, type: relType.trim(), typeB: relTypeB.trim() || null, description: relDesc.trim() || null }
-        : { externalName: relExternalName.trim(), externalImageUrl: relExternalImage.trim() || null, type: relType.trim(), typeB: null, description: relDesc.trim() || null };
-      const res = await fetch(`/api/characters/${character.id}/relationships`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        const raw = await res.json();
-        setRelationships((prev) => [...prev, raw]);
-        setShowAddRel(false);
-        setRelUser(null); setRelUserSearch(""); setRelUserResults([]);
-        setRelSearch(""); setRelSearchResults([]); setRelSelectedChar(null);
-        setRelExternalName(""); setRelExternalImage("");
-        setRelType(""); setRelTypeB(""); setRelDesc("");
-      }
-    } finally { setRelSaving(false); }
-  };
-
-  const deleteRelationship = async (relId: string) => {
-    await fetch(`/api/characters/${character.id}/relationships/${relId}`, { method: "DELETE" });
-    setRelationships((prev) => prev.filter((r) => r.id !== relId));
-  };
-
-  const saveEditRel = async () => {
-    if (!editingRel) return;
-    // typeA = other char's role (shows on current char's page); typeB = current char's role (shows on other char's page)
-    const typeA = (editingRel.isA ? editingRel.otherLabel : editingRel.myLabel).trim();
-    const typeB = (editingRel.isA ? editingRel.myLabel : editingRel.otherLabel).trim();
-    if (!typeA) return;
-    setRelSaving(true);
-    try {
-      const res = await fetch(`/api/characters/${character.id}/relationships/${editingRel.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: typeA, typeB: typeB || null, description: editingRel.description.trim() || null }),
-      });
-      if (res.ok) {
-        setRelationships((prev) => prev.map((r) => r.id === editingRel.id
-          ? { ...r, type: editingRel.isA ? typeA : (typeB || typeA), typeRaw: typeA, typeBRaw: typeB || null, description: editingRel.description.trim() || null }
-          : r
-        ));
-        setEditingRel(null);
-      } else {
-        const body = await res.json().catch(() => ({}));
-        setEditingRel((r) => r && { ...r, error: body.error ?? `Error ${res.status}` });
-      }
-    } finally { setRelSaving(false); }
-  };
 
   // Crop modals
   const [avatarCropSrc, setAvatarCropSrc] = useState<{ src: string; file: File } | null>(null);
@@ -771,50 +459,66 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const [pendingCredits, setPendingCredits] = useState<CreditDraft[]>([emptyCredit()]);
   const [pendingSensitiveType, setPendingSensitiveType] = useState<string | null>(null);
 
-  // Informations: which fields are visible
-  const ALL_INFO_FIELDS: { key: string; label: string; state: string; setter: React.Dispatch<React.SetStateAction<string>>; dbVal: string | null; multiline?: boolean }[] = [
-    { key: "gender",      label: "Gender",      state: gender,      setter: setGender,      dbVal: character.gender },
-    { key: "orientation", label: "Orientation", state: orientation, setter: setOrientation, dbVal: character.orientation },
-    { key: "birthdate",  label: "Birthdate",  state: birthdate,  setter: setBirthdate,  dbVal: character.birthdate },
-    { key: "age",        label: "Age",        state: age,        setter: setAge,        dbVal: character.age },
-    { key: "height",     label: "Height",     state: height,     setter: setHeight,     dbVal: character.height },
-    { key: "weight",     label: "Weight",     state: weight,     setter: setWeight,     dbVal: character.weight },
-    { key: "mbti",       label: "MBTI",       state: mbti,       setter: setMbti,       dbVal: character.mbti },
-    { key: "kingdom",    label: "Kingdom",    state: kingdom,    setter: setKingdom,    dbVal: character.kingdom },
-    { key: "ethnicity",  label: "Ethnicity",  state: ethnicity,  setter: setEthnicity,  dbVal: character.ethnicity },
-    { key: "race",       label: "Race",       state: race,       setter: setRace,       dbVal: character.race },
-  ];
-  const [activeInfoKeys, setActiveInfoKeys] = useState<string[]>(
-    ALL_INFO_FIELDS.filter((f) => !!f.dbVal).map((f) => f.key)
-  );
-  const [showInfoFieldPicker, setShowInfoFieldPicker] = useState(false);
+  const { startUpload: startArtworkUpload } = useUploadThing("worldImage");
+  const { startUpload: startAvatarUpload } = useUploadThing("worldAvatar");
+  const { startUpload: startMapUpload } = useUploadThing("worldMap");
 
-  // Multiple custom fields
-  type CustomField = { id: string; name: string; content: string };
+  // Lightbox
+  const [lightbox, setLightbox] = useState<{ url: string; credits: ArtworkCreditData[] } | null>(null);
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
+
+  // Galleries
+  const [galleries, setGalleries] = useState<GalleryData[]>(world.galleries ?? []);
+  const [collapsedGalleries, setCollapsedGalleries] = useState<Record<string, boolean>>({});
+  const [galleryDragId, setGalleryDragId] = useState<string | null>(null);
+  const [galleryOverId, setGalleryOverId] = useState<string | null>(null);
+  const gallerySensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [newGalleryName, setNewGalleryName] = useState("");
+  const [creatingGallery, setCreatingGallery] = useState(false);
+  const [renamingGallery, setRenamingGallery] = useState<{ id: string; name: string } | null>(null);
+  const [assigningArtwork, setAssigningArtwork] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedArtworkIds, setSelectedArtworkIds] = useState<Set<string>>(new Set());
+  const [bulkMoveGalleryId, setBulkMoveGalleryId] = useState<string>("");
+
+  // Inhabitants — characters belonging to this world
+  const [inhabitants, setInhabitants] = useState<CharacterInWorld[]>(world.characters ?? []);
+  const [showAddInhabitant, setShowAddInhabitant] = useState(false);
+  const [inhabitantSearch, setInhabitantSearch] = useState("");
+  const [inhabitantResults, setInhabitantResults] = useState<CharacterInWorld[]>([]);
+  const [inhabitantSearchLoading, setInhabitantSearchLoading] = useState(false);
+  const [inhabitantSaving, setInhabitantSaving] = useState(false);
+
+  const searchInhabitants = async (q: string) => {
+    handleInhabitantSearch(q);
+  };
+
+  // Maps state
+  const [maps, setMaps] = useState<{ id: string; name: string; imageUrl: string | null; bounds: unknown }[]>(world.maps ?? []);
+  const [uploadingMap, setUploadingMap] = useState(false);
+  const mapFileRef = useRef<HTMLInputElement>(null);
+
+  // Custom containers
   type Container = { id: string; title: string; content: string };
 
-  const parseCustomFields = (): CustomField[] => {
-    if (!character.custom) return [];
-    try {
-      const parsed = JSON.parse(character.custom);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {}
-    return [{ id: "legacy", name: character.customFieldName || "Custom", content: character.custom }];
-  };
-
   const parseContainers = (): Container[] => {
-    if (!character.sections) return [];
-    try { return JSON.parse(character.sections); } catch { return []; }
+    if (!world.sections) return [];
+    try { return JSON.parse(world.sections); } catch { return []; }
   };
 
-  const [customFields, setCustomFields] = useState<CustomField[]>(parseCustomFields);
   const [customContainers, setCustomContainers] = useState<Container[]>(parseContainers);
 
   // Middle-column block order (drag & drop, Profile tab)
   const parseBlockOrder = (): string[] => {
-    if (!character.profileBlockOrder) return [];
+    if (!world.profileBlockOrder) return [];
     try {
-      const parsed = JSON.parse(character.profileBlockOrder);
+      const parsed = JSON.parse(world.profileBlockOrder);
       if (Array.isArray(parsed)) return parsed;
     } catch {}
     return [];
@@ -825,10 +529,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   // Edit credits modal
   const [editingCredits, setEditingCredits] = useState<Artwork | null>(null);
   const [creditsDrafts, setCreditsDrafts] = useState<CreditDraft[]>([emptyCredit()]);
-  const [creditsCharacters, setCreditsCharacters] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
-  const [creditsCharSearch, setCreditsCharSearch] = useState("");
-  const [creditsCharResults, setCreditsCharResults] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
-  const [creditsCharLoading, setCreditsCharLoading] = useState(false);
+  const [creditsWorlds, setCreditsWorlds] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
+  const [creditsWorldSearch, setCreditsWorldSearch] = useState("");
+  const [creditsWorldResults, setCreditsWorldResults] = useState<{ id: string; name: string; numId: number; slug: string }[]>([]);
+  const [creditsWorldLoading, setCreditsWorldLoading] = useState(false);
   const [creditsSensitiveType, setCreditsSensitiveType] = useState<string | null>(null);
   // Thumbnail editing inside edit-credits modal
   const [editThumbCropSrc, setEditThumbCropSrc] = useState<{ src: string; file: File } | null>(null);
@@ -838,27 +542,97 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
   // Favorite
   const [favorited, setFavorited] = useState(initialFavorited);
-  const [favoritesCount, setFavoritesCount] = useState(character.favorites.length);
+  const [favoritesCount, setFavoritesCount] = useState(world.favorites.length);
   const [favLoading, setFavLoading] = useState(false);
+
+  // ── Search inhabitants ─────────────────────────────────────────────────────
+
+  const handleInhabitantSearch = async (q: string) => {
+    setInhabitantSearchLoading(true);
+    try {
+      const params = new URLSearchParams({ scope: "all", limit: "20" });
+      if (q.trim()) params.set("search", q.trim());
+      const res = await fetch(`/api/characters?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const chars = (data.characters ?? data) as CharacterInWorld[];
+        setInhabitantResults(chars.filter((c) => !inhabitants.some((i) => i.id === c.id)));
+      }
+    } finally {
+      setInhabitantSearchLoading(false);
+    }
+  };
+
+  const addInhabitant = async (characterId: string) => {
+    setInhabitantSaving(true);
+    try {
+      const res = await fetch(`/api/worlds/${world.id}/relationships`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      });
+      if (res.ok) {
+        router.refresh();
+        setShowAddInhabitant(false);
+      }
+    } finally {
+      setInhabitantSaving(false);
+    }
+  };
+
+  const removeInhabitant = async (characterId: string) => {
+    if (!confirm("Remove this character from the world?")) return;
+    const res = await fetch(`/api/worlds/${world.id}/relationships/${characterId}`, { method: "DELETE" });
+    if (res.ok) {
+      setInhabitants((prev) => prev.filter((c) => c.id !== characterId));
+      router.refresh();
+    }
+  };
+
+  // ── Map upload ────────────────────────────────────────────────────────────
+
+  const uploadMap = async (file: File) => {
+    setUploadingMap(true);
+    try {
+      const uploaded = await startMapUpload([file]);
+      if (!uploaded?.length) return;
+      const url = uploaded[0].url;
+      const res = await fetch(`/api/worlds/${world.id}/maps`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name.replace(/\.[^.]+$/, "") || "Map", imageUrl: url }),
+      });
+      if (res.ok) {
+        const map = await res.json();
+        setMaps((prev) => [...prev, map]);
+        router.refresh();
+      }
+    } finally {
+      setUploadingMap(false);
+    }
+  };
+
+  const deleteMap = async (mapId: string) => {
+    if (!confirm("Delete this map?")) return;
+    const res = await fetch(`/api/worlds/${world.id}/maps/${mapId}`, { method: "DELETE" });
+    if (res.ok) {
+      setMaps((prev) => prev.filter((m) => m.id !== mapId));
+      router.refresh();
+    }
+  };
 
   // ── Save handler ──────────────────────────────────────────────────────────
 
   const save = useCallback(async () => {
     setSaving(true);
     try {
-      // Save character fields
-      const charRes = await fetch(`/api/characters/${character.id}`, {
+      const worldRes = await fetch(`/api/worlds/${world.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation,
-          custom: customFields.length > 0 ? JSON.stringify(customFields) : null,
+          name, description,
           sections: customContainers.length > 0 ? JSON.stringify(customContainers) : null,
           profileBlockOrder: blockOrder.length > 0 ? JSON.stringify(blockOrder) : null,
-          customFieldName: null,
-          voiceClaimUrl,
-          playlistUrl: tracks.length > 0 ? JSON.stringify(tracks) : null,
-          spotifyPlaylistUrl: spotifyPlaylistUrl.trim() || null,
           summary, biography, avatarUrl, isPublic,
           isDesigner,
           designerCredit: isDesigner ? null : (creditValue.trim()
@@ -870,55 +644,40 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             : null),
         }),
       });
-      const charData = charRes.ok ? await charRes.json() : null;
+      const worldData = worldRes.ok ? await worldRes.json() : null;
 
       // Save palette
-      await fetch(`/api/characters/${character.id}/palette`, {
+      await fetch(`/api/worlds/${world.id}/palette`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ swatches }),
       });
 
       setEditing(false);
-      if (charData?.numId && charData?.slug && charData.slug !== character.slug) {
-        router.replace(`/library/characters/${charData.numId}-${charData.slug}`);
+      if (worldData?.numId && worldData?.slug && worldData.slug !== world.slug) {
+        router.replace(`/library/worlds/${worldData.numId}-${worldData.slug}`);
       } else {
         router.refresh();
       }
     } finally {
       setSaving(false);
     }
-  }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, customContainers, blockOrder, voiceClaimUrl, tracks, summary, biography, avatarUrl, isPublic, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
+  }, [world.id, name, description, customContainers, blockOrder, summary, biography, avatarUrl, isPublic, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
-    setName(character.name);
-    setDescription(character.description ?? "");
-    setBirthdate(character.birthdate ?? "");
-    setAge(character.age ?? "");
-    setHeight(character.height ?? "");
-    setWeight(character.weight ?? "");
-    setMbti(character.mbti ?? "");
-    setKingdom(character.kingdom ?? "");
-    setEthnicity(character.ethnicity ?? "");
-    setRace(character.race ?? "");
-    setGender(character.gender ?? "");
-    setOrientation(character.orientation ?? "");
-    setCustomFieldName(character.customFieldName ?? "");
-    setCustom(character.custom ?? "");
-    setVoiceClaimUrl(character.voiceClaimUrl ?? "");
-    setTracks(parseTracks());
-    setIsDesigner(character.isDesigner);
-    const p = parseCredit(character.designerCredit);
+    setName(world.name);
+    setDescription(world.description ?? "");
+    setIsDesigner(world.isDesigner);
+    const p = parseCredit(world.designerCredit);
     setCreditType(p.type); setCreditValue(p.value); setCreditLabel(p.label);
-    setIsWriter(character.isWriter);
-    const pw = parseCredit(character.writerCredit);
+    setIsWriter(world.isWriter);
+    const pw = parseCredit(world.writerCredit);
     setWriterType(pw.type); setWriterValue(pw.value); setWriterLabel(pw.label);
-    setCustomFields(parseCustomFields());
     setCustomContainers(parseContainers());
-    setAvatarUrl(character.avatarUrl ?? "");
-    setSummary(character.summary ?? "");
-    setBiography(character.biography ?? "");
-    setIsPublic(character.isPublic);
+    setAvatarUrl(world.avatarUrl ?? "");
+    setSummary(world.summary ?? "");
+    setBiography(world.biography ?? "");
+    setIsPublic(world.isPublic);
     setSwatches(initialSwatches);
     setEditing(false);
   };
@@ -930,15 +689,15 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     if (!raw) return;
     setAddingTag(true);
     try {
-      const res = await fetch(`/api/characters/${character.id}/tags`, {
+      const res = await fetch(`/api/worlds/${world.id}/tags`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: raw }),
       });
       if (res.ok) {
         const tag = await res.json();
-        const newCharTag: Tag = { tagId: tag.id, tag };
-        setTags((prev) => [...prev.filter((t) => t.tagId !== tag.id), newCharTag]);
+        const newWorldTag: Tag = { tagId: tag.id, tag };
+        setTags((prev) => [...prev.filter((t) => t.tagId !== tag.id), newWorldTag]);
         setTagInput("");
       }
     } finally {
@@ -947,7 +706,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   };
 
   const removeTag = async (tagId: string) => {
-    await fetch(`/api/characters/${character.id}/tags/${tagId}`, { method: "DELETE" });
+    await fetch(`/api/worlds/${world.id}/tags/${tagId}`, { method: "DELETE" });
     setTags((prev) => prev.filter((t) => t.tagId !== tagId));
   };
 
@@ -965,7 +724,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       if (isAvatar) {
         const url = uploaded[0].url;
         setAvatarUrl(url);
-        await fetch(`/api/characters/${character.id}`, {
+        await fetch(`/api/worlds/${world.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ avatarUrl: url }),
@@ -982,7 +741,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
         const creditsPayload = (credits ?? []).map((c) => ({ type: c.type, value: c.value.trim(), label: c.label.trim() }));
 
         for (const file of uploaded) {
-          const res = await fetch(`/api/characters/${character.id}/artworks`, {
+          const res = await fetch(`/api/worlds/${world.id}/artworks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1005,7 +764,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
   const deleteArtwork = async (artworkId: string) => {
     if (!confirm("Delete this image?")) return;
-    await fetch(`/api/characters/${character.id}/artworks/${artworkId}`, { method: "DELETE" });
+    await fetch(`/api/worlds/${world.id}/artworks/${artworkId}`, { method: "DELETE" });
     setArtworks((prev) => prev.filter((a) => a.id !== artworkId));
   };
 
@@ -1023,7 +782,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     const ids = Array.from(selectedArtworkIds);
     if (ids.length === 0) return;
     if (!confirm(`Delete ${ids.length} image${ids.length > 1 ? "s" : ""}?`)) return;
-    await Promise.all(ids.map((id) => fetch(`/api/characters/${character.id}/artworks/${id}`, { method: "DELETE" })));
+    await Promise.all(ids.map((id) => fetch(`/api/worlds/${world.id}/artworks/${id}`, { method: "DELETE" })));
     setArtworks((prev) => prev.filter((a) => !selectedArtworkIds.has(a.id)));
     clearSelection();
   };
@@ -1031,7 +790,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const bulkMoveToGallery = async (galleryId: string) => {
     const ids = Array.from(selectedArtworkIds);
     if (ids.length === 0 || !galleryId) return;
-    await Promise.all(ids.map((id) => fetch(`/api/characters/${character.id}/galleries/${galleryId}`, {
+    await Promise.all(ids.map((id) => fetch(`/api/worlds/${world.id}/galleries/${galleryId}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artworkId: id }),
     })));
     setGalleries((prev) => prev.map((gal) => {
@@ -1050,28 +809,29 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
         : { type: "offsite" as const, value: c.url ?? "", label: c.label ?? "" }
     );
     setCreditsDrafts(drafts.length > 0 ? drafts : [emptyCredit()]);
-    setCreditsCharacters(artwork.characters ?? []);
+    setCreditsWorlds(artwork.worlds ?? []);
     setCreditsSensitiveType(artwork.sensitiveType ?? null);
-    setCreditsCharSearch("");
-    setCreditsCharResults([]);
+    setCreditsWorldSearch("");
+    setCreditsWorldResults([]);
     setEditThumbFile(null);
     setEditThumbPreview(null);
     setEditThumbRemoved(false);
     setEditingCredits(artwork);
   };
 
-  const searchCreditsChars = async (q: string) => {
-    setCreditsCharSearch(q);
-    if (!q.trim()) { setCreditsCharResults([]); return; }
-    setCreditsCharLoading(true);
+  const searchCreditsWorlds = async (q: string) => {
+    setCreditsWorldSearch(q);
+    if (!q.trim()) { setCreditsWorldResults([]); return; }
+    setCreditsWorldLoading(true);
     try {
-      const res = await fetch(`/api/characters?search=${encodeURIComponent(q)}&limit=8`);
+      const params = new URLSearchParams({ scope: "all", search: q.trim(), limit: "8" });
+      const res = await fetch(`/api/worlds?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setCreditsCharResults((data.characters ?? data).filter((c: { id: string }) => c.id !== character.id));
+        setCreditsWorldResults((Array.isArray(data) ? data : []).filter((w: { id: string }) => w.id !== world.id));
       }
     } finally {
-      setCreditsCharLoading(false);
+      setCreditsWorldLoading(false);
     }
   };
 
@@ -1087,10 +847,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       newThumbnailUrl = uploaded?.[0]?.url ?? null;
     }
 
-    const body: Record<string, unknown> = { credits, characterIds: creditsCharacters.map((c) => c.id), sensitiveType: creditsSensitiveType };
+    const body: Record<string, unknown> = { credits, worldIds: creditsWorlds.map((w) => w.id), sensitiveType: creditsSensitiveType };
     if (newThumbnailUrl !== undefined) body.thumbnailUrl = newThumbnailUrl;
 
-    const res = await fetch(`/api/characters/${character.id}/artworks/${editingCredits.id}`, {
+    const res = await fetch(`/api/worlds/${world.id}/artworks/${editingCredits.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -1098,7 +858,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     if (res.ok) {
       const updated = await res.json();
       setArtworks((prev) => prev.map((a) => a.id === editingCredits.id
-        ? { ...a, credits: mapCredits(updated.credits), characters: creditsCharacters, thumbnailUrl: newThumbnailUrl !== undefined ? newThumbnailUrl : a.thumbnailUrl, sensitiveType: creditsSensitiveType }
+        ? { ...a, credits: mapCredits(updated.credits), worlds: creditsWorlds, thumbnailUrl: newThumbnailUrl !== undefined ? newThumbnailUrl : a.thumbnailUrl, sensitiveType: creditsSensitiveType }
         : a,
       ));
     }
@@ -1111,7 +871,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
     if (!currentUserId) return;
     setFavLoading(true);
     try {
-      const res = await fetch(`/api/characters/${character.id}/favorite`, { method: "POST" });
+      const res = await fetch(`/api/worlds/${world.id}/favorite`, { method: "POST" });
       if (res.ok) {
         const { favorited: f } = await res.json();
         setFavorited(f);
@@ -1144,13 +904,12 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const displayAvatar = avatarUrl || null;
   const latestImages = artworks.slice(0, 4);
 
-  const visibleInfoFields = ALL_INFO_FIELDS.filter((f) => activeInfoKeys.includes(f.key));
-
-  const TABS: { key: "profile" | "story" | "relationships" | "gallery" | "timeline"; label: string; icon: React.ReactNode }[] = [
+  const TABS: { key: "profile" | "lore" | "inhabitants" | "gallery" | "map" | "timeline"; label: string; icon: React.ReactNode }[] = [
     { key: "profile", label: "Profile", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
-    { key: "story", label: "Story", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
-    { key: "relationships", label: "Relationships", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
+    { key: "lore", label: "Lore", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
+    { key: "inhabitants", label: "Inhabitants", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><circle cx="17" cy="8" r="3"/><path d="M19 12.5A3.5 3.5 0 0 1 22 16v2"/></svg> },
     { key: "gallery", label: "Gallery", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> },
+    { key: "map", label: "Map", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> },
     { key: "timeline", label: "Timeline", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   ];
 
@@ -1173,13 +932,12 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           if (!files.length) return;
           setArtworkThumbnailFile(null);
           if (files.length === 1) {
-            // offer thumbnail crop for single-file uploads
             setArtworkCropSrc({ src: URL.createObjectURL(files[0]), file: files[0] });
             setPendingFiles(files);
           } else {
             setPendingFiles(files);
           }
-          setPendingIsAvatar(false); setPendingCredits([{ type: "onsite", value: character.user.username ?? "", label: "" }]);
+          setPendingIsAvatar(false); setPendingCredits([{ type: "onsite", value: world.creator.username ?? "", label: "" }]);
           e.target.value = "";
         }}
       />
@@ -1191,6 +949,17 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) setAvatarCropSrc({ src: URL.createObjectURL(file), file });
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={mapFileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) uploadMap(file);
           e.target.value = "";
         }}
       />
@@ -1210,7 +979,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             </h2>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 32 }}>
-              {/* Left column ─ thumbnail, characters, sensitive content */}
+              {/* Left column ─ thumbnail, worlds, sensitive content */}
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 {/* Thumbnail */}
                 <div>
@@ -1277,43 +1046,43 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   </div>
                 </div>
 
-                {/* Characters in this image */}
+                {/* Worlds in this image */}
                 <div>
                   <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
-                    Characters in this image
+                    Worlds in this image
                   </span>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                    {creditsCharacters.map((c) => (
-                      <span key={c.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-tag)" }}>
-                        {c.name}
-                        <button onClick={() => setCreditsCharacters((prev) => prev.filter((x) => x.id !== c.id))} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: "0 0 0 2px", lineHeight: 1, fontSize: 13 }}>×</button>
+                    {creditsWorlds.map((w) => (
+                      <span key={w.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-tag)" }}>
+                        {w.name}
+                        <button onClick={() => setCreditsWorlds((prev) => prev.filter((x) => x.id !== w.id))} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: "0 0 0 2px", lineHeight: 1, fontSize: 13 }}>×</button>
                       </span>
                     ))}
                   </div>
                   <div style={{ position: "relative", marginTop: 8 }}>
                     <input
-                      value={creditsCharSearch}
-                      onChange={(e) => searchCreditsChars(e.target.value)}
-                      placeholder="Search characters to tag…"
+                      value={creditsWorldSearch}
+                      onChange={(e) => searchCreditsWorlds(e.target.value)}
+                      placeholder="Search worlds to tag…"
                       style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
                     />
-                    {creditsCharResults.length > 0 && (
+                    {creditsWorldResults.length > 0 && (
                       <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 60, background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", marginTop: 4, overflow: "hidden" }}>
-                        {creditsCharResults.map((c) => (
+                        {creditsWorldResults.map((w) => (
                           <button
-                            key={c.id}
+                            key={w.id}
                             onClick={() => {
-                              if (!creditsCharacters.find((x) => x.id === c.id)) setCreditsCharacters((prev) => [...prev, c]);
-                              setCreditsCharSearch(""); setCreditsCharResults([]);
+                              if (!creditsWorlds.find((x) => x.id === w.id)) setCreditsWorlds((prev) => [...prev, w]);
+                              setCreditsWorldSearch(""); setCreditsWorldResults([]);
                             }}
                             style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", cursor: "pointer" }}
                           >
-                            {c.name}
+                            {w.name}
                           </button>
                         ))}
                       </div>
                     )}
-                    {creditsCharLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--novae-text-secondary)" }}>…</span>}
+                    {creditsWorldLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--novae-text-secondary)" }}>…</span>}
                   </div>
                 </div>
 
@@ -1356,7 +1125,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                 <ArtworkCreditsEditor
                   credits={creditsDrafts}
                   onChange={setCreditsDrafts}
-                  meUsername={character.user.username}
+                  meUsername={world.creator.username}
                   inputStyle={{ fontSize: "var(--novae-text-base)" }}
                 />
               </div>
@@ -1442,7 +1211,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             setAvatarCropSrc(null);
             setPendingFiles([croppedFile]);
             setPendingIsAvatar(true);
-            setPendingCredits([{ type: "onsite", value: character.user.username ?? "", label: "" }]);
+            setPendingCredits([{ type: "onsite", value: world.creator.username ?? "", label: "" }]);
           }}
           onCancel={() => setAvatarCropSrc(null)}
         />
@@ -1511,7 +1280,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             <ArtworkCreditsEditor
               credits={pendingCredits}
               onChange={setPendingCredits}
-              meUsername={character.user.username}
+              meUsername={world.creator.username}
               inputStyle={{ fontSize: "var(--novae-text-base)" }}
             />
 
@@ -1650,7 +1419,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                       onClick={async () => {
                         const next = !isPublic;
                         setIsPublic(next);
-                        await fetch(`/api/characters/${character.id}`, {
+                        await fetch(`/api/worlds/${world.id}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ isPublic: next }),
@@ -1812,9 +1581,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           {/* Alternate universes switcher */}
           {(auVariants.length > 0 || isOwner) && (
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" as const, gap: 8, marginTop: 4 }}>
-              {[{ ...rootCharacter, variantLabel: null as string | null }, ...auVariants].map((v) => {
-                const isCurrent = v.id === character.id;
-                const isBase = v.id === rootCharacter.id;
+              {[{ ...rootWorld, variantLabel: null as string | null }, ...auVariants].map((v) => {
+                const isCurrent = v.id === world.id;
+                const isBase = v.id === rootWorld.id;
                 return (
                   <div
                     key={v.id}
@@ -1828,7 +1597,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     }}
                   >
                     <button
-                      onClick={() => !isCurrent && router.push(characterUrl(v.numId, v.slug))}
+                      onClick={() => !isCurrent && router.push(`/library/worlds/${v.id}`)}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -1878,7 +1647,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               })}
               {isOwner && (
                 <button
-                  onClick={() => { setAuName(`${rootCharacter.name} (AU)`); setShowAuModal(true); }}
+                  onClick={() => { setAuName(`${rootWorld.name} (AU)`); setShowAuModal(true); }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1912,7 +1681,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   {t.auModalTitle}
                 </h3>
                 <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-                  {t.auModalDescription.replace("{name}", rootCharacter.name)}
+                  {t.auModalDescription.replace("{name}", rootWorld.name)}
                 </p>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{t.auNameLabel}</span>
@@ -1988,23 +1757,34 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               borderTop: "1px solid var(--novae-outline-all)",
             }}
           >
-            <MetaItem label="Owner" value={`@${character.user.username}`} href={`/${character.user.username}`} />
-            {character.world && (character.world.isPublic || isOwner) && (
-              <MetaItem label="World" value={character.world.name} href={`/library/worlds/${character.world.numId}-${character.world.slug}`} />
-            )}
+            <MetaItem label="Owner" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />
             {/* Designer — view mode */}
             {!editing && (() => {
-              if (character.isDesigner) {
-                return <MetaItem label="Designer" value={`@${character.user.username}`} href={`/${character.user.username}`} />;
+              if (world.isDesigner) {
+                return <MetaItem label="Designer" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />;
               }
-              if (!character.designerCredit) return null;
-              if (character.designerCredit.startsWith("@")) {
-                const u = character.designerCredit.slice(1);
+              if (!world.designerCredit) return null;
+              if (world.designerCredit.startsWith("@")) {
+                const u = world.designerCredit.slice(1);
                 return <MetaItem label="Designer" value={`@${u}`} href={`/${u}`} />;
               }
-              const m = character.designerCredit.match(/^\[(.+)\]\((.+)\)$/);
+              const m = world.designerCredit.match(/^\[(.+)\]\((.+)\)$/);
               if (m) return <MetaItem label="Designer" value={m[1]} href={m[2]} />;
-              return <MetaItem label="Designer" value={character.designerCredit} />;
+              return <MetaItem label="Designer" value={world.designerCredit} />;
+            })()}
+            {/* Writer — view mode (not in character page? Actually character has isWriter too) */}
+            {!editing && (() => {
+              if (world.isWriter) {
+                return <MetaItem label="Writer" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />;
+              }
+              if (!world.writerCredit) return null;
+              if (world.writerCredit.startsWith("@")) {
+                const u = world.writerCredit.slice(1);
+                return <MetaItem label="Writer" value={`@${u}`} href={`/${u}`} />;
+              }
+              const m = world.writerCredit.match(/^\[(.+)\]\((.+)\)$/);
+              if (m) return <MetaItem label="Writer" value={m[1]} href={m[2]} />;
+              return <MetaItem label="Writer" value={world.writerCredit} />;
             })()}
             {/* Designer — edit mode */}
             {editing && (
@@ -2054,10 +1834,10 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     {creditType === "onsite" && (
                       <button
                         type="button"
-                        onClick={() => setCreditValue(character.user.username ?? "")}
+                        onClick={() => setCreditValue(world.creator.username ?? "")}
                         style={{ alignSelf: "flex-start", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
                       >
-                        Me (@{character.user.username})
+                        Me (@{world.creator.username})
                       </button>
                     )}
                     {creditType === "onsite" ? (
@@ -2081,7 +1861,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             )}
             <MetaItem
               label="Created"
-              value={new Intl.DateTimeFormat("en-GB").format(new Date(character.createdAt))}
+              value={new Intl.DateTimeFormat("en-GB").format(new Date(world.createdAt))}
             />
           </div>
 
@@ -2126,168 +1906,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
           {/* Tab: Profile */}
           {activeTab === "profile" && (
             <div className="char-body-grid items-start w-full">
-              {/* Left sub-sidebar */}
+              {/* Left sub-sidebar — no "Informations" and no "Voice Claim" panels */}
               <div className="char-body-side flex-col gap-6" style={{ display: "flex" }}>
-
-                {/* Informations */}
-                <SectionCard
-                  title="Informations"
-                  action={isOwner && editing ? (
-                    <div style={{ position: "relative" }}>
-                      <button
-                        onClick={() => setShowInfoFieldPicker((v) => !v)}
-                        style={{
-                          width: 22, height: 22, borderRadius: "50%",
-                          background: "var(--novae-btn-primary)", border: "none",
-                          color: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}
-                      >+</button>
-                      {showInfoFieldPicker && (
-                        <div style={{
-                          position: "absolute", right: 0, top: "110%", zIndex: 50,
-                          background: "#141820",
-                          border: "1px solid var(--novae-outline-all)",
-                          borderRadius: "var(--novae-radius-md)",
-                          padding: 8, minWidth: 160,
-                          maxHeight: 200, overflowY: "auto",
-                          boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
-                          display: "flex", flexDirection: "column", gap: 2,
-                        }}>
-                          {ALL_INFO_FIELDS.filter((f) => !activeInfoKeys.includes(f.key)).map((f) => (
-                            <button
-                              key={f.key}
-                              onClick={() => {
-                                setActiveInfoKeys((prev) => [...prev, f.key]);
-                                setShowInfoFieldPicker(false);
-                              }}
-                              style={{
-                                background: "none", border: "none", textAlign: "left",
-                                padding: "6px 10px", borderRadius: "var(--novae-radius-sm)",
-                                fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                                color: "var(--novae-text-primary)", cursor: "pointer",
-                              }}
-                            >{f.label}</button>
-                          ))}
-                          {/* Custom always available */}
-                          <button
-                            onClick={() => {
-                              setCustomFields((prev) => [...prev, { id: crypto.randomUUID(), name: "", content: "" }]);
-                              setShowInfoFieldPicker(false);
-                            }}
-                            style={{
-                              background: "none", border: "none", textAlign: "left",
-                              padding: "6px 10px", borderRadius: "var(--novae-radius-sm)",
-                              fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                              color: "var(--novae-text-primary)", cursor: "pointer",
-                            }}
-                          >Custom</button>
-                          {ALL_INFO_FIELDS.every((f) => activeInfoKeys.includes(f.key)) && customFields.length > 0 && (
-                            <p style={{ margin: 0, padding: "6px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-                              All fields added
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : undefined}
-                >
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {visibleInfoFields.map(({ key, label, state, setter, dbVal, multiline }) => {
-                      const value = editing ? state : dbVal;
-                      return (
-                        <div key={key} style={{ display: "flex", alignItems: multiline ? "flex-start" : "center", justifyContent: "space-between", gap: 8 }}>
-                          <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0, paddingTop: multiline ? 6 : 0 }}>
-                            {label}
-                          </span>
-                          {editing ? (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-                              <div style={{ display: "flex", gap: 4 }}>
-                                <input value={state ?? ""} onChange={(e) => setter(e.target.value)} placeholder="—" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1 }} />
-                                <button onClick={() => setActiveInfoKeys((prev) => prev.filter((k) => k !== key))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px" }}>×</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>
-                              {value?.startsWith("custom-") ? value.slice(7) : (value || "—")}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Custom fields */}
-                    {editing ? customFields.map((cf) => (
-                      <div key={cf.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                        <input
-                          value={cf.name}
-                          onChange={(e) => setCustomFields((prev) => prev.map((f) => f.id === cf.id ? { ...f, name: e.target.value } : f))}
-                          placeholder="Field name…"
-                          style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", fontWeight: 700, width: "45%", flexShrink: 0, color: "var(--novae-text-secondary)" }}
-                        />
-                        <div style={{ display: "flex", gap: 4, flex: 1 }}>
-                          <textarea
-                            value={cf.content}
-                            onChange={(e) => setCustomFields((prev) => prev.map((f) => f.id === cf.id ? { ...f, content: e.target.value } : f))}
-                            placeholder="Content…"
-                            rows={3}
-                            style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", flex: 1, resize: "vertical", minHeight: 64 }}
-                          />
-                          <button onClick={() => setCustomFields((prev) => prev.filter((f) => f.id !== cf.id))} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "0 4px", alignSelf: "flex-start" }}>×</button>
-                        </div>
-                      </div>
-                    )) : customFields.filter((cf) => cf.content).map((cf) => (
-                      <div key={cf.id} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-secondary)", width: "45%", flexShrink: 0 }}>{cf.name || "Custom"}</span>
-                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", whiteSpace: "pre-wrap" }}>{cf.content}</span>
-                      </div>
-                    ))}
-
-                    {visibleInfoFields.length === 0 && customFields.length === 0 && !editing && (
-                      <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-                        No info yet.
-                      </p>
-                    )}
-                  </div>
-                </SectionCard>
-
-                {/* Voice Claim */}
-                <SectionCard title="Voice Claim">
-                  {editing ? (
-                    <>
-                      <input
-                        value={voiceClaimUrl}
-                        onChange={(e) => setVoiceClaimUrl(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                        placeholder="YouTube URL"
-                        style={inputStyle}
-                      />
-                      {voiceClaimUrl && extractYoutubeId(voiceClaimUrl) && (
-                        <div style={{ borderRadius: "var(--novae-radius-md)", overflow: "hidden", aspectRatio: "16/9" }}>
-                          <iframe
-                            src={`https://www.youtube.com/embed/${extractYoutubeId(voiceClaimUrl)}`}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            style={{ width: "100%", height: "100%", border: "none" }}
-                          />
-                        </div>
-                      )}
-                    </>
-                  ) : voiceClaimUrl ? (
-                    <div style={{ borderRadius: "var(--novae-radius-md)", overflow: "hidden", aspectRatio: "16/9" }}>
-                      <iframe
-                        src={`https://www.youtube.com/embed/${extractYoutubeId(voiceClaimUrl)}`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        style={{ width: "100%", height: "100%", border: "none" }}
-                      />
-                    </div>
-                  ) : (
-                    <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-                      {isOwner ? "Add a YouTube URL to set a voice claim." : "No voice claim."}
-                    </p>
-                  )}
-                </SectionCard>
 
                 {/* Color Palette */}
                 <SectionCard title="Color Palette">
@@ -2295,30 +1915,19 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     {swatches.map((swatch, i) => (
                       <div key={i} style={{ position: "relative" }}>
                         <div
-                          title={editing ? undefined : `Copy ${swatch.hex}`}
                           style={{
                             width: "100%", aspectRatio: "1 / 1",
                             borderRadius: "var(--novae-radius-md)",
                             backgroundColor: swatch.hex,
-                            cursor: "pointer",
+                            cursor: editing ? "pointer" : "default",
                             display: "flex",
                             alignItems: "flex-end",
                             justifyContent: "center",
                             padding: 4,
                           }}
-                          onClick={() => {
-                            if (editing) { setEditingSwatch(editingSwatch === i ? null : i); return; }
-                            navigator.clipboard.writeText(swatch.hex);
-                            setCopiedSwatch(i);
-                            window.setTimeout(() => setCopiedSwatch((cur) => (cur === i ? null : cur)), 1200);
-                          }}
+                          onClick={() => editing && setEditingSwatch(editingSwatch === i ? null : i)}
                         >
-                          {copiedSwatch === i && !editing && (
-                            <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", borderRadius: "var(--novae-radius-md)", fontFamily: "var(--font-dm-sans)", fontSize: "11px", fontWeight: 700, color: "#fff" }}>
-                              Copied!
-                            </span>
-                          )}
-                          {swatch.label && !(copiedSwatch === i && !editing) && (
+                          {swatch.label && (
                             <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "10px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: 4, padding: "2px 6px", textAlign: "center", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {swatch.label}
                             </span>
@@ -2374,16 +1983,73 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     )}
                   </div>
                 </SectionCard>
+
+                {/* Map — panel */}
+                <SectionCard title="Map">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {maps.length === 0 ? (
+                      <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", margin: 0 }}>
+                        {isOwner ? "Add a map to visualize your world." : "No maps yet."}
+                      </p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {maps.slice(0, 2).map((map) => (
+                          <div key={map.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)" }}>
+                              {map.imageUrl && <img src={thumbUrl(map.imageUrl, 96) ?? map.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                            </div>
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", flex: 1 }}>{map.name}</span>
+                            {isOwner && (
+                              <button onClick={() => deleteMap(map.id)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14, padding: 2 }}>×</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {isOwner && maps.length > 2 && (
+                      <button
+                        onClick={() => setActiveTab("map")}
+                        style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer", alignSelf: "flex-start", padding: 0 }}
+                      >
+                        View more
+                      </button>
+                    )}
+                    {isOwner && (
+                      <button
+                        onClick={() => mapFileRef.current?.click()}
+                        disabled={uploadingMap}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                          padding: "8px 12px",
+                          background: "var(--novae-btn-secondary)",
+                          border: "1px dashed var(--novae-outline-all)",
+                          borderRadius: "var(--novae-radius-sm)",
+                          color: "var(--novae-text-btn)",
+                          fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
+                          cursor: uploadingMap ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+                        {uploadingMap ? "Uploading…" : "Upload map"}
+                      </button>
+                    )}
+
+                    {/* Location pins — Coming soon */}
+                    <div style={{ padding: "8px 12px", borderRadius: "var(--novae-radius-sm)", border: "1px solid var(--novae-outline-all)", background: "var(--novae-bg-main)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      Location pins : Coming soon
+                    </div>
+                  </div>
+                </SectionCard>
               </div>
 
               {/* Main content area */}
               <div className="char-body-main gap-6">
                 {(() => {
-                  const defaultOrder = ["latestImages", "storySummary", "music", ...customContainers.map((c) => `custom:${c.id}`)];
+                  const defaultOrder = ["latestImages", "loreSummary", ...customContainers.map((c) => `custom:${c.id}`)];
                   const visibility: Record<string, boolean> = {
                     latestImages: true,
-                    storySummary: !!summary,
-                    music: tracks.length > 0 || !!spotifyPlaylistUrl || editing,
+                    loreSummary: !!summary,
                   };
                   customContainers.forEach((c) => { visibility[`custom:${c.id}`] = true; });
 
@@ -2451,116 +2117,17 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                       );
                     }
 
-                    if (key === "storySummary") {
+                    if (key === "loreSummary") {
                       return (
                         <SectionCard
-                          title="Story"
+                          title="Lore"
                           action={
-                            <button onClick={() => setActiveTab("story")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
+                            <button onClick={() => setActiveTab("lore")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
                               View more
                             </button>
                           }
                         >
                           <EditorRenderer content={summary} />
-                        </SectionCard>
-                      );
-                    }
-
-                    if (key === "music") {
-                      return (
-                        <SectionCard title="Music">
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {tracks.map((track, i) => (
-                              <div key={track.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", width: 20, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
-                                {editing ? (
-                                  <>
-                                    <input
-                                      value={track.title}
-                                      onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, title: e.target.value } : t))}
-                                      placeholder="Title"
-                                      style={{ ...inputStyle, flex: 2, fontSize: "var(--novae-text-sm)" }}
-                                    />
-                                    <input
-                                      value={track.artist}
-                                      onChange={(e) => setTracks((prev) => prev.map((t) => t.id === track.id ? { ...t, artist: e.target.value } : t))}
-                                      placeholder="Artist"
-                                      style={{ ...inputStyle, flex: 1, fontSize: "var(--novae-text-sm)" }}
-                                    />
-                                    <button
-                                      onClick={() => setTracks((prev) => prev.filter((t) => t.id !== track.id))}
-                                      style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px", flexShrink: 0 }}
-                                    >×</button>
-                                  </>
-                                ) : (
-                                  <div style={{ display: "flex", flex: 1, gap: 8, alignItems: "baseline" }}>
-                                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{track.title}</span>
-                                    <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>{track.artist}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                            {editing && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-                                <button
-                                  onClick={() => setTracks((prev) => [...prev, { id: crypto.randomUUID(), title: "", artist: "" }])}
-                                  style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                  Add a track
-                                </button>
-                                <PlaylistImport onImport={(imported) => setTracks((prev) => [...prev, ...imported])} />
-                                {tracks.length > 0 && (
-                                  <button
-                                    onClick={() => setTracks([])}
-                                    style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px dashed var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", padding: "6px 12px", cursor: "pointer" }}
-                                  >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                                    Clear playlist
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Spotify embed */}
-                            {(() => {
-                              const spotifyId = spotifyPlaylistUrl.trim().match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
-                              return (
-                                <>
-                                  {spotifyId && !editing && (
-                                    <iframe
-                                      src={`https://open.spotify.com/embed/playlist/${spotifyId}?utm_source=generator&theme=0`}
-                                      width="100%"
-                                      height="352"
-                                      frameBorder="0"
-                                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                      loading="lazy"
-                                      style={{ borderRadius: "var(--novae-radius-md)", marginTop: tracks.length > 0 ? 12 : 0 }}
-                                    />
-                                  )}
-                                  {editing && (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: tracks.length > 0 ? 8 : 0 }}>
-                                      <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-                                        Spotify playlist URL
-                                      </label>
-                                      <input
-                                        value={spotifyPlaylistUrl}
-                                        onChange={(e) => setSpotifyPlaylistUrl(e.target.value)}
-                                        placeholder="https://open.spotify.com/playlist/…"
-                                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                                      />
-                                      {spotifyId && (
-                                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-                                          ✓ Playlist detected
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </div>
                         </SectionCard>
                       );
                     }
@@ -2676,8 +2243,8 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             </div>
           )}
 
-          {/* Tab: Story */}
-          {activeTab === "story" && (
+          {/* Tab: Lore (was Story) */}
+          {activeTab === "lore" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Summary box */}
               <SectionCard title="Summary">
@@ -2685,30 +2252,30 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   <EditorField
                     value={summary}
                     onChange={setSummary}
-                    placeholder="A short summary of the character…"
+                    placeholder="A short summary of the world…"
                   />
                 ) : summary ? (
                   <EditorRenderer content={summary} />
                 ) : (
                   <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-                    {isOwner ? "Add a summary to describe this character." : "No summary yet."}
+                    {isOwner ? "Add a summary to describe this world." : "No summary yet."}
                   </p>
                 )}
               </SectionCard>
 
-              {/* Full story */}
-              <SectionCard title="Story">
+              {/* Full lore */}
+              <SectionCard title="Lore">
                 {isOwner && editing ? (
                   <EditorField
                     value={biography}
                     onChange={setBiography}
-                    placeholder="Write the character's full story…"
+                    placeholder="Write the world's full lore…"
                   />
                 ) : biography ? (
                   <EditorRenderer content={biography} />
                 ) : (
                   <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-                    {isOwner ? "Click Edit to write the full story." : "No story written yet."}
+                    {isOwner ? "Click Edit to write the full lore." : "No lore written yet."}
                   </p>
                 )}
               </SectionCard>
@@ -2726,7 +2293,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Edit story
+                  Edit lore
                 </button>
               )}
               {isOwner && editing && (
@@ -2740,31 +2307,27 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             </div>
           )}
 
-          {/* Tab: Relationships */}
-          {activeTab === "relationships" && (
+          {/* Tab: Inhabitants (was Relationships) — characters belonging to the world */}
+          {activeTab === "inhabitants" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {isOwner && (
                 <button
-                  onClick={() => setShowAddRel(true)}
+                  onClick={() => setShowAddInhabitant(true)}
                   style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "flex-start", padding: "10px 20px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: "pointer" }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  Add relationship
+                  Add character
                 </button>
               )}
-              {relationships.length === 0 ? (
-                <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>No relationships yet.</p>
+              {inhabitants.length === 0 ? (
+                <p style={{ color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>No characters yet.</p>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
-                  {relationships.map((rel) => {
-                    const isExternal = !rel.character;
-                    const imgSrc = isExternal
-                      ? (rel.externalImageUrl ?? null)
-                      : (rel.character?.avatarUrl ?? null);
-                    const displayName = isExternal ? (rel.externalName ?? "?") : (rel.character?.name ?? "?");
-                    const charHref = !isExternal && rel.character ? `/library/characters/${rel.character.numId}-${rel.character.slug}` : null;
+                  {inhabitants.map((character) => {
+                    const imgSrc = character.avatarUrl ?? null;
+                    const charHref = `/library/characters/${character.numId}-${character.slug}`;
                     return (
-                    <div key={rel.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", backgroundColor: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 12, position: "relative" }}>
+                    <div key={character.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", backgroundColor: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: 12, position: "relative" }}>
                       <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)" }}>
                         {imgSrc ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -2772,29 +2335,14 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                         ) : null}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {charHref
-                          ? <a href={charHref} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{displayName}</a>
-                          : <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", display: "block" }}>{displayName}</span>
-                        }
-                        {!isExternal && rel.character?.user?.username && (
-                          <span style={{ display: "block", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>by @{rel.character.user.username}</span>
+                        <a href={charHref} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{character.name}</a>
+                        {character.user?.username && (
+                          <span style={{ display: "block", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>by @{character.user.username}</span>
                         )}
-                        <span style={{ display: "inline-block", marginTop: 3, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", color: "var(--novae-text-tag)" }}>{rel.type}</span>
-                        {rel.status === "pending" && (
-                          <span style={{ display: "inline-block", marginTop: 3, marginLeft: 5, padding: "2px 8px", borderRadius: "var(--novae-radius-sm)", background: "rgba(200,150,40,0.15)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", fontWeight: 600, color: "#c89628" }}>⏳ Pending</span>
-                        )}
-                        {rel.description && <p style={{ margin: "6px 0 0", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", lineHeight: 1.5 }}>{rel.description}</p>}
                       </div>
                       {isOwner && (
                         <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
-                          <button
-                            onClick={() => setEditingRel({ id: rel.id, isA: rel.isA, myLabel: rel.isA ? (rel.typeBRaw ?? "") : rel.typeRaw, otherLabel: rel.isA ? rel.typeRaw : (rel.typeBRaw ?? ""), description: rel.description ?? "" })}
-                            style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 13, padding: "2px 5px" }}
-                            title="Edit"
-                          >
-                            <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          </button>
-                          <button onClick={() => deleteRelationship(rel.id)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14, padding: "2px 5px" }}>×</button>
+                          <button onClick={() => removeInhabitant(character.id)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14, padding: "2px 5px" }}>×</button>
                         </div>
                       )}
                     </div>
@@ -2803,237 +2351,98 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                 </div>
               )}
 
-              {/* Add Relationship Modal */}
-              {showAddRel && (
-                <div style={{ position: "fixed", inset: 0, background: "transparent", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddRel(false); }}>
+              {/* Add Character Modal */}
+              {showAddInhabitant && (
+                <div style={{ position: "fixed", inset: 0, background: "transparent", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddInhabitant(false); }}>
                   <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 420, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 16 }}>
-                    <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Add Relationship</h3>
+                    <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Add Character to World</h3>
 
-                    {/* Mode toggle: site character vs external */}
-                    <div style={{ display: "flex", borderRadius: "var(--novae-radius-md)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-                      {([["site", "On Novae"], ["external", "External"]] as const).map(([m, label]) => (
-                        <button
-                          key={m}
-                          onClick={() => { setRelMode(m); setRelUser(null); setRelUserSearch(""); setRelUserResults([]); setRelSelectedChar(null); setRelSearch(""); setRelSearchResults([]); setRelExternalName(""); setRelExternalImage(""); }}
-                          style={{
-                            flex: 1, padding: "8px 0",
-                            background: relMode === m ? "var(--novae-btn-primary)" : "none",
-                            border: "none",
-                            color: relMode === m ? "#fff" : "var(--novae-text-secondary)",
-                            fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)",
-                            fontWeight: relMode === m ? 600 : 400, cursor: "pointer",
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                    <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 8 }}>
+                      <input
+                        value={inhabitantSearch}
+                        onChange={(e) => { setInhabitantSearch(e.target.value); searchInhabitants(e.target.value); }}
+                        placeholder="Search characters to add…"
+                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
+                      />
+                      {inhabitantSearchLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--novae-text-secondary)", fontSize: 12 }}>…</span>}
+                      {inhabitantResults.length > 0 && (
+                        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", zIndex: 10, maxHeight: 240, overflowY: "auto" }}>
+                          {inhabitantResults.map((c) => (
+                            <button key={c.id} onClick={() => { addInhabitant(c.id); setInhabitantSearch(""); setInhabitantResults([]); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", cursor: "pointer" }}>
+                              <div style={{ width: 28, height: 28, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0, background: "var(--novae-bg-main)" }}>
+                                {c.avatarUrl && <img src={thumbUrl(c.avatarUrl, 56) ?? c.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                              </div>
+                              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>{c.name}</span>
+                              {c.user?.username && <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>@{c.user.username}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {!inhabitantSearchLoading && inhabitantSearch.trim() && inhabitantResults.length === 0 && (
+                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", marginTop: 4, display: "block" }}>No characters found.</span>
+                      )}
+                      {inhabitantSaving && <span style={{ fontSize: 12, color: "var(--novae-text-secondary)" }}>Adding…</span>}
                     </div>
 
-                    {/* Character source */}
-                    {relMode === "site" ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {/* Step 1: choose user */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>1. Whose character?</label>
-                          {relUser ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-selected)", borderRadius: "var(--novae-radius-md)" }}>
-                              {relUser.avatar && <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(relUser.avatar, 56) ?? relUser.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-                              <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", flex: 1 }}>
-                                {relUser.id === currentUserId ? "Me" : (relUser.name ?? `@${relUser.username}`)}
-                              </span>
-                              <button onClick={() => { setRelUser(null); setRelSelectedChar(null); setRelSearch(""); setRelSearchResults([]); }} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14 }}>×</button>
-                            </div>
-                          ) : (
-                            <>
-                              <button onClick={() => pickRelUser(meUser)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", cursor: "pointer", textAlign: "left" }}>
-                                {avatarUrl && <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(avatarUrl, 56) ?? avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-                                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", fontWeight: 600 }}>Me</span>
-                              </button>
-                              <div style={{ position: "relative" }}>
-                                <input value={relUserSearch} onChange={(e) => { setRelUserSearch(e.target.value); searchRelUsers(e.target.value); }} placeholder="…or search another user" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                                {relUserLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--novae-text-secondary)", fontSize: 12 }}>…</span>}
-                                {relUserResults.length > 0 && (
-                                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", zIndex: 10, maxHeight: 240, overflowY: "auto" }}>
-                                    {relUserResults.map((u) => (
-                                      <button key={u.id} onClick={() => pickRelUser(u)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", cursor: "pointer" }}>
-                                        <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "var(--novae-bg-main)" }}>
-                                          {u.avatar && <img src={thumbUrl(u.avatar, 56) ?? u.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                                        </div>
-                                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>{u.name ?? u.username}</span>
-                                        {u.username && <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>@{u.username}</span>}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Step 2: choose character (once user is picked) */}
-                        {relUser && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>2. Which character?</label>
-                            {relSelectedChar ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--novae-bg-input)", border: "1px solid var(--novae-outline-selected)", borderRadius: "var(--novae-radius-md)" }}>
-                                {relSelectedChar.avatarUrl && <div style={{ width: 28, height: 28, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(relSelectedChar.avatarUrl, 56) ?? relSelectedChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-                                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", flex: 1 }}>{relSelectedChar.name}</span>
-                                <button onClick={() => setRelSelectedChar(null)} style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 14 }}>×</button>
-                              </div>
-                            ) : (
-                              <div style={{ position: "relative" }}>
-                                <input value={relSearch} onChange={(e) => { setRelSearch(e.target.value); searchRelChars(e.target.value); }} onFocus={() => searchRelChars(relSearch)} placeholder="Type the character name…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                                {relSearchLoading && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--novae-text-secondary)", fontSize: 12 }}>…</span>}
-                                {relSearchResults.length > 0 && (
-                                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", zIndex: 10, maxHeight: 240, overflowY: "auto" }}>
-                                    {relSearchResults.map((c) => (
-                                      <button key={c.id} onClick={() => { setRelSelectedChar(c); setRelSearch(""); setRelSearchResults([]); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", cursor: "pointer" }}>
-                                        <div style={{ width: 28, height: 28, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", flexShrink: 0, background: "var(--novae-bg-main)" }}>
-                                          {c.avatarUrl && <img src={thumbUrl(c.avatarUrl, 56) ?? c.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                                        </div>
-                                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)" }}>{c.name}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                                {!relSearchLoading && relSearch.trim() && relSearchResults.length === 0 && (
-                                  <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", marginTop: 4, display: "block" }}>No characters found for this user.</span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                        {/* External image */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                          <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Image</label>
-                          <label style={{ width: 56, height: 56, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "var(--novae-bg-input)", border: "1px dashed var(--novae-outline-all)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                            {relExternalImage ? (
-                              <img src={relExternalImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            ) : (
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--novae-text-secondary)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
-                            )}
-                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
-                              const f = e.target.files?.[0];
-                              if (!f) return;
-                              const uploaded = await startArtworkUpload([f]);
-                              if (uploaded?.[0]?.url) setRelExternalImage(uploaded[0].url);
-                              e.target.value = "";
-                            }} />
-                          </label>
-                        </div>
-                        {/* External name */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-                          <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Name</label>
-                          <input value={relExternalName} onChange={(e) => setRelExternalName(e.target.value)} placeholder="Character name…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Relationship types */}
-                    {relMode === "site" ? (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, alignItems: "end" }}>
-                        {/* This char → its label (shown on the other char's page) */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(avatarUrl, 64) ?? avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{name}</span>
-                          </div>
-                          <input value={relTypeB} onChange={(e) => setRelTypeB(e.target.value)} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                        </div>
-
-                        {/* Arrow */}
-                        <div style={{ paddingBottom: 10, color: "var(--novae-text-secondary)", fontSize: 18 }}>⇄</div>
-
-                        {/* Other char → its label (shown on this char's page) */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {relSelectedChar?.avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(relSelectedChar.avatarUrl, 64) ?? relSelectedChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{relSelectedChar?.name ?? "Other"}</span>
-                          </div>
-                          <input value={relType} onChange={(e) => setRelType(e.target.value)} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Relationship label</label>
-                        <input value={relType} onChange={(e) => setRelType(e.target.value)} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                      </div>
-                    )}
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-secondary)" }}>Description (optional)</label>
-                      <textarea value={relDesc} onChange={(e) => setRelDesc(e.target.value)} placeholder="Describe the relationship…" rows={3} style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", resize: "vertical" }} />
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <button onClick={() => setShowAddInhabitant(false)} style={{ padding: "8px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
                     </div>
-
-                    {(() => {
-                      const invalid = !relType.trim() || (relMode === "site" ? !relSelectedChar : !relExternalName.trim()) || relSaving;
-                      return (
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                          <button onClick={() => setShowAddRel(false)} style={{ padding: "8px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
-                          <button onClick={addRelationship} disabled={invalid} style={{ padding: "8px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer", opacity: invalid ? 0.5 : 1 }}>
-                            {relSaving ? "Saving…" : "Add"}
-                          </button>
-                        </div>
-                      );
-                    })()}
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* Edit Relationship Modal */}
-              {editingRel && (() => {
-                const otherChar = relationships.find((r) => r.id === editingRel.id)?.character;
-                return (
-                  <div style={{ position: "fixed", inset: 0, background: "transparent", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setEditingRel(null); }}>
-                    <div style={{ background: "var(--novae-bg-main)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-lg)", padding: 24, width: 460, maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 20 }}>
-                      <h3 style={{ margin: 0, fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-lg)", fontWeight: 700, color: "var(--novae-text-primary)" }}>Edit Relationship</h3>
-
-                      {/* Character row with labels */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, alignItems: "end" }}>
-                        {/* This char */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(avatarUrl, 64) ?? avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{name}</span>
+          {/* Tab: Map */}
+          {activeTab === "map" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {isOwner && (
+                <button
+                  onClick={() => mapFileRef.current?.click()}
+                  disabled={uploadingMap}
+                  style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "flex-start", padding: "10px 20px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, cursor: uploadingMap ? "not-allowed" : "pointer", opacity: uploadingMap ? 0.7 : 1 }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+                  {uploadingMap ? "Uploading…" : "Upload map"}
+                </button>
+              )}
+              {maps.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "48px 0" }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--novae-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+                  <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)" }}>
+                    {isOwner ? "Upload a map to get started." : "No maps yet."}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+                  {maps.map((map) => (
+                    <div key={map.id} style={{ backgroundColor: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden", position: "relative" }}>
+                      <div style={{ aspectRatio: "4/3", backgroundColor: "var(--novae-bg-main)", position: "relative" }}>
+                        {map.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={map.imageUrl} alt={map.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--novae-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
                           </div>
-                          <input value={editingRel.myLabel} onChange={(e) => setEditingRel((r) => r && { ...r, myLabel: e.target.value, error: undefined })} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                        </div>
-
-                        {/* Arrow */}
-                        <div style={{ paddingBottom: 10, color: "var(--novae-text-secondary)", fontSize: 18 }}>⇄</div>
-
-                        {/* Other char */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {otherChar?.avatarUrl && <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><img src={thumbUrl(otherChar.avatarUrl, 64) ?? otherChar.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
-                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{otherChar?.name ?? "Other"}</span>
-                          </div>
-                          <input value={editingRel.otherLabel} onChange={(e) => setEditingRel((r) => r && { ...r, otherLabel: e.target.value, error: undefined })} placeholder="their label…" style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }} />
-                        </div>
+                        )}
                       </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <label style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 600, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optional)</label>
-                        <textarea value={editingRel.description} onChange={(e) => setEditingRel((r) => r && { ...r, description: e.target.value, error: undefined })} placeholder="Describe the relationship…" rows={3} style={{ ...inputStyle, fontSize: "var(--novae-text-sm)", resize: "vertical" }} />
-                      </div>
-
-                      {editingRel.error && (
-                        <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "#e55" }}>{editingRel.error}</p>
-                      )}
-
-                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button onClick={() => setEditingRel(null)} style={{ padding: "8px 16px", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>Cancel</button>
-                        <button onClick={saveEditRel} disabled={!(editingRel.isA ? editingRel.otherLabel : editingRel.myLabel).trim() || relSaving} style={{ padding: "8px 16px", background: "var(--novae-btn-primary)", border: "none", borderRadius: "var(--novae-radius-md)", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, cursor: "pointer", opacity: (!(editingRel.isA ? editingRel.otherLabel : editingRel.myLabel).trim() || relSaving) ? 0.5 : 1 }}>
-                          {relSaving ? "Saving…" : "Save"}
-                        </button>
+                      <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-base)", fontWeight: 700, color: "var(--novae-text-primary)" }}>{map.name}</span>
+                        {isOwner && (
+                          <button onClick={() => deleteMap(map.id)} title="Delete map" style={{ background: "none", border: "none", color: "var(--novae-text-secondary)", cursor: "pointer", fontSize: 16, padding: "2px 6px" }}>×</button>
+                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })()}
+                  ))}
+                </div>
+              )}
+
+              {/* Location pins — Coming soon */}
+              <div style={{ padding: "12px 16px", borderRadius: "var(--novae-radius-md)", border: "1px solid var(--novae-outline-all)", background: "var(--novae-bg-card)", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", display: "flex", alignItems: "center", gap: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Location pins : Coming soon
+              </div>
             </div>
           )}
 
@@ -3056,7 +2465,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               const assignToGallery = async (artworkId: string, galleryId: string) => {
                 const inGallery = galleries.find((g) => g.id === galleryId)?.images.some((i) => i.artworkId === artworkId);
                 if (inGallery) return;
-                const res = await fetch(`/api/characters/${character.id}/galleries/${galleryId}`, {
+                const res = await fetch(`/api/worlds/${world.id}/galleries/${galleryId}`, {
                   method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ artworkId }),
                 });
@@ -3067,7 +2476,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
               const uncategorized = artworks.filter((a) => !galleries.some((g) => g.images.some((i) => i.artworkId === a.id)));
 
-              const tileProps = { isOwner, galleries, characterId: character.id, assigningArtwork, setAssigningArtwork, setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive: galleries.length > 0, selectMode, onToggleSelect: toggleSelectArtwork };
+              const tileProps = { isOwner, galleries, worldId: world.id, assigningArtwork, setAssigningArtwork, setLightbox, openEditCredits, deleteArtwork, setGalleries, isDndActive: galleries.length > 0, selectMode, onToggleSelect: toggleSelectArtwork };
 
               const reorderGalleries = (activeId: string, overId: string) => {
                 const oldIdx = galleries.findIndex((g) => g.id === activeId);
@@ -3075,7 +2484,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                 if (oldIdx === -1 || newIdx === -1) return;
                 const reordered = arrayMove(galleries, oldIdx, newIdx);
                 setGalleries(reordered);
-                fetch(`/api/characters/${character.id}/galleries/reorder`, {
+                fetch(`/api/worlds/${world.id}/galleries/reorder`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ ids: reordered.map((g) => g.id) }),
@@ -3122,7 +2531,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                       <form onSubmit={async (e) => {
                         e.preventDefault();
                         if (!newGalleryName.trim()) return;
-                        const res = await fetch(`/api/characters/${character.id}/galleries`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newGalleryName.trim() }) });
+                        const res = await fetch(`/api/worlds/${world.id}/galleries`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newGalleryName.trim() }) });
                         if (res.ok) { const g = await res.json(); setGalleries((prev) => [...prev, g]); }
                         setNewGalleryName(""); setCreatingGallery(false);
                       }} style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -3199,7 +2608,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                               <form onSubmit={async (e) => {
                                 e.preventDefault();
                                 if (!renamingGallery.name.trim()) return;
-                                const res = await fetch(`/api/characters/${character.id}/galleries/${g.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: renamingGallery.name.trim() }) });
+                                const res = await fetch(`/api/worlds/${world.id}/galleries/${g.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: renamingGallery.name.trim() }) });
                                 if (res.ok) setGalleries((prev) => prev.map((gal) => gal.id === g.id ? { ...gal, name: renamingGallery.name.trim() } : gal));
                                 setRenamingGallery(null);
                               }} onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 4 }}>
@@ -3221,7 +2630,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                               </button>
                               <button onClick={async () => {
                                 if (!confirm(`Delete category "${g.name}"? Images won't be deleted.`)) return;
-                                const res = await fetch(`/api/characters/${character.id}/galleries/${g.id}`, { method: "DELETE" });
+                                const res = await fetch(`/api/worlds/${world.id}/galleries/${g.id}`, { method: "DELETE" });
                                 if (res.ok) setGalleries((prev) => prev.filter((gal) => gal.id !== g.id));
                               }} title="Delete category" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", padding: 4, display: "flex", alignItems: "center", opacity: 0.6, fontSize: 16 }}>×</button>
                             </div>
@@ -3301,7 +2710,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               {[
                 { count: artworks.length, label: t.statLabelImages },
-                { count: relationships.length, label: t.statLabelRelationships },
+                { count: inhabitants.length, label: "inhabitants" },
                 { count: favoritesCount, label: t.statLabelFavorites },
                 { count: tags.length, label: t.statLabelTags },
               ].map(({ count, label }) => (
@@ -3335,7 +2744,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   }}
                 >
                   <Link
-                    href={`/browse/characters?tag=${encodeURIComponent(tag.name)}`}
+                    href={`/browse/worlds?tag=${encodeURIComponent(tag.name)}`}
                     style={{ color: "inherit", textDecoration: "none" }}
                   >
                     #{tag.name}
@@ -3386,21 +2795,31 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             </div>
           </SectionCard>
 
-          {/* Relationships */}
+          {/* Inhabitants */}
           <SectionCard
-            title="Relationships"
+            title="Inhabitants"
             action={
-              <button onClick={() => setActiveTab("relationships")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
+              <button onClick={() => setActiveTab("inhabitants")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer" }}>
                 View more
               </button>
             }
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {relationships.slice(0, 3).map((rel) => (
-                <RelCard key={rel.id} rel={rel} />
+              {inhabitants.slice(0, 3).map((character) => (
+                <div key={character.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <a href={`/library/characters/${character.numId}-${character.slug}`} style={{ width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" }}>
+                    {character.avatarUrl && <img src={thumbUrl(character.avatarUrl, 128) ?? character.avatarUrl} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </a>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <a href={`/library/characters/${character.numId}-${character.slug}`} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{character.name}</a>
+                    {character.user?.username && (
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>by @{character.user.username}</span>
+                    )}
+                  </div>
+                </div>
               ))}
-              {relationships.length === 0 && (
-                <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>No relationships yet.</p>
+              {inhabitants.length === 0 && (
+                <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>No characters yet.</p>
               )}
             </div>
           </SectionCard>
@@ -3420,31 +2839,6 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function RelCard({ rel }: { rel: { id: string; type: string; description: string | null; character: { id: string; name: string; numId: number; slug: string; avatarUrl: string | null } | null; externalName?: string | null; externalImageUrl?: string | null } }) {
-  const isExternal = !rel.character;
-  const href = rel.character ? `/library/characters/${rel.character.numId}-${rel.character.slug}` : null;
-  const imgSrc = isExternal ? (rel.externalImageUrl ?? null) : (rel.character?.avatarUrl ?? null);
-  const displayName = isExternal ? (rel.externalName ?? "?") : (rel.character?.name ?? "?");
-  const avatar = imgSrc ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={thumbUrl(imgSrc, 128) ?? imgSrc} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-  ) : null;
-  const avatarBox = { width: 48, height: 48, flexShrink: 0, borderRadius: "var(--novae-radius-sm)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" } as const;
-  return (
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-      {href ? <a href={href} style={avatarBox}>{avatar}</a> : <div style={avatarBox}>{avatar}</div>}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {href
-          ? <a href={href} style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none", display: "block" }}>{displayName}</a>
-          : <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-sm)", fontWeight: 700, color: "var(--novae-text-primary)", display: "block" }}>{displayName}</span>
-        }
-        <span style={{ display: "inline-block", marginTop: 2, padding: "1px 7px", borderRadius: "var(--novae-radius-sm)", background: "var(--novae-bg-tag)", border: "0.5px solid var(--novae-outline-tag)", fontFamily: "var(--font-dm-sans)", fontSize: "10px", color: "var(--novae-text-tag)" }}>{rel.type}</span>
-        {rel.description && <p style={{ margin: "4px 0 0", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{rel.description}</p>}
-      </div>
-    </div>
-  );
-}
-
 function MetaItem({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -3462,9 +2856,4 @@ function MetaItem({ label, value, href }: { label: string; value: string; href?:
       )}
     </div>
   );
-}
-
-function extractYoutubeId(url: string): string {
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-  return match?.[1] ?? "";
 }
