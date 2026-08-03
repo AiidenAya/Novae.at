@@ -596,7 +596,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
     try {
       const uploaded = await startMapUpload([file]);
       if (!uploaded?.length) return;
-      const url = uploaded[0].ufsUrl;
+      const url = uploaded[0].url;
       const res = await fetch(`/api/worlds/${world.id}/maps`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -722,7 +722,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
       if (!uploaded?.length) return;
 
       if (isAvatar) {
-        const url = uploaded[0].ufsUrl;
+        const url = uploaded[0].url;
         setAvatarUrl(url);
         await fetch(`/api/worlds/${world.id}`, {
           method: "PATCH",
@@ -735,7 +735,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
         let thumbnailUrl: string | null = null;
         if (thumbnailFile && files.length === 1) {
           const thumbUploaded = await startArtworkUpload([thumbnailFile]);
-          thumbnailUrl = thumbUploaded?.[0]?.ufsUrl ?? null;
+          thumbnailUrl = thumbUploaded?.[0]?.url ?? null;
         }
 
         const creditsPayload = (credits ?? []).map((c) => ({ type: c.type, value: c.value.trim(), label: c.label.trim() }));
@@ -745,7 +745,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              imageUrl: file.ufsUrl,
+              imageUrl: file.url,
               thumbnailUrl,
               credits: creditsPayload,
               sensitiveType: sensitiveType ?? null,
@@ -844,7 +844,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
       newThumbnailUrl = null;
     } else if (editThumbFile) {
       const uploaded = await startArtworkUpload([editThumbFile]);
-      newThumbnailUrl = uploaded?.[0]?.ufsUrl ?? null;
+      newThumbnailUrl = uploaded?.[0]?.url ?? null;
     }
 
     const body: Record<string, unknown> = { credits, worldIds: creditsWorlds.map((w) => w.id), sensitiveType: creditsSensitiveType };

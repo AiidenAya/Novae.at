@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { notifyFollowers } from "@/lib/notifications";
 
 function toSlug(name: string): string {
   return name
@@ -89,8 +88,6 @@ export async function POST(req: NextRequest) {
       ...(baseWorld && { baseWorldId: baseWorld.id, variantLabel: variantLabel?.trim() || null }),
     },
   });
-
-  notifyFollowers(session.user.id, "new_world", { worldId: world.id }).catch(() => {});
 
   return NextResponse.json(world, { status: 201 });
 }

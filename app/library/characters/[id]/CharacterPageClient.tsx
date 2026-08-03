@@ -68,6 +68,7 @@ interface CharacterData {
   createdAt: Date;
   isPublic: boolean;
   user: { username: string | null };
+  world: { id: string; numId: number; name: string; slug: string; isPublic: boolean } | null;
   artworks: Artwork[];
   tags: Tag[];
   colorPalettes: { id: string; swatches: Swatch[] }[];
@@ -604,6 +605,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const initialSwatches = character.colorPalettes[0]?.swatches ?? [];
   const [swatches, setSwatches] = useState<Swatch[]>(initialSwatches);
   const [editingSwatch, setEditingSwatch] = useState<number | null>(null);
+  const [copiedSwatch, setCopiedSwatch] = useState<number | null>(null);
 
   // Artworks
   const [artworks, setArtworks] = useState<Artwork[]>(character.artworks);
@@ -961,7 +963,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       if (!uploaded?.length) return;
 
       if (isAvatar) {
-        const url = uploaded[0].ufsUrl;
+        const url = uploaded[0].url;
         setAvatarUrl(url);
         await fetch(`/api/characters/${character.id}`, {
           method: "PATCH",
@@ -974,7 +976,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
         let thumbnailUrl: string | null = null;
         if (thumbnailFile && files.length === 1) {
           const thumbUploaded = await startArtworkUpload([thumbnailFile]);
-          thumbnailUrl = thumbUploaded?.[0]?.ufsUrl ?? null;
+          thumbnailUrl = thumbUploaded?.[0]?.url ?? null;
         }
 
         const creditsPayload = (credits ?? []).map((c) => ({ type: c.type, value: c.value.trim(), label: c.label.trim() }));
@@ -984,7 +986,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              imageUrl: file.ufsUrl,
+              imageUrl: file.url,
               thumbnailUrl,
               credits: creditsPayload,
               sensitiveType: sensitiveType ?? null,
@@ -1082,7 +1084,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       newThumbnailUrl = null;
     } else if (editThumbFile) {
       const uploaded = await startArtworkUpload([editThumbFile]);
-      newThumbnailUrl = uploaded?.[0]?.ufsUrl ?? null;
+      newThumbnailUrl = uploaded?.[0]?.url ?? null;
     }
 
     const body: Record<string, unknown> = { credits, characterIds: creditsCharacters.map((c) => c.id), sensitiveType: creditsSensitiveType };
@@ -1987,6 +1989,9 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             }}
           >
             <MetaItem label="Owner" value={`@${character.user.username}`} href={`/${character.user.username}`} />
+            {character.world && (character.world.isPublic || isOwner) && (
+              <MetaItem label="World" value={character.world.name} href={`/library/worlds/${character.world.numId}-${character.world.slug}`} />
+            )}
             {/* Designer — view mode */}
             {!editing && (() => {
               if (character.isDesigner) {
@@ -2290,19 +2295,30 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                     {swatches.map((swatch, i) => (
                       <div key={i} style={{ position: "relative" }}>
                         <div
+                          title={editing ? undefined : `Copy ${swatch.hex}`}
                           style={{
                             width: "100%", aspectRatio: "1 / 1",
                             borderRadius: "var(--novae-radius-md)",
                             backgroundColor: swatch.hex,
-                            cursor: editing ? "pointer" : "default",
+                            cursor: "pointer",
                             display: "flex",
                             alignItems: "flex-end",
                             justifyContent: "center",
                             padding: 4,
                           }}
-                          onClick={() => editing && setEditingSwatch(editingSwatch === i ? null : i)}
+                          onClick={() => {
+                            if (editing) { setEditingSwatch(editingSwatch === i ? null : i); return; }
+                            navigator.clipboard.writeText(swatch.hex);
+                            setCopiedSwatch(i);
+                            window.setTimeout(() => setCopiedSwatch((cur) => (cur === i ? null : cur)), 1200);
+                          }}
                         >
-                          {swatch.label && (
+                          {copiedSwatch === i && !editing && (
+                            <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", borderRadius: "var(--novae-radius-md)", fontFamily: "var(--font-dm-sans)", fontSize: "11px", fontWeight: 700, color: "#fff" }}>
+                              Copied!
+                            </span>
+                          )}
+                          {swatch.label && !(copiedSwatch === i && !editing) && (
                             <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "10px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: 4, padding: "2px 6px", textAlign: "center", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {swatch.label}
                             </span>
@@ -2903,7 +2919,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                               const f = e.target.files?.[0];
                               if (!f) return;
                               const uploaded = await startArtworkUpload([f]);
-                              if (uploaded?.[0]?.ufsUrl) setRelExternalImage(uploaded[0].ufsUrl);
+                              if (uploaded?.[0]?.url) setRelExternalImage(uploaded[0].url);
                               e.target.value = "";
                             }} />
                           </label>

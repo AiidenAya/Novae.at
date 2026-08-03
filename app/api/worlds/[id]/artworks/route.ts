@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     include: creditsInclude,
   });
 
-  notifyFollowers(session.user.id, "new_artwork", { worldId: id, artworkId: artwork.id }).catch(() => {});
+  notifyFollowers(session.user.id, "new_artwork", { artworkId: artwork.id }).catch(() => {});
 
   return NextResponse.json(artwork, { status: 201 });
 }

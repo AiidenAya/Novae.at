@@ -23,6 +23,7 @@ export default async function CharacterPage({ params }: Props) {
     include: {
       user:    { select: { username: true } },
       folder:  { select: { isPublic: true } },
+      world:   { select: { id: true, numId: true, name: true, slug: true, isPublic: true } },
       baseCharacter: {
         select: {
           id: true, name: true, numId: true, slug: true, avatarUrl: true, isPublic: true,

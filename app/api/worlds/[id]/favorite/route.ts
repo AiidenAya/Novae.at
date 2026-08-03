@@ -27,7 +27,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   // notify the world owner (skip self-favorite)
   if (world.creatorId !== session.user.id) {
-    notifyUser(world.creatorId, session.user.id, "new_favorite", { worldId: id }).catch(() => {});
+    notifyUser(world.creatorId, session.user.id, "new_favorite").catch(() => {});
   }
 
   return NextResponse.json({ favorited: true });

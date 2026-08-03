@@ -12,7 +12,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
 
   characterAvatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
@@ -22,7 +22,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
 
   worldImage: f({ image: { maxFileSize: "8MB", maxFileCount: 20 } })
@@ -32,7 +32,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
 
   worldAvatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
@@ -42,7 +42,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
 
   worldMap: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
@@ -52,7 +52,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
 
   profileAvatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
@@ -62,7 +62,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
 
   profileCover: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
@@ -72,7 +72,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
   editorImage: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
     .middleware(async () => {
@@ -81,7 +81,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
+      return { url: file.url };
     }),
 } satisfies FileRouter;
 
