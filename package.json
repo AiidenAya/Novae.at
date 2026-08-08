@@ -21,6 +21,7 @@
     "@prisma/client": "^7.8.0",
     "@types/pg": "^8.20.0",
     "@uploadthing/react": "^7.3.3",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^1.0.4",
     "agentation": "^3.0.2",
     "better-auth": "^1.4.3",
