@@ -16,7 +16,7 @@ export function ArtworkCreditsDisplay({ credits, linkStyle }: { credits: Artwork
       {credits.map((c, i) => (
         <span key={c.id ?? i}>
           {c.userId && c.username ? (
-            <a href={`/${c.username}`} style={baseLinkStyle}>@{c.username}</a>
+            <a href={`/~${c.username}`} style={baseLinkStyle}>@{c.username}</a>
           ) : (
             <a href={c.url ?? "#"} target="_blank" rel="noopener noreferrer" style={baseLinkStyle}>{c.label}</a>
           )}
