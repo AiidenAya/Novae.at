@@ -109,6 +109,34 @@ export async function removeContactFromBrevo(email: string) {
   }
 }
 
+export async function sendResetPasswordEmail(email: string, resetUrl: string) {
+  const res = await fetch(BREVO_EMAIL_API_URL, {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY!,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: [{ email }],
+      sender: { name: "Novae", email: "no-reply@novae.at" },
+      subject: "Réinitialise ton mot de passe Novae",
+      htmlContent: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2>Réinitialisation de mot de passe</h2>
+          <p>Tu as demandé à réinitialiser le mot de passe de ton compte Novae.</p>
+          <p><a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;border-radius:6px;text-decoration:none;">Réinitialiser mon mot de passe</a></p>
+          <p>Ce lien expire dans 1 heure. Si tu n'es pas à l'origine de cette demande, ignore cet email.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`[Brevo] Failed to send reset password email to ${email}: ${res.status} ${body}`);
+  }
+}
+
 export async function sendInviteCodeEmail(email: string, code: string) {
   const res = await fetch(BREVO_EMAIL_API_URL, {
     method: "POST",

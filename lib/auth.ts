@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
-import { addContactToBrevo, removeContactFromBrevo } from "./brevo";
+import { addContactToBrevo, removeContactFromBrevo, sendResetPasswordEmail } from "./brevo";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -10,6 +10,10 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    sendResetPassword: async ({ user, token }) => {
+      const resetUrl = `${process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:3000"}/reset-password?token=${token}`;
+      await sendResetPasswordEmail(user.email, resetUrl);
+    },
   },
   user: {
     additionalFields: {
