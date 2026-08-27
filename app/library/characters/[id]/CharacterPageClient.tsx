@@ -1986,16 +1986,16 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
               borderTop: "1px solid var(--novae-outline-all)",
             }}
           >
-            <MetaItem label="Owner" value={`@${character.user.username}`} href={`/${character.user.username}`} />
+            <MetaItem label="Owner" value={`@${character.user.username}`} href={`/~${character.user.username}`} />
             {/* Designer — view mode */}
             {!editing && (() => {
               if (character.isDesigner) {
-                return <MetaItem label="Designer" value={`@${character.user.username}`} href={`/${character.user.username}`} />;
+                return <MetaItem label="Designer" value={`@${character.user.username}`} href={`/~${character.user.username}`} />;
               }
               if (!character.designerCredit) return null;
               if (character.designerCredit.startsWith("@")) {
                 const u = character.designerCredit.slice(1);
-                return <MetaItem label="Designer" value={`@${u}`} href={`/${u}`} />;
+                return <MetaItem label="Designer" value={`@${u}`} href={`/~${u}`} />;
               }
               const m = character.designerCredit.match(/^\[(.+)\]\((.+)\)$/);
               if (m) return <MetaItem label="Designer" value={m[1]} href={m[2]} />;

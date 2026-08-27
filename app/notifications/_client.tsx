@@ -139,7 +139,7 @@ function NotificationRow({ n, onMarkRead, onRespond }: { n: Notification; onMark
       {!n.read && <span style={{ position: "absolute", top: 14, right: 14, width: 8, height: 8, borderRadius: "50%", background: "var(--novae-btn-primary)" }} />}
 
       {/* Actor avatar */}
-      <Link href={n.actor.username ? `/${n.actor.username}` : "#"} style={{ flexShrink: 0 }}>
+      <Link href={n.actor.username ? `/~${n.actor.username}` : "#"} style={{ flexShrink: 0 }}>
         <div style={{ width: 40, height: 40, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)" }}>
           {n.actor.avatar
             ? <img src={thumbUrl(n.actor.avatar, 80) ?? n.actor.avatar} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -154,7 +154,7 @@ function NotificationRow({ n, onMarkRead, onRespond }: { n: Notification; onMark
             <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "var(--novae-radius-sm)", background: badge.bg, fontSize: 12, color: badge.color, flexShrink: 0 }}>{badge.icon}</span>
           )}
           <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-primary)", lineHeight: 1.5 }}>
-            <Link href={n.actor.username ? `/${n.actor.username}` : "#"} style={{ fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none" }}>{actorName}</Link>{" "}
+            <Link href={n.actor.username ? `/~${n.actor.username}` : "#"} style={{ fontWeight: 700, color: "var(--novae-text-primary)", textDecoration: "none" }}>{actorName}</Link>{" "}
             {body}
           </p>
         </div>

@@ -118,13 +118,13 @@ export default function CharacterPageHeader({
       icon: <IconUser className="shrink-0" style={{ color: "var(--novae-text-secondary)" }} />,
       label: "Owner",
       value: `@${ownerUsername}`,
-      href: `/${ownerUsername}`,
+      href: `/~${ownerUsername}`,
     },
     {
       icon: <IconPencilSm className="shrink-0" style={{ color: "var(--novae-text-secondary)" }} />,
       label: "Designer",
       value: `@${ownerUsername}`,
-      href: `/${ownerUsername}`,
+      href: `/~${ownerUsername}`,
     },
     {
       icon: <IconCalendar className="shrink-0" style={{ color: "var(--novae-text-secondary)" }} />,

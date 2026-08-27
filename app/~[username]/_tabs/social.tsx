@@ -176,7 +176,7 @@ export default function SocialTab({
             return (
               <div key={i} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", position: "relative", width: "100%", minWidth: 0 }}>
                 {isEditing ? inner : (
-                  <a href={`/${friend.username}`} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", width: "100%", textDecoration: "none" }}>{inner}</a>
+                  <a href={`/~${friend.username}`} style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)", alignItems: "center", width: "100%", textDecoration: "none" }}>{inner}</a>
                 )}
                 {isEditing && (
                   <button

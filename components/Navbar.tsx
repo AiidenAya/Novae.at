@@ -401,7 +401,7 @@ export default function Navbar() {
         {session ? (
           <>
             <Link href="/library/new" className="flex items-center gap-3 py-3" style={{ color: "var(--novae-btn-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 600 }}><IconPlus />{t.navNew}</Link>
-            <Link href={`/${username}`} className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navProfile}</Link>
+            <Link href={`/~${username}`} className="flex items-center gap-3 py-3" style={{ color: "var(--novae-text-primary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}><IconUser />{t.navProfile}</Link>
             <button onClick={() => { signOut(); setMobileOpen(false); }} className="flex items-center gap-3 py-3 w-full" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--novae-text-secondary)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", fontWeight: 500 }}>{t.navLogout}</button>
           </>
         ) : (
@@ -581,7 +581,7 @@ export default function Navbar() {
                 <DropdownPanel align="right">
                   {/* Profile */}
                   <Link
-                    href={`/${username}`}
+                    href={`/~${username}`}
                     className="flex items-center gap-2 transition-opacity hover:opacity-70"
                     style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-lg)", color: "var(--novae-text-primary)" }}
                   >

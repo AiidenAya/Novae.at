@@ -109,7 +109,7 @@ function CharCard({ char, priority = false }: { char: CharacterData; priority?: 
 function UserCard({ user }: { user: UserData }) {
   if (!user.username) return null;
   return (
-    <Link href={`/${user.username}`} style={{ textDecoration: "none", display: "block" }}>
+    <Link href={`/~${user.username}`} style={{ textDecoration: "none", display: "block" }}>
       <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", padding: "16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
         <div style={{ position: "relative", width: 48, height: 48, borderRadius: "var(--novae-radius-md)", overflow: "hidden", background: "rgba(105,61,169,0.15)", flexShrink: 0 }}>
           {user.avatar

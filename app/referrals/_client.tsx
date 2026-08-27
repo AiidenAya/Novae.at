@@ -173,7 +173,7 @@ export function ReferralsClient({ initialCodes, max }: { initialCodes: ReferralC
                   )}
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                     {u.username ? (
-                      <Link href={`/${u.username}`} style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)", textDecoration: "none" }}>
+                      <Link href={`/~${u.username}`} style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", fontWeight: 600, color: "var(--novae-text-primary)", textDecoration: "none" }}>
                         @{u.username}
                       </Link>
                     ) : (

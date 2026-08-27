@@ -57,7 +57,7 @@ function CharCard({ char }: { char: BrowseCharacter }) {
 function UserCard({ user }: { user: BrowseUser }) {
   if (!user.username) return null;
   return (
-    <Link href={`/${user.username}`} style={{ textDecoration: "none", display: "block" }}>
+    <Link href={`/~${user.username}`} style={{ textDecoration: "none", display: "block" }}>
       <div style={{ background: "var(--novae-bg-card)", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-md)", overflow: "hidden" }}>
         <div style={{ position: "relative", aspectRatio: "1/1", background: "rgba(105,61,169,0.1)" }}>
           {user.avatar
