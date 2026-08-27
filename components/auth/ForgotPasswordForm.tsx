@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { forgetPassword } from "@/lib/auth-client";
+import { requestPasswordReset } from "@/lib/auth-client";
 import { useT } from "@/lib/locale-context";
 
 const inputStyle: React.CSSProperties = {
@@ -29,7 +29,7 @@ export default function ForgotPasswordForm() {
     setError(null);
     setLoading(true);
 
-    const result = await forgetPassword({ email, redirectTo: "/reset-password" });
+    const result = await requestPasswordReset({ email, redirectTo: "/reset-password" });
     setLoading(false);
 
     if (result.error) {
