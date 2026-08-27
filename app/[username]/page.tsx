@@ -4,11 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { creditsInclude } from "@/lib/artwork-credits";
 import { ProfileClient } from "./_profile-client";
 
-// The literal "~" in this route's folder name confuses Next's static-path
-// analysis for the "[username]" segment, causing it to attempt (and fail) a
-// static prerender with no params at build time. Force dynamic rendering.
-export const dynamic = "force-dynamic";
-
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username: rawUsername } = await params;
   const username = rawUsername.toLowerCase();
