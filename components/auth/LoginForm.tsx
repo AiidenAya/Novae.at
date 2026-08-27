@@ -79,7 +79,10 @@ export default function LoginForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.loginPasswordLabel}</label>
+        <div className="flex items-center justify-between">
+          <label htmlFor="password" style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>{t.loginPasswordLabel}</label>
+          <Link href="/forgot-password" className="text-sm underline" style={{ fontFamily: "var(--font-dm-sans)", color: "var(--novae-text-link)" }}>{t.loginForgotPassword}</Link>
+        </div>
         <div className="relative">
           <input id="password" type={showPassword ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ ...inputStyle, paddingRight: "42px" }} />
           <button type="button" onClick={() => setShowPassword((v) => !v)} tabIndex={-1}
