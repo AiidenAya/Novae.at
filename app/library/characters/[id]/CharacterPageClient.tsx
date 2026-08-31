@@ -484,6 +484,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
   const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [activeTab, setActiveTab] = useState<"profile" | "story" | "relationships" | "gallery" | "timeline">("profile");
   const [showAuModal, setShowAuModal] = useState(false);
   const [auName, setAuName] = useState("");
@@ -843,6 +844,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
 
   const save = useCallback(async () => {
     setSaving(true);
+    setSaveError("");
     try {
       // Save character fields
       const charRes = await fetch(`/api/characters/${character.id}`, {
@@ -868,7 +870,12 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             : null),
         }),
       });
-      const charData = charRes.ok ? await charRes.json() : null;
+      if (!charRes.ok) {
+        const errData = await charRes.json().catch(() => null);
+        setSaveError(errData?.error ?? "Failed to save changes. Please try again.");
+        return;
+      }
+      const charData = await charRes.json();
 
       // Save palette
       await fetch(`/api/characters/${character.id}/palette`, {
@@ -883,12 +890,15 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       } else {
         router.refresh();
       }
+    } catch {
+      setSaveError("Failed to save changes. Please try again.");
     } finally {
       setSaving(false);
     }
   }, [character.id, name, description, birthdate, age, height, weight, mbti, kingdom, ethnicity, race, gender, orientation, customFields, customContainers, blockOrder, voiceClaimUrl, tracks, summary, biography, avatarUrl, isPublic, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
+    setSaveError("");
     setName(character.name);
     setDescription(character.description ?? "");
     setBirthdate(character.birthdate ?? "");
@@ -1753,6 +1763,12 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                   </>
                 )}
               </div>
+
+              {editing && saveError && (
+                <p style={{ color: "var(--novae-danger, #e5484d)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)" }}>
+                  {saveError}
+                </p>
+              )}
 
               {/* Name + quote + meta */}
               <div className="char-header-bio flex flex-col gap-3 w-full">
