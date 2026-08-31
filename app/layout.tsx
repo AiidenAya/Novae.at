@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { Agentation } from "agentation";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { ThemeScript } from "@/components/ThemeScript";
 import { LocaleProvider } from "@/lib/locale-context";
 import "./globals.css";
@@ -54,6 +55,7 @@ export default function RootLayout({
           <main className="flex-1 flex flex-col">
             {children}
           </main>
+          <Footer />
         </LocaleProvider>
         {process.env.NODE_ENV === "development" && <Agentation />}
         <SpeedInsights />

@@ -19,6 +19,7 @@
     "@editorjs/quote": "^2.7.6",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@supabase/supabase-js": "^2.112.4",
     "@types/pg": "^8.20.0",
     "@uploadthing/react": "^7.3.3",
     "@vercel/analytics": "^2.0.1",
