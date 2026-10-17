@@ -109,25 +109,6 @@ export async function removeContactFromBrevo(email: string) {
   }
 }
 
-export async function sendWelcomeEmail(email: string) {
-  const res = await fetch(BREVO_EMAIL_API_URL, {
-    method: "POST",
-    headers: {
-      "api-key": process.env.BREVO_API_KEY!,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to: [{ email }],
-      templateId: 2,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`[Brevo] Failed to send welcome email to ${email}: ${res.status} ${body}`);
-  }
-}
-
 export async function sendResetPasswordEmail(email: string, resetUrl: string) {
   const res = await fetch(BREVO_EMAIL_API_URL, {
     method: "POST",

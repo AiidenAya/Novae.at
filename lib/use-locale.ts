@@ -333,6 +333,8 @@ export const translations = {
     landingWaitlistSuccess: "You're on the list! See you soon.",
     landingWaitlistError: "Something went wrong. Please try again.",
     landingWaitlistInvalidEmail: "Please enter a valid email address.",
+    landingWaitlistAlreadyRegistered: "This email already has a Novae account.",
+    landingWaitlistAlreadyOnWaitlist: "This email is already on the waitlist — check your inbox for your invite code.",
 
     //errors
     errorUserNotFound: "User not found",
@@ -669,6 +671,8 @@ export const translations = {
     landingWaitlistSuccess: "Tu es sur la liste ! À très vite.",
     landingWaitlistError: "Une erreur est survenue. Veuillez réessayer.",
     landingWaitlistInvalidEmail: "Merci d'entrer une adresse email valide.",
+    landingWaitlistAlreadyRegistered: "Cette adresse email a déjà un compte Novae.",
+    landingWaitlistAlreadyOnWaitlist: "Cette adresse email est déjà sur la liste d'attente — vérifie ta boîte mail pour ton code d'invitation.",
 
     //errors
     errorUserNotFound: "Utilisateur introuvable",
