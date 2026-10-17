@@ -1,0 +1,16 @@
+-- Character: profile fields declared in schema.prisma but never migrated
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "birthdate" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "age" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "height" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "weight" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "mbti" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "kingdom" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "ethnicity" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "race" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "custom" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "voiceClaimUrl" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "playlistUrl" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "spotifyPlaylistUrl" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "summary" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "biography" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "sections" TEXT;

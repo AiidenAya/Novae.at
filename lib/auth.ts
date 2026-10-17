@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
-import { addContactToBrevo, removeContactFromBrevo } from "./brevo";
+import { addContactToBrevo, removeContactFromBrevo, sendResetPasswordEmail } from "./brevo";
+import { isReservedUsername } from "./reserved-usernames";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -10,6 +12,10 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    sendResetPassword: async ({ user, token }) => {
+      const resetUrl = `${process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:3000"}/reset-password?token=${token}`;
+      await sendResetPasswordEmail(user.email, resetUrl);
+    },
   },
   user: {
     additionalFields: {
@@ -49,7 +55,11 @@ export const auth = betterAuth({
             const suffix = Math.random().toString(36).slice(2, 6);
             return { data: { ...user, username: `${base}_${suffix}` } };
           }
-          return { data: { ...user, username: rawUsername.toLowerCase() } };
+          const username = rawUsername.toLowerCase();
+          if (isReservedUsername(username)) {
+            throw new APIError("BAD_REQUEST", { message: "This username is reserved." });
+          }
+          return { data: { ...user, username } };
         },
         after: async (user) => {
           await addContactToBrevo(user.email, user.name ?? undefined).catch(() => {});

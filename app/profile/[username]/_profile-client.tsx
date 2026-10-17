@@ -134,7 +134,7 @@ function UserListModal({ username, kind, count, onClose }: { username: string; k
             </p>
           )}
           {users?.map((u) => (
-            <a key={u.username} href={`/${u.username}`} style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-sm)", textDecoration: "none" }}>
+            <a key={u.username} href={`/~${u.username}`} style={{ display: "flex", alignItems: "center", gap: "var(--novae-space-sm)", textDecoration: "none" }}>
               <Avatar src={u.avatar} size={40} name={u.name ?? u.username} />
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 600, color: "var(--novae-text-primary)" }}>{u.name ?? u.username}</span>

@@ -769,7 +769,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                     </td>
                     <td style={{ ...cell, whiteSpace: "nowrap", fontWeight: 600 }}>
                       {u.username
-                        ? <a href={`/${u.username}`} style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>@{u.username}</a>
+                        ? <a href={`/~${u.username}`} style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>@{u.username}</a>
                         : "—"}
                     </td>
                     <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)" }}>{u.email}</td>
@@ -779,7 +779,7 @@ export function AdminClient({ stats, recentUsers: initialUsers, initialCodes, in
                     </td>
                     <td style={{ ...cell, fontSize: "var(--novae-text-xs)", whiteSpace: "nowrap" }}>
                       {u.invitedBy
-                        ? <a href={`/${u.invitedBy}`} style={{ color: "var(--novae-text-primary)", textDecoration: "none", fontWeight: 600 }} onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>@{u.invitedBy}</a>
+                        ? <a href={`/~${u.invitedBy}`} style={{ color: "var(--novae-text-primary)", textDecoration: "none", fontWeight: 600 }} onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>@{u.invitedBy}</a>
                         : <span style={{ color: "var(--novae-text-secondary)" }}>—</span>}
                     </td>
                     <td style={{ ...cell, color: "var(--novae-text-secondary)", fontSize: "var(--novae-text-xs)", whiteSpace: "nowrap" }}>

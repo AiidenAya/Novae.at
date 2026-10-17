@@ -287,18 +287,6 @@ export default function LandingPage() {
           </div>
           <WaitlistForm buttonLabel={t.landingReserveSpot} wide />
         </section>
-
-        {/* ── Footer ── */}
-        <footer style={{ borderTop: "1px solid var(--novae-outline-all)", padding: "32px 0 48px", display: "flex", flexDirection: "column", gap: 8, alignItems: "center", textAlign: "center" }}>
-          <p style={{ margin: 0, display: "flex", gap: 8, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>
-            <a href="mailto:hello@novae.at" style={{ color: "var(--novae-text-secondary)" }}>{t.landingFooterContact}</a>
-            <span>|</span>
-            <span>{t.landingFooterDiscord}</span>
-          </p>
-          <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)" }}>
-            {t.landingFooterCopyright}
-          </p>
-        </footer>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start"
   },
   "dependencies": {
@@ -19,8 +19,10 @@
     "@editorjs/quote": "^2.7.6",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.9.1",
+    "@supabase/supabase-js": "^2.112.4",
     "@types/pg": "^8.20.0",
-    "@uploadthing/react": "^6.6.0",
+    "@uploadthing/react": "^7.3.3",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^1.0.4",
     "agentation": "^3.0.2",
     "better-auth": "^1.4.3",
