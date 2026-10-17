@@ -26,14 +26,14 @@ export async function POST(req: Request) {
   await addToWaitlist(email);
 
   const owner = await prisma.user.findUnique({ where: { username: WAITLIST_CODE_OWNER_USERNAME }, select: { id: true } });
-  console.log(`[waitlist debug] owner lookup for "${WAITLIST_CODE_OWNER_USERNAME}":`, owner);
   if (owner) {
     try {
       await createAndSendInviteCode(email, owner.id);
-      console.log(`[waitlist debug] invite code sent to ${email}`);
     } catch (err) {
-      console.error(`[waitlist debug] createAndSendInviteCode failed for ${email}:`, err);
+      console.error(`[waitlist] Failed to send invite code to ${email}:`, err);
     }
+  } else {
+    console.error(`[waitlist] Owner username "${WAITLIST_CODE_OWNER_USERNAME}" not found — no invite code sent to ${email}`);
   }
 
   return NextResponse.json({ ok: true });
