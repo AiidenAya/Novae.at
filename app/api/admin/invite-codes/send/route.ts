@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendInviteCodeEmail } from "@/lib/brevo";
+import { generateUniqueCode } from "@/lib/inviteCodes";
 
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
@@ -12,27 +13,11 @@ async function requireAdmin() {
   return session.user;
 }
 
-function generateCode(): string {
-  const seg = () => Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `NOVA-${seg()}-${seg()}`;
-}
-
 const codeSelect = {
   id: true, code: true, note: true, createdAt: true, expiresAt: true, usedAt: true,
   usedBy: { select: { username: true } },
   createdBy: { select: { username: true, roles: true } },
 } as const;
-
-async function generateUniqueCode(): Promise<string> {
-  let code = generateCode();
-  // Retry on collision (extremely unlikely)
-  for (let i = 0; i < 5; i++) {
-    const exists = await prisma.inviteCode.findUnique({ where: { code } });
-    if (!exists) break;
-    code = generateCode();
-  }
-  return code;
-}
 
 export async function POST(req: Request) {
   const user = await requireAdmin();
