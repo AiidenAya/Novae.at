@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createAndSendInviteCode } from "@/lib/inviteCodes";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const WAITLIST_CODE_OWNER_USERNAME = "aiiden";
+const WAITLIST_CODE_OWNER_USERNAME = "aiidenaya";
 
 export async function POST(req: Request) {
   const { email } = await req.json().catch(() => ({ email: undefined }));
