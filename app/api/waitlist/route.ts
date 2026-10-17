@@ -1,25 +1,10 @@
 import { NextResponse } from "next/server";
-import { addToWaitlist, sendInviteCodeEmail } from "@/lib/brevo";
+import { addToWaitlist } from "@/lib/brevo";
 import { prisma } from "@/lib/prisma";
+import { createAndSendInviteCode } from "@/lib/inviteCodes";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WAITLIST_CODE_OWNER_USERNAME = "aiiden";
-
-function generateCode(): string {
-  const seg = () => Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `NOVA-${seg()}-${seg()}`;
-}
-
-async function generateUniqueCode(): Promise<string> {
-  let code = generateCode();
-  // Retry on collision (extremely unlikely)
-  for (let i = 0; i < 5; i++) {
-    const exists = await prisma.inviteCode.findUnique({ where: { code } });
-    if (!exists) break;
-    code = generateCode();
-  }
-  return code;
-}
 
 export async function POST(req: Request) {
   const { email } = await req.json().catch(() => ({ email: undefined }));
@@ -42,9 +27,7 @@ export async function POST(req: Request) {
 
   const owner = await prisma.user.findUnique({ where: { username: WAITLIST_CODE_OWNER_USERNAME }, select: { id: true } });
   if (owner) {
-    const code = await generateUniqueCode();
-    await prisma.inviteCode.create({ data: { code, note: email, createdById: owner.id } });
-    await sendInviteCodeEmail(email, code);
+    await createAndSendInviteCode(email, owner.id);
   }
 
   return NextResponse.json({ ok: true });
