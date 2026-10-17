@@ -25,11 +25,14 @@ export const translations = {
     me: "Me",
     all_: "All",
     eg: "e.g.",
+    overview: "Overview",
+
     // Novae
     characters: "Characters",
     character: "Character",
     worlds: "Worlds",
     world: "World",
+    locations: "Locations",
     novaeFormat: "PNG, JPG, GIF, WEBP — up to 8 MB per file",
     defaultMainFolder: "All characters",
     nudity: "Nudity",
@@ -252,6 +255,25 @@ export const translations = {
     newMultiThmbcrop: "Crop thumbnail",
     newMultiUpload: "Upload",
 
+    // World - page
+    worldNoCharacters: "No characters yet.",
+    worldNoLocations: "No locations yet.",
+    worldNoMaps: "No maps yet.",
+    worldCreatedBy: "Created by",
+    worldAddMap: "Add map",
+    worldAddLocationPin: "Add location pin",
+    worldDelete: "Delete",
+    worldDeleting: "Deleting...",
+    worldMapAdded: "Map added successfully.",
+    worldPinAdded: "Location pin added successfully.",
+    worldAddMapPlaceholder: "Add map",
+    worldAddLocationPinPlaceholder: "Add location pin",
+    worldAddLocationDescriptionPlaceholder: "Description",
+    worldAddCharacter: "Add character",
+    worldLocationsTitle: "Locations",
+    worldMapsTitle: "Maps",
+    worldCharactersTitle: "Characters",
+
     // Character - page
     characterDescriptionPlaceholder: "A memorable quote from this character…",
     statLabelImages: "images",
@@ -278,7 +300,7 @@ export const translations = {
     landingHeroTitle: "Because your characters also deserve a cozy place to live.",
     landingHeroSubtitle: "Novae is the digital refuge where your characters, their stories, and their connections come to life. A fluid, free, and accessible platform for everyone: from dreamers to universe builders, no coding required.",
     landingEmailPlaceholder: "Email Address",
-    landingJoinWaitlist: "Join the Waitlist",
+    landingJoinWaitlist: "Join Novae",
     landingWaitlistNote: "Be the first to explore your future worlds. Launching soon. Joining the waitlist will allow us to send you updates on the app and everything community related!",
     landingDesignedTitle: "Designed for creativity, not complexity.",
     landingAccessibleTitle: "Accessible to Everyone",
@@ -303,7 +325,7 @@ export const translations = {
     landingFeatHumanDesc: "We do not allow AI-generated content. Our team actively monitors the platform, and any content reported as AI will be investigated and can result in a ban. We are committed to protecting your work and fostering a genuine, human community.",
     landingCta2Title: "Help us shape the refuge of tomorrow.",
     landingCta2Desc: "Novae is currently under development. By joining our waitlist, you'll get priority access to the beta and a voice in shaping future features. Your feedback will help make Novae the most welcoming corner of the web.",
-    landingReserveSpot: "Reserve my spot",
+    landingReserveSpot: "Start Up",
     landingFooterContact: "Contact Us",
     landingFooterDiscord: "Join our Discord",
     landingFooterCopyright: "© 2026 Novae.at – Made with passion and coffee.",
@@ -314,6 +336,7 @@ export const translations = {
 
     //errors
     errorUserNotFound: "User not found",
+    errorUserNoName: "Name shouldn't be empty",
     error0: "Something went wrong. Please try again."
   },
   fr: {
@@ -338,11 +361,13 @@ export const translations = {
     me: "Moi",
     all_: "Toutes",
     eg: "Ex.",
+    overview: "Aperçu",
     // Novae
     characters: "Personnages",
     character: "Personnage",
     worlds: "Mondes",
     world: "Monde",
+    locations: "Lieux",
     novaeFormat: "PNG, JPG, GIF, WEBP — jusqu'à 8 MB par fichier",
     defaultMainFolder: "Tous les personnages",
     nudity: "Nudité",
@@ -566,6 +591,25 @@ export const translations = {
     newMultiThmbcrop: "Crop thumbnail",
     newMultiUpload: "Envoyer",
 
+    // World - page
+    worldNoCharacters: "Aucun personnage pour le moment.",
+    worldNoMaps: "Aucune carte pour le moment.",
+    worldCreatedBy: "Créé par",
+    worldAddMap: "Ajouter une carte",
+    worldAddLocationPin: "Ajouter un repère",
+    worldDelete: "Supprimer",
+    worldDeleting: "Suppression...",
+    worldMapAdded: "Carte ajoutée avec succès.",
+    worldPinAdded: "Repère ajouté avec succès.",
+    worldAddMapPlaceholder: "Ajouter une carte",
+    worldAddLocationPinPlaceholder: "Ajouter un repère",
+    worldAddLocationDescriptionPlaceholder: "Description",
+    worldAddCharacter: "Ajouter un personnage",
+    worldLocationsTitle: "Lieux",
+    worldMapsTitle: "Cartes",
+    worldCharactersTitle: "Personnages",
+    worldNoLocations: "Aucun lieu pour le moment.",
+
     // Character - page
     characterDescriptionPlaceholder: "Une citation mémorable de ce personnage…",
     statLabelImages: "images",
@@ -592,7 +636,7 @@ export const translations = {
     landingHeroTitle: "Parce que tes personnages méritent aussi un endroit douillet où vivre.",
     landingHeroSubtitle: "Novae est le refuge numérique où tes personnages, leurs histoires et leurs liens prennent vie. Une plateforme fluide, gratuite et accessible à tous : des rêveurs aux bâtisseurs d'univers, sans une seule ligne de code.",
     landingEmailPlaceholder: "Adresse email",
-    landingJoinWaitlist: "Rejoindre la liste d'attente",
+    landingJoinWaitlist: "Rejoindre Novae",
     landingWaitlistNote: "Sois le premier à explorer tes futurs mondes. Lancement prochain. Rejoindre la liste d'attente te permettra de recevoir des nouvelles de l'app et de la communauté !",
     landingDesignedTitle: "Pensé pour la créativité, pas la complexité.",
     landingAccessibleTitle: "Accessible à tous",
@@ -617,7 +661,7 @@ export const translations = {
     landingFeatHumanDesc: "Nous n'autorisons pas le contenu généré par IA. Notre équipe surveille activement la plateforme, et tout contenu signalé comme IA sera examiné et pourra entraîner un bannissement. Nous nous engageons à protéger ton travail et à favoriser une communauté humaine et authentique.",
     landingCta2Title: "Aide-nous à façonner le refuge de demain.",
     landingCta2Desc: "Novae est actuellement en développement. En rejoignant la liste d'attente, tu obtiens un accès prioritaire à la bêta et une voix dans la construction des futures fonctionnalités. Tes retours nous aideront à faire de Novae le coin le plus accueillant du web.",
-    landingReserveSpot: "Réserver ma place",
+    landingReserveSpot: "Démarrer",
     landingFooterContact: "Nous contacter",
     landingFooterDiscord: "Rejoindre notre Discord",
     landingFooterCopyright: "© 2026 Novae.at – Fait avec passion et café.",
@@ -628,6 +672,7 @@ export const translations = {
 
     //errors
     errorUserNotFound: "Utilisateur introuvable",
+    errorUserNoName: "Le nom ne doit pas être vide",
     error0: "Une erreur est survenue. Veuillez réessayer."
   },
 } as const;

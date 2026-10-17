@@ -23,7 +23,7 @@ export default function NewPage() {
         id: "world",
         label: t.world,
         description: t.newWorldDesc,
-        disabled: true,
+        disabled: false,
         icon: (
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>

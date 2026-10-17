@@ -7,54 +7,52 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── Better Auth required models ───────────────────────────────────────────
-
 model User {
-  id            String    @id @default(cuid())
-  username      String?   @unique
-  roles         String[]  @default(["user"])
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  name          String?
-  avatar        String?
-  coverImage    String?
-  bio           String?
-  pronouns      String?
-  socials               Json?
-  featuredCharacterIds   String[]  @default([])
-  featuredFriendUsernames String[]  @default([])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                      String   @id @default(cuid())
+  username                String?  @unique
+  roles                   String[] @default(["user"])
+  email                   String   @unique
+  emailVerified           Boolean  @default(false)
+  name                    String?
+  avatar                  String?
+  coverImage              String?
+  bio                     String?
+  pronouns                String?
+  socials                 Json?
+  featuredCharacterIds    String[] @default([])
+  featuredFriendUsernames String[] @default([])
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
-
-  characters    Character[]
-  artworks      Artwork[]
-  artworkCredits ArtworkCredit[]
-  authoredComments Comment[] @relation("AuthoredComments")
-  profileComments  Comment[] @relation("ProfileComments")
-  species       Species[]
-  favorites     Favorite[]
-  followers     Follow[]        @relation("Following")
-  following     Follow[]        @relation("Follower")
-  invitesCreated   InviteCode[]      @relation("CreatedInvites")
-  invitesUsed      InviteCode[]      @relation("UsedInvites")
-  characterFolders CharacterFolder[]
-  favoriteFolders  FavoriteFolder[]
-  notificationsReceived Notification[] @relation("ReceivedNotifications")
-  notificationsSent     Notification[] @relation("SentNotifications")
+  sessions            Session[]
+  accounts            Account[]
+  characters          Character[]
+  artworks            Artwork[]
+  artworkCredits      ArtworkCredit[]
+  authoredComments    Comment[]         @relation("AuthoredComments")
+  profileComments     Comment[]         @relation("ProfileComments")
+  species             Species[]
+  favorites           Favorite[]
+  followers           Follow[]          @relation("Following")
+  following           Follow[]          @relation("Follower")
+  invitesCreated      InviteCode[]      @relation("CreatedInvites")
+  invitesUsed         InviteCode[]      @relation("UsedInvites")
+  characterFolders    CharacterFolder[]
+  favoriteFolders     FavoriteFolder[]
+  notificationsReceived Notification[]  @relation("ReceivedNotifications")
+  notificationsSent     Notification[]    @relation("SentNotifications")
+  worlds               World[]
 }
 
 model Follow {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  followerId  String
-  follower    User     @relation("Follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+  followerId String
+  follower   User   @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
 
   followingId String
-  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  following   User   @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
 }
@@ -103,8 +101,6 @@ model Verification {
   @@unique([identifier, value])
 }
 
-// ─── App models ────────────────────────────────────────────────────────────
-
 model CharacterFolder {
   id         String      @id @default(cuid())
   name       String
@@ -117,12 +113,12 @@ model CharacterFolder {
 }
 
 model FavoriteFolder {
-  id         String     @id @default(cuid())
-  name       String
-  createdAt  DateTime   @default(now())
-  userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  favorites  Favorite[]
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
 }
 
 model Character {
@@ -157,14 +153,14 @@ model Character {
   biography          String?
   sections           String?
   profileBlockOrder  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  folderId  String?
-  folder    CharacterFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folderId String?
+  folder   CharacterFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   speciesId String?
   species   Species? @relation(fields: [speciesId], references: [id], onDelete: SetNull)
@@ -174,14 +170,17 @@ model Character {
   variantLabel    String?
   variants        Character[] @relation("CharacterVariants")
 
-  artworks      Artwork[]    @relation("ArtworkCharacters")
-  galleries     Gallery[]
-  tags          CharacterTag[]
-  colorPalettes ColorPalette[]
+  artworks       Artwork[]      @relation("ArtworkCharacters")
+  galleries      Gallery[]
+  tags           CharacterTag[]
+  colorPalettes  ColorPalette[]
   relationshipsA Relationship[] @relation("CharacterA")
   relationshipsB Relationship[] @relation("CharacterB")
-  favorites     Favorite[]
-  notifications Notification[]
+  favorites      Favorite[]
+  notifications  Notification[]
+
+  worldId String?
+  world   World? @relation(fields: [worldId], references: [id], onDelete: SetNull)
 }
 
 model Species {
@@ -199,23 +198,25 @@ model Species {
 }
 
 model Artwork {
-  id           String   @id @default(cuid())
-  title        String?
-  imageUrl     String
-  thumbnailUrl String?
+  id            String   @id @default(cuid())
+  title         String?
+  imageUrl      String
+  thumbnailUrl  String?
   sensitiveType String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  characters Character[] @relation("ArtworkCharacters")
+  characters Character[]     @relation("ArtworkCharacters")
+  worlds     World[]         @relation("ArtworkWorlds")
   credits    ArtworkCredit[]
 
-  galleryImages GalleryImage[]
-  favorites     Favorite[]
-  notifications Notification[]
+  galleryImages      GalleryImage[]
+  worldGalleryImages WorldGalleryImage[]
+  favorites          Favorite[]
+  notifications      Notification[]
 }
 
 model ArtworkCredit {
@@ -263,6 +264,7 @@ model Tag {
   name String @unique
 
   characters CharacterTag[]
+  worlds     WorldTag[]
 }
 
 model CharacterTag {
@@ -301,40 +303,38 @@ model Relationship {
   typeB       String?
   description String?
 
-  // "accepted" (own char / external) | "pending" | "declined" (cross-user, awaiting the other owner)
-  status        String @default("accepted")
+  status        String  @default("accepted")
   requestedById String?
 
   characterAId String
   characterA   Character @relation("CharacterA", fields: [characterAId], references: [id], onDelete: Cascade)
 
-  // either a site character or an external one (name + image)
-  characterBId       String?
-  characterB         Character? @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
-  externalName       String?
-  externalImageUrl   String?
+  characterBId     String?
+  characterB       Character? @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+  externalName     String?
+  externalImageUrl String?
 
   notifications Notification[]
 }
 
 model InviteCode {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  note        String?
-  createdAt   DateTime  @default(now())
-  expiresAt   DateTime?
-  usedAt      DateTime?
+  id        String    @id @default(cuid())
+  code      String    @unique
+  note      String?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  usedAt    DateTime?
 
   createdById String
-  createdBy   User      @relation("CreatedInvites", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy   User   @relation("CreatedInvites", fields: [createdById], references: [id], onDelete: Cascade)
 
-  usedById    String?
-  usedBy      User?     @relation("UsedInvites",    fields: [usedById],    references: [id], onDelete: SetNull)
+  usedById String?
+  usedBy   User?   @relation("UsedInvites", fields: [usedById], references: [id], onDelete: SetNull)
 }
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // "new_character" | "new_artwork" | "new_follower" | "new_favorite" | "rel_request" | "rel_accepted" | "rel_declined"
+  type      String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -359,15 +359,15 @@ model Comment {
   text      String
   createdAt DateTime @default(now())
 
-  authorId  String
-  author    User     @relation("AuthoredComments", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation("AuthoredComments", fields: [authorId], references: [id], onDelete: Cascade)
 
   profileId String
-  profile   User     @relation("ProfileComments", fields: [profileId], references: [id], onDelete: Cascade)
+  profile   User   @relation("ProfileComments", fields: [profileId], references: [id], onDelete: Cascade)
 
-  parentId  String?
-  parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("Replies")
+  parentId String?
+  parent   Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("Replies")
 }
 
 model Role {
@@ -388,6 +388,9 @@ model Favorite {
   characterId String?
   character   Character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
+  worldId String?
+  world   World? @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
   artworkId String?
   artwork   Artwork? @relation(fields: [artworkId], references: [id], onDelete: Cascade)
 
@@ -395,5 +398,140 @@ model Favorite {
   folder   FavoriteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@unique([userId, characterId])
+  @@unique([userId, worldId])
   @@unique([userId, artworkId])
+}
+
+model World {
+  id                 String   @id @default(cuid())
+  numId              Int      @unique @default(autoincrement())
+  name               String
+  slug               String   @unique
+  description        String?
+  avatarUrl          String?
+  coverImageUrl      String?
+  isPublic           Boolean  @default(true)
+  isDesigner         Boolean  @default(true)
+  designerCredit     String?
+  isWriter           Boolean  @default(true)
+  writerCredit       String?
+  summary            String?
+  biography          String?
+  sections           String?
+  profileBlockOrder  String?
+  order              Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  creatorId String
+  creator   User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  baseWorldId String?
+  baseWorld   World?  @relation("WorldVariants", fields: [baseWorldId], references: [id], onDelete: Cascade)
+  variantLabel String?
+  variants     World[] @relation("WorldVariants")
+
+  locations Location[]
+  characters Character[]
+  maps       Map[]
+  pins       Pin[]
+  artworks       Artwork[]          @relation("ArtworkWorlds")
+  galleries      WorldGallery[]
+  tags           WorldTag[]
+  colorPalettes  WorldColorPalette[]
+  favorites      Favorite[]
+}
+
+model WorldTag {
+  worldId String
+  world   World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([worldId, tagId])
+}
+
+model WorldColorPalette {
+  id   String @id @default(cuid())
+  name String @default("Palette")
+
+  worldId String
+  world   World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  swatches WorldColorSwatch[]
+}
+
+model WorldColorSwatch {
+  id    String  @id @default(cuid())
+  hex   String
+  label String?
+  order Int     @default(0)
+
+  paletteId String
+  palette   WorldColorPalette @relation(fields: [paletteId], references: [id], onDelete: Cascade)
+}
+
+model WorldGallery {
+  id    String @id @default(cuid())
+  name  String
+  order Int    @default(0)
+
+  worldId String
+  world   World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  images WorldGalleryImage[]
+}
+
+model WorldGalleryImage {
+  id    String @id @default(cuid())
+  order Int    @default(0)
+
+  galleryId String
+  gallery   WorldGallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+
+  artworkId String
+  artwork   Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([galleryId, artworkId])
+}
+
+model Location {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  x           Float?
+  y           Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  worldId String
+  world   World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+}
+
+model Map {
+  id        String   @id @default(cuid())
+  name      String
+  imageUrl  String?
+  worldId   String
+  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  bounds    Json     @default("{}")
+  pins      Pin[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pin {
+  id          String   @id @default(cuid())
+  worldId     String
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  mapId       String?
+  map         Map?     @relation(fields: [mapId], references: [id], onDelete: SetNull)
+  lat         Float
+  lng         Float
+  title       String?
+  description String?
+  status      String   @default("coming_soon")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

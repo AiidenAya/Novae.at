@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addToWaitlist } from "@/lib/brevo";
+import { addToWaitlist, sendWelcomeEmail } from "@/lib/brevo";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,6 +11,7 @@ export async function POST(req: Request) {
   }
 
   await addToWaitlist(email);
+  await sendWelcomeEmail(email);
 
   return NextResponse.json({ ok: true });
 }

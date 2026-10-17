@@ -147,7 +147,7 @@ function UserCard({ user }: { user: UserData }) {
 
 async function LatestSection() {
   const chars = await prisma.character.findMany({
-    where: { isPublic: true, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
+    where: { isPublic: true, avatarUrl: { not: null }, OR: [{ folderId: null }, { folder: { isPublic: true } }] },
     orderBy: { createdAt: "desc" },
     take: 8,
     select: {

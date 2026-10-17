@@ -198,7 +198,8 @@
   }
 }
 
-.character-card {
+.character-card,
+.world-card {
   background-color: var(--novae-bg-card);
   border: 1px solid var(--novae-outline-all);
   border-radius: var(--novae-radius-md);
@@ -206,7 +207,8 @@
   cursor: pointer;
   transition: border-color 0.15s;
 }
-.character-card:hover {
+.character-card:hover,
+.world-card:hover {
   border-color: var(--novae-outline-selected);
 }
 
