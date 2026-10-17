@@ -88,7 +88,20 @@ function WaitlistForm({ buttonLabel, wide = false }: { buttonLabel: string; wide
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.error === "already_registered") {
+          setError(t.landingWaitlistAlreadyRegistered);
+          setStatus("error");
+          return;
+        }
+        if (body.error === "already_on_waitlist") {
+          setError(t.landingWaitlistAlreadyOnWaitlist);
+          setStatus("error");
+          return;
+        }
+        throw new Error();
+      }
       setStatus("sent");
     } catch {
       setError(t.landingWaitlistError);

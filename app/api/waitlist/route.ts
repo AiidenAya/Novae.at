@@ -28,6 +28,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
 
+  const existingUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existingUser) {
+    return NextResponse.json({ error: "already_registered" }, { status: 409 });
+  }
+
+  const existingCode = await prisma.inviteCode.findFirst({ where: { note: email }, select: { id: true } });
+  if (existingCode) {
+    return NextResponse.json({ error: "already_on_waitlist" }, { status: 409 });
+  }
+
   await addToWaitlist(email);
 
   const owner = await prisma.user.findUnique({ where: { username: WAITLIST_CODE_OWNER_USERNAME }, select: { id: true } });
