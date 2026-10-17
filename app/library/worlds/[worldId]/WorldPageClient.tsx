@@ -42,8 +42,6 @@ interface WorldData {
   description: string | null;
   avatarUrl: string | null;
   isPublic: boolean;
-  isDesigner: boolean;
-  designerCredit: string | null;
   isWriter: boolean;
   writerCredit: string | null;
   summary: string | null;
@@ -95,26 +93,30 @@ function SectionCard({ title, action, children }: { title: React.ReactNode; acti
         backgroundColor: "var(--novae-bg-card)",
         border: "1px solid var(--novae-outline-all)",
         borderRadius: "var(--novae-radius-md)",
-        padding: "var(--novae-space-xl)",
+        padding: "var(--novae-space-3xl)",
         display: "flex",
         flexDirection: "column",
-        gap: "var(--novae-space-lg)",
+        gap: "var(--novae-space-2xl)",
+        width: "100%",
+        boxSizing: "border-box" as const,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span
-          style={{
-            fontFamily: "var(--font-space-grotesk)",
-            fontSize: "var(--novae-text-xs)",
-            fontWeight: 700,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase" as const,
-            color: "var(--novae-text-secondary)",
-            flex: 1,
-          }}
-        >
-          {title}
-        </span>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--novae-space-sm)" }}>
+          <span
+            style={{
+              fontFamily: "var(--font-space-grotesk)",
+              fontSize: "var(--novae-text-sm)",
+              fontWeight: 400,
+              letterSpacing: "0.7px",
+              textTransform: "uppercase" as const,
+              color: "var(--novae-text-secondary)",
+            }}
+          >
+            {title}
+          </span>
+          <div style={{ height: 1, width: 40, backgroundColor: "var(--novae-text-secondary)", opacity: 0.5 }} />
+        </div>
         {action}
       </div>
       {children}
@@ -417,11 +419,6 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
     if (m) return { type: "offsite", value: m[2], label: m[1] };
     return { type: "onsite", value: raw, label: "" };
   };
-  const [isDesigner, setIsDesigner] = useState(world.isDesigner);
-  const parsed = parseCredit(world.designerCredit);
-  const [creditType, setCreditType] = useState<"onsite" | "offsite">(parsed.type);
-  const [creditValue, setCreditValue] = useState(parsed.value);
-  const [creditLabel, setCreditLabel] = useState(parsed.label);
   const [isWriter, setIsWriter] = useState(world.isWriter);
   const parsedWriter = parseCredit(world.writerCredit);
   const [writerType, setWriterType] = useState<"onsite" | "offsite">(parsedWriter.type);
@@ -634,10 +631,6 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
           sections: customContainers.length > 0 ? JSON.stringify(customContainers) : null,
           profileBlockOrder: blockOrder.length > 0 ? JSON.stringify(blockOrder) : null,
           summary, biography, avatarUrl, isPublic,
-          isDesigner,
-          designerCredit: isDesigner ? null : (creditValue.trim()
-            ? creditType === "onsite" ? `@${creditValue.trim()}` : `[${creditLabel.trim()}](${creditValue.trim()})`
-            : null),
           isWriter,
           writerCredit: isWriter ? null : (writerValue.trim()
             ? writerType === "onsite" ? `@${writerValue.trim()}` : `[${writerLabel.trim()}](${writerValue.trim()})`
@@ -662,14 +655,11 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
     } finally {
       setSaving(false);
     }
-  }, [world.id, name, description, customContainers, blockOrder, summary, biography, avatarUrl, isPublic, isDesigner, creditType, creditValue, creditLabel, isWriter, writerType, writerValue, writerLabel, swatches, router]);
+  }, [world.id, name, description, customContainers, blockOrder, summary, biography, avatarUrl, isPublic, isWriter, writerType, writerValue, writerLabel, swatches, router]);
 
   const cancelEdit = () => {
     setName(world.name);
     setDescription(world.description ?? "");
-    setIsDesigner(world.isDesigner);
-    const p = parseCredit(world.designerCredit);
-    setCreditType(p.type); setCreditValue(p.value); setCreditLabel(p.label);
     setIsWriter(world.isWriter);
     const pw = parseCredit(world.writerCredit);
     setWriterType(pw.type); setWriterValue(pw.value); setWriterLabel(pw.label);
@@ -1752,116 +1742,33 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
             style={{
               display: "flex",
               flexWrap: "wrap" as const,
-              gap: "24px",
+              gap: "32px",
               paddingTop: 16,
+              paddingBottom: 16,
               borderTop: "1px solid var(--novae-outline-all)",
             }}
           >
-            <MetaItem label="Owner" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />
-            {/* Designer — view mode */}
-            {!editing && (() => {
-              if (world.isDesigner) {
-                return <MetaItem label="Designer" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />;
-              }
-              if (!world.designerCredit) return null;
-              if (world.designerCredit.startsWith("@")) {
-                const u = world.designerCredit.slice(1);
-                return <MetaItem label="Designer" value={`@${u}`} href={`/${u}`} />;
-              }
-              const m = world.designerCredit.match(/^\[(.+)\]\((.+)\)$/);
-              if (m) return <MetaItem label="Designer" value={m[1]} href={m[2]} />;
-              return <MetaItem label="Designer" value={world.designerCredit} />;
-            })()}
+            <MetaItem icon={<MetaIconUser />} label="Owner" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />
             {/* Writer — view mode (not in character page? Actually character has isWriter too) */}
             {!editing && (() => {
               if (world.isWriter) {
-                return <MetaItem label="Writer" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />;
+                return <MetaItem icon={<MetaIconPencil />} label="Writer" value={`@${world.creator.username}`} href={`/${world.creator.username}`} />;
               }
               if (!world.writerCredit) return null;
               if (world.writerCredit.startsWith("@")) {
                 const u = world.writerCredit.slice(1);
-                return <MetaItem label="Writer" value={`@${u}`} href={`/${u}`} />;
+                return <MetaItem icon={<MetaIconPencil />} label="Writer" value={`@${u}`} href={`/${u}`} />;
               }
               const m = world.writerCredit.match(/^\[(.+)\]\((.+)\)$/);
-              if (m) return <MetaItem label="Writer" value={m[1]} href={m[2]} />;
-              return <MetaItem label="Writer" value={world.writerCredit} />;
+              if (m) return <MetaItem icon={<MetaIconPencil />} label="Writer" value={m[1]} href={m[2]} />;
+              return <MetaItem icon={<MetaIconPencil />} label="Writer" value={world.writerCredit} />;
             })()}
-            {/* Designer — edit mode */}
-            {editing && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", fontWeight: 700, color: "var(--novae-text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Designer
-                </span>
-                <div style={{ display: "flex", borderRadius: "var(--novae-radius-sm)", overflow: "hidden", border: "1px solid var(--novae-outline-all)" }}>
-                  {([
-                    { key: "me",      label: "Me" },
-                    { key: "onsite",  label: "Novae" },
-                    { key: "offsite", label: "Outside website" },
-                  ] as const).map(({ key, label }) => {
-                    const active = key === "me" ? isDesigner : (!isDesigner && creditType === key);
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => {
-                          if (key === "me") { setIsDesigner(true); }
-                          else { setIsDesigner(false); setCreditType(key); setCreditValue(""); setCreditLabel(""); }
-                        }}
-                        style={{
-                          flex: 1, padding: "5px 0",
-                          background: active ? "var(--novae-btn-primary)" : "none",
-                          border: "none",
-                          color: active ? "#fff" : "var(--novae-text-secondary)",
-                          fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)",
-                          fontWeight: active ? 600 : 400, cursor: "pointer",
-                        }}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {!isDesigner && (
-                  <>
-                    {creditType === "offsite" && (
-                      <input
-                        value={creditLabel}
-                        onChange={(e) => setCreditLabel(e.target.value)}
-                        placeholder="Nom du designer"
-                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                      />
-                    )}
-                    {creditType === "onsite" && (
-                      <button
-                        type="button"
-                        onClick={() => setCreditValue(world.creator.username ?? "")}
-                        style={{ alignSelf: "flex-start", background: "none", border: "1px solid var(--novae-outline-all)", borderRadius: "var(--novae-radius-sm)", padding: "3px 10px", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", cursor: "pointer" }}
-                      >
-                        Me (@{world.creator.username})
-                      </button>
-                    )}
-                    {creditType === "onsite" ? (
-                      <NovaeUserSearch
-                        value={creditValue}
-                        onChange={setCreditValue}
-                        placeholder="Search username…"
-                        inputStyle={{ fontSize: "var(--novae-text-sm)" }}
-                      />
-                    ) : (
-                      <input
-                        value={creditValue}
-                        onChange={(e) => setCreditValue(e.target.value)}
-                        placeholder="https://..."
-                        style={{ ...inputStyle, fontSize: "var(--novae-text-sm)" }}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+
             <MetaItem
-              label="Created"
+              icon={<MetaIconCalendar />}
+              label="Created the"
               value={new Intl.DateTimeFormat("en-GB").format(new Date(world.createdAt))}
+              variant="plain"
             />
           </div>
 
@@ -1908,6 +1815,27 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
             <div className="char-body-grid items-start w-full">
               {/* Left sub-sidebar — no "Informations" and no "Voice Claim" panels */}
               <div className="char-body-side flex-col gap-6" style={{ display: "flex" }}>
+
+                {/* Statistics */}
+                <SectionCard title="Statistics">
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--novae-space-lg)" }}>
+                    {[
+                      { count: artworks.length, label: t.statLabelImages },
+                      { count: inhabitants.length, label: "inhabitants" },
+                      { count: favoritesCount, label: t.statLabelFavorites },
+                      { count: customContainers.length, label: "entries" },
+                    ].map(({ count, label }) => (
+                      <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "var(--novae-text-3xl)", fontWeight: 700, color: "var(--novae-text-primary)" }}>
+                          {count}
+                        </span>
+                        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-secondary)" }}>
+                          {label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
 
                 {/* Color Palette */}
                 <SectionCard title="Color Palette">
@@ -1985,13 +1913,30 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
                 </SectionCard>
 
                 {/* Map — panel */}
-                <SectionCard title="Map">
+                <SectionCard
+                  title="Map"
+                  action={isOwner && maps.length > 2 && (
+                    <button
+                      onClick={() => setActiveTab("map")}
+                      style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontStyle: "italic", textDecoration: "underline", cursor: "pointer" }}
+                    >
+                      View more
+                    </button>
+                  )}
+                >
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {maps.length === 0 ? (
                       <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)", margin: 0 }}>
                         {isOwner ? "Add a map to visualize your world." : "No maps yet."}
                       </p>
                     ) : (
+                      <>
+                        {/* Hero preview of the primary map */}
+                        <div style={{ position: "relative", width: "100%", aspectRatio: "370 / 270", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)" }}>
+                          {maps[0].imageUrl && (
+                            <img src={thumbUrl(maps[0].imageUrl, 740) ?? maps[0].imageUrl} alt={maps[0].name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          )}
+                        </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {maps.slice(0, 2).map((map) => (
                           <div key={map.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2005,14 +1950,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
                           </div>
                         ))}
                       </div>
-                    )}
-                    {isOwner && maps.length > 2 && (
-                      <button
-                        onClick={() => setActiveTab("map")}
-                        style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", cursor: "pointer", alignSelf: "flex-start", padding: 0 }}
-                      >
-                        View more
-                      </button>
+                      </>
                     )}
                     {isOwner && (
                       <button
@@ -2045,6 +1983,32 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
 
               {/* Main content area */}
               <div className="char-body-main gap-6">
+                {/* Latest Characters */}
+                <SectionCard
+                  title="Latest Characters"
+                  action={
+                    <button onClick={() => setActiveTab("inhabitants")} style={{ background: "none", border: "none", color: "var(--novae-text-link)", fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontStyle: "italic", textDecoration: "underline", cursor: "pointer" }}>
+                      View more
+                    </button>
+                  }
+                >
+                  <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, width: "100%" }}>
+                    {inhabitants.length > 0 ? inhabitants.slice(0, 6).map((character) => (
+                      <a
+                        key={character.id}
+                        href={`/library/characters/${character.numId}-${character.slug}`}
+                        style={{ width: 140, height: 140, flex: "1 1 140px", maxWidth: 200, aspectRatio: "1", borderRadius: "var(--novae-radius-md)", overflow: "hidden", backgroundColor: "var(--novae-bg-main)", display: "block" }}
+                      >
+                        {character.avatarUrl && (
+                          <img src={thumbUrl(character.avatarUrl, 400) ?? character.avatarUrl} alt={character.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        )}
+                      </a>
+                    )) : (
+                      <p style={{ margin: 0, fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-secondary)" }}>No characters yet.</p>
+                    )}
+                  </div>
+                </SectionCard>
+
                 {(() => {
                   const defaultOrder = ["latestImages", "loreSummary", ...customContainers.map((c) => `custom:${c.id}`)];
                   const visibility: Record<string, boolean> = {
@@ -2226,16 +2190,16 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
                     onClick={() => setCustomContainers((prev) => [...prev, { id: crypto.randomUUID(), title: "", content: "" }])}
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                      width: "100%", padding: 16,
+                      width: "100%", padding: "var(--novae-space-3xl)", boxSizing: "border-box" as const,
                       borderRadius: "var(--novae-radius-md)",
-                      border: "1px dashed var(--novae-outline-all)",
-                      background: "none",
-                      color: "var(--novae-text-secondary)",
-                      fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)",
+                      border: "1px solid var(--novae-outline-all)",
+                      backgroundColor: "var(--novae-bg-card)",
+                      color: "var(--novae-text-primary)",
+                      fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", fontWeight: 500,
                       cursor: "pointer",
                     }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Add a container
                   </button>
                 )}
@@ -2693,7 +2657,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
         </div>
 
         {/* ── Right sidebar ─────────────────────────────────────────────── */}
-        <aside
+        {/* <aside
           className="char-body-side"
           style={{
             flexDirection: "column",
@@ -2705,7 +2669,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
             paddingBottom: 32,
           }}
         >
-          {/* Stats */}
+          // Stats
           <SectionCard title="Statistics">
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               {[
@@ -2726,7 +2690,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
             </div>
           </SectionCard>
 
-          {/* Tags */}
+          // Tags
           <SectionCard title="Tags">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {tags.map(({ tagId, tag }) => (
@@ -2795,7 +2759,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
             </div>
           </SectionCard>
 
-          {/* Inhabitants */}
+          // Inhabitants
           <SectionCard
             title="Inhabitants"
             action={
@@ -2823,7 +2787,7 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
               )}
             </div>
           </SectionCard>
-        </aside>
+        </aside>*/}
       </div>
 
       {/* Hover show delete button on artwork */}
@@ -2839,18 +2803,32 @@ export default function WorldPageClient({ world, isOwner, currentUserId, initial
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function MetaItem({ label, value, href }: { label: string; value: string; href?: string }) {
+function MetaIconUser() {
+  return <svg width="13" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>;
+}
+function MetaIconPencil() {
+  return <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 2.5L15.5 5.5L6.5 14.5H3.5V11.5L12.5 2.5Z"/></svg>;
+}
+function MetaIconCalendar() {
+  return <svg width="13" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+}
+
+function MetaItem({ label, value, href, icon, variant = "link" }: { label: string; value: string; href?: string; icon?: React.ReactNode; variant?: "link" | "plain" }) {
+  const valueColor = variant === "link" ? "var(--novae-text-link)" : "var(--novae-text-primary)";
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-xs)", color: "var(--novae-text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        {label}
-      </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--novae-text-primary)" }}>
+        {icon}
+        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: "var(--novae-text-primary)", fontWeight: 500 }}>
+          {label}
+        </span>
+      </div>
       {href ? (
-        <a href={href} style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-link)", fontWeight: 700, fontStyle: "italic" }}>
+        <a href={href} style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: valueColor, fontWeight: 700, fontStyle: "italic", textDecoration: "underline" }}>
           {value}
         </a>
       ) : (
-        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-sm)", color: "var(--novae-text-link)", fontWeight: 700, fontStyle: "italic" }}>
+        <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: "var(--novae-text-base)", color: valueColor, fontWeight: variant === "link" ? 700 : 500, fontStyle: "italic", textDecoration: "underline" }}>
           {value}
         </span>
       )}
