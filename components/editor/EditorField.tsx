@@ -76,7 +76,7 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
               uploader: {
                 async uploadByFile(file: File) {
                   const res = await uploadRef.current([file]);
-                  const url = (res?.[0] as any)?.serverData?.url ?? (res?.[0] as any)?.url;
+                  const url = (res?.[0] as any)?.serverData?.url ?? (res?.[0] as any)?.ufsUrl;
                   if (!url) return { success: 0 };
                   return { success: 1, file: { url } };
                 },
@@ -120,7 +120,7 @@ export default function EditorField({ value, onChange, placeholder, minHeight = 
         if (!file || !editorRef.current) return;
         editorRef.current.blocks.insert("image", { file: { url: URL.createObjectURL(file) }, stretched: false, withBorder: false, withBackground: false });
         const res = await uploadRef.current([file]);
-        const url = (res?.[0] as any)?.serverData?.url ?? (res?.[0] as any)?.url;
+        const url = (res?.[0] as any)?.serverData?.url ?? (res?.[0] as any)?.ufsUrl;
         if (url) {
           const data = await editorRef.current.save();
           const updated = { ...data, blocks: data.blocks.map((b: any) => b.type === "image" && b.data.file?.url?.startsWith("blob:") ? { ...b, data: { ...b.data, file: { url } } } : b) };
