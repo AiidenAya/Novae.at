@@ -334,7 +334,7 @@ function ProfileHeader({
       setUploadingAvatar(true);
       try {
         const res = await uploadAvatar([croppedFile]);
-        setEditState((p) => ({ ...p, avatarImage: res?.[0]?.url ?? prev }));
+        setEditState((p) => ({ ...p, avatarImage: res?.[0]?.ufsUrl ?? prev }));
       } catch {
         setEditState((p) => ({ ...p, avatarImage: prev }));
       }
@@ -345,7 +345,7 @@ function ProfileHeader({
       setUploadingCover(true);
       try {
         const res = await uploadCover([croppedFile]);
-        setEditState((p) => ({ ...p, coverImage: res?.[0]?.url ?? prev }));
+        setEditState((p) => ({ ...p, coverImage: res?.[0]?.ufsUrl ?? prev }));
       } catch {
         setEditState((p) => ({ ...p, coverImage: prev }));
       }

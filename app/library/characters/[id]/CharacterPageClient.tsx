@@ -973,7 +973,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       if (!uploaded?.length) return;
 
       if (isAvatar) {
-        const url = uploaded[0].url;
+        const url = uploaded[0].ufsUrl;
         setAvatarUrl(url);
         await fetch(`/api/characters/${character.id}`, {
           method: "PATCH",
@@ -986,7 +986,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
         let thumbnailUrl: string | null = null;
         if (thumbnailFile && files.length === 1) {
           const thumbUploaded = await startArtworkUpload([thumbnailFile]);
-          thumbnailUrl = thumbUploaded?.[0]?.url ?? null;
+          thumbnailUrl = thumbUploaded?.[0]?.ufsUrl ?? null;
         }
 
         const creditsPayload = (credits ?? []).map((c) => ({ type: c.type, value: c.value.trim(), label: c.label.trim() }));
@@ -996,7 +996,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              imageUrl: file.url,
+              imageUrl: file.ufsUrl,
               thumbnailUrl,
               credits: creditsPayload,
               sensitiveType: sensitiveType ?? null,
@@ -1094,7 +1094,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
       newThumbnailUrl = null;
     } else if (editThumbFile) {
       const uploaded = await startArtworkUpload([editThumbFile]);
-      newThumbnailUrl = uploaded?.[0]?.url ?? null;
+      newThumbnailUrl = uploaded?.[0]?.ufsUrl ?? null;
     }
 
     const body: Record<string, unknown> = { credits, characterIds: creditsCharacters.map((c) => c.id), sensitiveType: creditsSensitiveType };
@@ -2935,7 +2935,7 @@ export default function CharacterPageClient({ character, isOwner, currentUserId,
                               const f = e.target.files?.[0];
                               if (!f) return;
                               const uploaded = await startArtworkUpload([f]);
-                              if (uploaded?.[0]?.url) setRelExternalImage(uploaded[0].url);
+                              if (uploaded?.[0]?.ufsUrl) setRelExternalImage(uploaded[0].ufsUrl);
                               e.target.value = "";
                             }} />
                           </label>

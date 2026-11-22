@@ -290,7 +290,7 @@ export default function NewMultiImagePage() {
       if (thumbTargets.length > 0) {
         const upThumbs = await startUpload(thumbTargets.map((x) => x.e.thumbnailFile!));
         thumbTargets.forEach((x, k) => {
-          const url = upThumbs?.[k]?.url;
+          const url = upThumbs?.[k]?.ufsUrl;
           if (url) thumbUrls[x.i] = url;
         });
       }
@@ -300,7 +300,7 @@ export default function NewMultiImagePage() {
 
       await Promise.all(
         entries.map((entry, i) => {
-          const imageUrl = uploaded[i]?.url;
+          const imageUrl = uploaded[i]?.ufsUrl;
           if (!imageUrl) return Promise.resolve();
 
           const credits = entry.credits.map((c) => ({ type: c.type, value: c.value.trim(), label: c.label.trim() }));
